@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 密钥：永远不要提交
+.env
+.env.local
+.env.*.local
+
+# 生成物：跑 node shots.js / node btest.js 就能重建
+shots/*.html
+shots/*.png
+!docs/screenshots/
+
+# 第三方原始语料：体积大且各有授权，用 npm run data 重新拉取（说明文档要保留）
+data/*
+!data/README.md
+
+# 杂项
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
