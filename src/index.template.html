@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="基于大学英语四、六级大纲词汇表的互动式词汇量自测工具（四级 4540 词 / 六级 5716 词）">
+<title>英语四六级词汇量检测 · CET-4 / CET-6 Vocabulary Checker</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="logo"><span class="dot">四六</span><span>四六级词汇量检测</span></div>
+    <div class="spacer"></div>
+    <div class="tb-stat" id="tbStat"></div>
+    <button class="icon-btn" id="themeBtn" title="切换深色/浅色" aria-label="切换深色或浅色主题">🌙</button>
+  </div>
+</header>
+
+<main class="wrap" id="view" tabindex="-1" aria-label="主内容区"></main>
+
+<nav class="nav">
+  <div class="nav-in">
+    <button data-nav="home" class="on"><i>🏠</i>首页</button>
+    <button data-nav="test"><i>✏️</i>检测</button>
+    <button data-nav="stats"><i>📊</i>总览</button>
+    <button data-nav="groups"><i>🧩</i>分组</button>
+    <button data-nav="settings"><i>⚙️</i>设置</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+<div class="sr-only" id="live" role="status" aria-live="polite"></div>
+<div id="modal"></div>
+
+<script>window.WORDS = /*__WORDS__*/;</script>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>
