@@ -8,6 +8,7 @@ import { createLLM, describeLLM } from './llm/index.mjs';
 import { buildTools } from './tools.mjs';
 import { runAgent } from './agent.mjs';
 import { mockDiagnose } from './mock-diagnose.mjs';
+import { corpusStats, examplesFor, searchByText } from './corpus.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = loadEnv();
@@ -51,8 +52,25 @@ const server = http.createServer(async (req, res) => {
       model: info.model,
       mode: useMock ? 'mock' : 'llm',
       reason: useMock ? (llmError || '未配置 API Key，使用本地规则诊断') : '',
+      corpus: corpusStats(),
       time: new Date().toISOString(),
     });
+  }
+
+  // ---------- 例句检索（RAG 的检索端） ----------
+  if (url.pathname === '/api/examples') {
+    const word = url.searchParams.get('word');
+    const q = url.searchParams.get('q');
+    const limit = Math.min(Number(url.searchParams.get('limit') || 2), 10);
+    if (word) {
+      const ex = examplesFor(word, limit);
+      return json(res, 200, { word, count: ex.length, examples: ex, source: 'Tatoeba (CC-BY 2.0 FR)' });
+    }
+    if (q) {
+      const ex = searchByText(q, limit);
+      return json(res, 200, { query: q, count: ex.length, examples: ex, source: 'Tatoeba (CC-BY 2.0 FR)' });
+    }
+    return json(res, 400, { error: '请提供 word 或 q 参数' });
   }
 
   // ---------- 诊断 Agent（SSE 流式） ----------
@@ -115,5 +133,7 @@ server.listen(PORT, () => {
   console.log('  地址：http://127.0.0.1:' + PORT);
   console.log('  模型：' + info.provider + ' / ' + info.model);
   console.log('  模式：' + (useMock ? '本地规则诊断（' + (llmError || '未配置 Key') + '）' : '调用大模型'));
+  const cs = corpusStats();
+  console.log('  例句语料：' + (cs.loaded ? (cs.words + ' 词 / ' + cs.sentences + ' 句') : '未加载（运行 node build-corpus.js）'));
   console.log('  健康检查：http://127.0.0.1:' + PORT + '/api/health');
 });

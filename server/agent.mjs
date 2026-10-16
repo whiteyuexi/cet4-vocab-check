@@ -25,7 +25,12 @@ function execTool(tools, call) {
   const fn = tools.api[name];
   if (!fn) return { error: '未知工具：' + name };
   try {
-    return fn(args.band, args.limit, args.days, args.wordsPerDay);
+    // 工具签名不统一，按名称分派参数
+    if (name === 'get_examples') return fn(args.word);
+    if (name === 'get_weak_examples') return fn(args.limit);
+    if (name === 'plan_schedule') return fn(args.days, args.wordsPerDay);
+    if (name === 'get_weak_words') return fn(args.band, args.limit);
+    return fn();
   } catch (e) {
     return { error: String(e.message || e) };
   }

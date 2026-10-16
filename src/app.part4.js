@@ -218,7 +218,7 @@
                 toolBox.className = 'ai-tools';
                 box.parentNode.insertBefore(toolBox, box);
               }
-              var label = { get_profile: '读取整体情况', get_band_profile: '读取频段数据', get_weak_words: '读取未掌握词', plan_schedule: '生成复习计划', list_banks: '读取词库信息' }[evt.name] || evt.name;
+              var label = { get_profile: '读取整体情况', get_band_profile: '读取频段数据', get_weak_words: '读取未掌握词', plan_schedule: '生成复习计划', list_banks: '读取词库信息', get_examples: '检索真实例句', get_weak_examples: '检索薄弱词例句' }[evt.name] || evt.name;
               if (evt.result) evidence.push({ name: evt.name, label: label, result: evt.result });
               var chip = document.createElement('span');
               chip.className = 'ai-tool';
