@@ -545,6 +545,7 @@
       : '';
     v.innerHTML = banner + html;
     if (A.afterRender) A.afterRender();
+    if (A.renderPet) { try { A.renderPet(); } catch (e) { /* 助手只是锦上添花，不能影响主流程 */ } }
     if (motionArmed) { motionArmed = false; playMotion(v); }
     // 顶栏与底部导航
     var t = tally(activePool());

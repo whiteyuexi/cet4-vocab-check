@@ -161,6 +161,22 @@ data/               第三方原始数据（不提交，见 data/README.md）
 请注意：`mahavivo/english-wordlists` 未声明 license，本项目以「按需拉取、标注来源」的方式使用；
 若用于商业用途请先取得原作者授权。本项目代码以 MIT 发布，该许可不覆盖第三方数据。
 
+## 界面形象与第三方素材
+
+右侧常驻助手有两种形态，**按运行环境自动选择**：
+
+| 环境 | 形象 | 说明 |
+| --- | --- | --- |
+| 离线单文件（`file://`，双击打开） | 内联 SVG | 本项目原创，会呼吸 / 眨眼 / 变表情；`index.html` 里不含任何外部图片 |
+| 本地服务 / 在线（`node server/index.mjs`） | Live2D 模型 | **DS鲸鱼娘**，真 2.5D，物理摆动 + 44 个表情 + 8 个动作 |
+
+Live2D 素材是**第三方作品**，授权 **CC BY-NC-SA 4.0**（署名 · 非商业 · 相同方式共享），
+版权链为 上善无形 → ZipZipPipe → 氵六青。页面右下角常驻署名，
+完整说明见 **[assets/whale-girl/ATTRIBUTION.md](assets/whale-girl/ATTRIBUTION.md)**。
+
+运行时 `vendor/live2dcubismcore.min.js` 是 Live2D Inc. 的专有软件，受其独立许可约束。
+素材可用 `npm run pet:fetch` 重新拉取。
+
 ## 团队信息
 
 | 角色 | 姓名 | 负责内容 |

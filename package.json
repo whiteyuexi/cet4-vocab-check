@@ -9,11 +9,13 @@
   "scripts": {
     "server": "node server/index.mjs",
     "data": "node scripts/fetch-data.mjs && node build-data.js",
+    "pet:fetch": "node scripts/fetch-live2d.mjs",
     "build": "node build.js",
     "test": "node smoke-test.js",
     "test:browser": "node btest.js",
     "audit": "node audit-fixes.js",
     "shots": "node shots.js",
+    "shot": "node scripts/cdp-shot.mjs",
     "all": "npm run build && npm test && npm run audit"
   },
   "devDependencies": {
