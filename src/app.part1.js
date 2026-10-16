@@ -409,6 +409,29 @@
   }
   A.levelText = levelText;
 
+  /* ---------- 例句（来自 Tatoeba 英中对照语料，构建期内联） ---------- */
+  function examplesOf(word) {
+    var bag = window.SENTENCES;
+    if (!bag) return [];
+    var arr = bag[String(word).toLowerCase()];
+    if (!arr || !arr.length) return [];
+    // 内联格式是单条 [英文, 中文]；后端接口返回的是 [{en, zh}, ...]，两种都兼容
+    if (typeof arr[0] === 'string') return [{ e: arr[0], z: arr[1] }];
+    return arr.map(function (it) {
+      return { e: it.e || it.en, z: it.z || it.zh };
+    });
+  }
+  A.examplesOf = examplesOf;
+  A.hasExamples = function () { return !!window.SENTENCES; };
+
+  /* 把例句里的目标词加粗（按词边界匹配，避免 "art" 命中 "start"） */
+  function highlightWord(text, word) {
+    var w = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp('\\b(' + w + ')(s|es|ed|ing|d)?\\b', 'gi');
+    return esc(text).replace(re, function (m) { return '<b>' + m + '</b>'; });
+  }
+  A.highlightWord = highlightWord;
+
   /* ---------- 发音 ---------- */
   var voice = null;
   function pickVoice() {

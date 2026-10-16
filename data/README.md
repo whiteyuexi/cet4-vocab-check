@@ -24,6 +24,30 @@ npm run data                  # 拉数据 + 重新构建 words.json
 | `ipa_en_US.txt` | 同上 | `f7cdfe30` | 美式音标补齐 | MIT |
 | `freq_20k.txt` | [first20hours/google-10000-english](https://github.com/first20hours/google-10000-english) | `11432858` | 2 万词频表，用于频段分层抽样 | NOASSERTION |
 
+## 例句语料（Tatoeba）
+
+例句来自 [Tatoeba](https://tatoeba.org) 的英中对照语料，同样**不随仓库分发**，用下面的方式重新生成：
+
+```bash
+# 1. 下载三个文件到临时目录（约 26 MB）
+#    eng-cmn_links.tsv.bz2  英中对照关系
+#    cmn_sentences.tsv.bz2  中文句子
+#    eng_sentences.tsv.bz2  英文句子
+#    https://downloads.tatoeba.org/exports/per_language/{eng,cmn}/
+# 2. 解压（这些是压缩的纯文本，不是 tar 包，需要 bzip2）
+py scripts/bz2-extract.py <输入.tsv.bz2> <输出.tsv>
+# 3. 索引
+node build-corpus.js
+```
+
+产物 `sentences.json` 覆盖 5138 个词、共 9204 条例句，构建时每个词内联 1 条到产物中。
+
+| 文件 | 授权 |
+| --- | --- |
+| Tatoeba 句子数据 | CC-BY 2.0 FR（需署名） |
+
+> 界面上每条例句下方都标注了「例句来源：Tatoeba」，符合署名要求。
+
 ## 关于授权的说明（务必阅读）
 
 - **ipa-dict**（MIT）与 **KyleBing/english-vocabulary**（BSD-3-Clause）为宽松许可，可自由使用，本项目已在 README 与本文档中标注来源。

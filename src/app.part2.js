@@ -335,7 +335,17 @@
       if (RUN.revealed) {
         var okNow = RUN.opts[RUN.picked] && RUN.opts[RUN.picked].ok;
         h += '<div class="reveal"><div class="mean">' + (okNow ? '✅ 答对了' : '❌ 答错了') + '</div>' +
-          '<div class="ph">正确释义：<b>' + esc(w.t) + '</b>' + (w.ph ? '　短语 ' + esc(w.ph.p) + ' ' + esc(w.ph.t) : '') + '</div></div>';
+          '<div class="ph">正确释义：<b>' + esc(w.t) + '</b>' + (w.ph ? '　短语 ' + esc(w.ph.p) + ' ' + esc(w.ph.t) : '') + '</div>';
+        var exs2 = A.examplesOf(w.w);
+        if (exs2.length) {
+          h += '<div class="exs">';
+          exs2.forEach(function (s) {
+            h += '<div class="ex-line"><div class="ex-en">' + A.highlightWord(s.e, w.w) + '</div>' +
+              '<div class="ex-zh">' + esc(s.z) + '</div></div>';
+          });
+          h += '<div class="ex-src">例句来源：Tatoeba（CC-BY 2.0 FR）</div></div>';
+        }
+        h += '</div>';
       }
     } else {
       h += '<div class="judge">';
@@ -347,6 +357,15 @@
         h += '<div class="reveal">';
         h += '<div class="mean">' + esc(w.t) + '</div>';
         if (w.ph) h += '<div class="ph">短语：<b>' + esc(w.ph.p) + '</b> ' + esc(w.ph.t) + '</div>';
+        var exs = A.examplesOf(w.w);
+        if (exs.length) {
+          h += '<div class="exs">';
+          exs.forEach(function (s) {
+            h += '<div class="ex-line"><div class="ex-en">' + A.highlightWord(s.e, w.w) + '</div>' +
+              '<div class="ex-zh">' + esc(s.z) + '</div></div>';
+          });
+          h += '<div class="ex-src">例句来源：Tatoeba（CC-BY 2.0 FR）</div></div>';
+        }
         h += '<div class="ph" style="margin-top:12px">记错了？改判为 ' +
           '<button class="chip" data-act="rejudge" data-v="2">认识</button> ' +
           '<button class="chip" data-act="rejudge" data-v="1">模糊</button> ' +

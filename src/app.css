@@ -206,6 +206,13 @@ details.tips[open] summary::before{content:"▾ "}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .reveal .mean{font-size:19px;font-weight:650}
 .reveal .ph{margin-top:8px;font-size:13.5px;color:var(--text2)}
+.exs{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.ex-line{padding:8px 0}
+.ex-line+.ex-line{border-top:1px dashed var(--line)}
+.ex-en{font-size:14.5px;line-height:1.6}
+.ex-en b{color:var(--brand);font-weight:750}
+.ex-zh{font-size:13px;color:var(--text2);margin-top:3px}
+.ex-src{font-size:11px;color:var(--text3);margin-top:6px}
 .reveal .ph b{color:var(--brand)}
 .opts{display:grid;gap:10px;margin-top:20px;text-align:left}
 .opt{padding:14px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--card2);font-size:15px;
