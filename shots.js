@@ -23,6 +23,10 @@ const screens = {
   'home': SEED + 'A.go("home");',
   'home_c6': SEED + 'S.settings.bank="c6";A.save();A.go("home");',
   'groups': SEED + 'A.go("groups");',
+  // 稀疏数据：前 5 组做满、第 6-10 组做一半、其余未开始 —— 用来检查三种状态是否一眼可辨
+  'groups_mixed': 'var A=window.__APP__,S=A.S,p=A.activePool();' +
+    'for(var j=0;j<1000;j++){if(j<500||j%2===0)S.status[A.keyOf(p[j])]=(j%7?2:0);}' +
+    'A.save();A.go("groups");',
   'test_probe': SEED + 'A.startSession("probe",{target:250});for(var i=0;i<46;i++){A.judge(i%3===0?1:2);A.nextQ();}',
   'test_self': SEED + 'A.startSession("group",{group:2});',
   'test_reveal': SEED + 'A.startSession("group",{group:2});A.judge(1);',

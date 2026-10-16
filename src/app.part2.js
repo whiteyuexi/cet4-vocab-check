@@ -259,8 +259,8 @@
   A.viewTest = function () {
     var sess = A.S.session;
     if (!sess) {
-      return '<div class="card" style="text-align:center;padding:34px 20px">' +
-        '<div style="font-size:40px">✏️</div><b style="font-size:17px">还没有正在进行的检测</b>' +
+      return '<div class="card" style="text-align:center;padding:40px 20px">' +
+        '<b style="font-size:17px">还没有正在进行的检测</b>' +
         '<div class="tiny" style="margin:8px 0 18px">选择一个模式马上开始</div>' +
         '<div class="row" style="justify-content:center;flex-wrap:wrap">' +
         '<button class="btn primary" data-act="start" data-kind="quick">快速摸底 100 词</button>' +
@@ -316,7 +316,7 @@
     h += '<div class="qcard">';
     h += '<div class="qword">' + esc(w.w) + '</div>';
     if (w.p) h += '<div class="qphon">/' + esc(w.p) + '/</div>';
-    h += '<div><button class="spk" data-act="speak" data-w="' + esc(w.w) + '">🔊 听发音</button></div>';
+    h += '<div><button class="spk" data-act="speak" data-w="' + esc(w.w) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>听发音</button></div>';
 
     if (mode === 'choice') {
       if (RUN.optsPos !== pos || !RUN.opts) { RUN.opts = buildOptions(i); RUN.optsPos = pos; RUN.picked = -1; }
@@ -334,7 +334,7 @@
       h += '</div>';
       if (RUN.revealed) {
         var okNow = RUN.opts[RUN.picked] && RUN.opts[RUN.picked].ok;
-        h += '<div class="reveal"><div class="mean">' + (okNow ? '✅ 答对了' : '❌ 答错了') + '</div>' +
+        h += '<div class="reveal"><div class="mean" style="color:' + (okNow ? 'var(--ok)' : 'var(--bad)') + '">' + (okNow ? '答对了' : '答错了') + '</div>' +
           '<div class="ph">正确释义：<b>' + esc(w.t) + '</b>' + (w.ph ? '　短语 ' + esc(w.ph.p) + ' ' + esc(w.ph.t) : '') + '</div>';
         var exs2 = A.examplesOf(w.w);
         if (exs2.length) {
@@ -349,9 +349,9 @@
       }
     } else {
       h += '<div class="judge">';
-      h += '<button class="jbtn u' + (RUN.revealed && lastV() === 0 ? ' on' : '') + '" data-act="judge" data-v="0">😵 不认识<small>按 1</small></button>';
-      h += '<button class="jbtn f' + (RUN.revealed && lastV() === 1 ? ' on' : '') + '" data-act="judge" data-v="1">🤔 模糊<small>按 2</small></button>';
-      h += '<button class="jbtn k' + (RUN.revealed && lastV() === 2 ? ' on' : '') + '" data-act="judge" data-v="2">😎 认识<small>按 3</small></button>';
+      h += '<button class="jbtn u' + (RUN.revealed && lastV() === 0 ? ' on' : '') + '" data-act="judge" data-v="0">不认识<small>按 1</small></button>';
+      h += '<button class="jbtn f' + (RUN.revealed && lastV() === 1 ? ' on' : '') + '" data-act="judge" data-v="1">模糊<small>按 2</small></button>';
+      h += '<button class="jbtn k' + (RUN.revealed && lastV() === 2 ? ' on' : '') + '" data-act="judge" data-v="2">认识<small>按 3</small></button>';
       h += '</div>';
       if (RUN.revealed) {
         h += '<div class="reveal">';

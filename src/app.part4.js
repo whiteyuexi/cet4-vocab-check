@@ -222,7 +222,7 @@
               if (evt.result) evidence.push({ name: evt.name, label: label, result: evt.result });
               var chip = document.createElement('span');
               chip.className = 'ai-tool';
-              chip.textContent = '✓ ' + label;
+              chip.textContent = label;
               toolBox.appendChild(chip);
               log.scrollTop = log.scrollHeight;
             } else if (evt.type === 'delta') {

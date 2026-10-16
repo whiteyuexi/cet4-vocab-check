@@ -1,5 +1,5 @@
 {
- "question": "我现在该怎么提升？重点补哪里？",
+ "question": "挑 3 个我最薄弱的词，各给我一个真实例句，我想看看它们在句子里怎么用。",
  "context": {
   "bankName": "四级",
   "bankSize": 4540,
@@ -11,7 +11,6 @@
    3504
   ],
   "sampleSize": 214,
-  "estimateNote": "基于最近一次 214 词分层抽样",
   "bands": [
    {
     "name": "最高频 1k",
@@ -52,40 +51,40 @@
   ],
   "weakWords": [
    {
-    "w": "abandon",
-    "t": "v.放弃",
-    "band": "2k-3k",
-    "status": 0
-   },
-   {
     "w": "abolish",
     "t": "v.废除",
     "band": "5k-10k",
-    "status": 0
+    "status": "不认识"
    },
    {
     "w": "absurd",
     "t": "adj.荒谬的",
     "band": "5k-10k",
-    "status": 1
+    "status": "模糊"
    },
    {
     "w": "adhere",
     "t": "v.粘附",
     "band": "10k-20k",
-    "status": 0
+    "status": "不认识"
    },
    {
     "w": "aesthetic",
     "t": "adj.审美的",
     "band": "10k-20k",
-    "status": 0
+    "status": "不认识"
    },
    {
     "w": "affiliate",
     "t": "v.使附属",
     "band": "10k-20k",
-    "status": 1
+    "status": "模糊"
+   },
+   {
+    "w": "breathe",
+    "t": "v.呼吸",
+    "band": "2k-3k",
+    "status": "模糊"
    }
   ],
   "availableBanks": [

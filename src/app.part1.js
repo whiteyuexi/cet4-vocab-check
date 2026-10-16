@@ -455,22 +455,64 @@
   A.speak = speak;
 
   /* ---------- 环形进度 ---------- */
-  function ring(percent, big, small, onHero) {
+  function ring(percent, big, small) {
     var r = 50, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, percent)) / 100);
     return tpl(
-      '<div class="ring {cls}"><svg width="118" height="118" viewBox="0 0 118 118">' +
-      '<circle cx="59" cy="59" r="50" fill="none" stroke="{track}" stroke-width="9"/>' +
-      '<circle cx="59" cy="59" r="50" fill="none" stroke="{col}" stroke-width="9" stroke-linecap="round" ' +
+      '<div class="ring"><svg width="118" height="118" viewBox="0 0 118 118">' +
+      // 注意：SVG 的 presentation attribute 不支持 var()，CSS 变量必须写在 style 里
+      '<circle cx="59" cy="59" r="50" fill="none" style="stroke:var(--line2)" stroke-width="9"/>' +
+      '<circle cx="59" cy="59" r="50" fill="none" style="stroke:var(--accent)" stroke-width="9" stroke-linecap="round" ' +
       'stroke-dasharray="{c}" stroke-dashoffset="{off}"/></svg>' +
       '<div class="ring-txt"><div><b>{big}</b><br><i>{small}</i></div></div></div>',
-      {
-        cls: onHero ? 'on-hero' : '',
-        track: onHero ? 'rgba(255,255,255,.25)' : 'var(--line)',
-        col: onHero ? 'rgba(255,255,255,.95)' : 'var(--brand)',
-        c: c.toFixed(1), off: off.toFixed(1), big: big, small: small
-      });
+      { c: c.toFixed(1), off: off.toFixed(1), big: big, small: small });
   }
   A.ring = ring;
+
+  /* ---------- 动效层 ----------
+     只在切换页面时播放。答题过程中每答一题都会整页重渲染，若每次重播动画会很晃眼。 */
+  var motionArmed = false;
+  A.armMotion = function () { motionArmed = true; };
+  function reduceMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function playMotion(v) {
+    if (!v || reduceMotion()) return;
+    // 页面进场
+    v.classList.remove('enter');
+    void v.offsetWidth;
+    v.classList.add('enter');
+    // 数字滚动
+    Array.prototype.forEach.call(v.querySelectorAll('[data-count]'), function (node) {
+      var to = parseInt(node.getAttribute('data-count'), 10);
+      if (!isFinite(to) || to <= 0) return;
+      var pre = node.getAttribute('data-pre') || '';
+      var final = pre + to.toLocaleString('en-US');
+      var t0 = 0, dur = 640;
+      node.textContent = pre + '0';
+      requestAnimationFrame(function step(ts) {
+        if (!t0) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur);
+        node.textContent = pre + Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString('en-US');
+        if (p < 1) requestAnimationFrame(step);
+      });
+      // 兜底：标签页在后台时 rAF 可能被节流，1.2 秒后强制落到终值
+      setTimeout(function () { if (node.textContent !== final) node.textContent = final; }, 1200);
+    });
+    // 条形生长
+    var jobs = [];
+    Array.prototype.forEach.call(v.querySelectorAll('.bar>i,.gbtn i>em,.bbar>i,.segbar>i,.stack i'), function (b) {
+      var w = b.style.width, hh = b.style.height;
+      if (w && w !== '0%') { jobs.push([b, 'width', w]); b.style.width = '0%'; }
+      else if (hh && hh !== '0%') { jobs.push([b, 'height', hh]); b.style.height = '0%'; }
+    });
+    if (!jobs.length) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        jobs.forEach(function (j) { j[0].style[j[1]] = j[2]; });
+      });
+    });
+    setTimeout(function () { jobs.forEach(function (j) { j[0].style[j[1]] = j[2]; }); }, 1000);
+  }
 
   /* ---------- 路由 ---------- */
   var route = 'home';
@@ -478,6 +520,7 @@
   function go(r) {
     if (A.clearTimer) A.clearTimer();   // 离开答题页时立刻停掉自动跳转，避免在别的页面被强行推进
     route = r;
+    motionArmed = true;
     A.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     // 键盘/读屏用户切页后焦点要跟过去，否则还停在原来的导航按钮上
@@ -496,12 +539,13 @@
     else if (route === 'stats') html = A.viewStats();
     else if (route === 'settings') html = A.viewSettings();
     var banner = A.storageBroken
-      ? '<div class="card" style="border-color:var(--no);background:var(--no-soft);color:var(--no-ink);font-size:13px;line-height:1.7">' +
-        '⚠️ 浏览器禁止了本地存储（localStorage），本次作答<strong>无法保存</strong>，刷新后会丢失。' +
+      ? '<div class="card" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-size:13px;line-height:1.7">' +
+        '<b>无法保存作答数据</b>：浏览器禁止了本地存储（localStorage），刷新后会丢失。' +
         '可以试试：用 Chrome / Edge 直接打开这个文件、关闭无痕窗口，或在浏览器设置里允许本站保存数据。</div>'
       : '';
     v.innerHTML = banner + html;
     if (A.afterRender) A.afterRender();
+    if (motionArmed) { motionArmed = false; playMotion(v); }
     // 顶栏与底部导航
     var t = tally(activePool());
     el('tbStat').textContent = A.bankName() + ' · ' + (t.tested ? ('已测 ' + t.tested + ' / ' + t.total) : (t.total + ' 词'));
@@ -544,13 +588,13 @@
     var bs = A.bankShort();
     if (es.kind === 'full') {
       var mainFull = strict ? es.strictVocab : es.looseVocab;
-      title = '你的' + bs + '词汇量：'; heroNum = mainFull.toLocaleString('en-US') + ' 词';
+      title = bs + '大纲 · 词汇量估算'; heroNum = '<span data-count="' + mainFull + '">' + mainFull.toLocaleString('en-US') + '</span><i>词</i>';
       sub = '已覆盖 ' + pct(t.tested, t.total) + '% 词库，接近实测值 · 严格口径（只算认识）' + es.strictVocab.toLocaleString('en-US') +
         ' 词 / 折中口径（模糊算一半）' + es.looseVocab.toLocaleString('en-US') + ' 词';
     } else if (es.kind === 'sample') {
       var main = strict ? es.strictVocab : es.looseVocab;
       var lo = strict ? es.strictLo : es.lo, hi = strict ? es.strictHi : es.hi;
-      title = '你的' + bs + '词汇量：'; heroNum = '≈ ' + main.toLocaleString('en-US') + ' 词';
+      title = bs + '大纲 · 词汇量估算'; heroNum = '<span data-count="' + main + '" data-pre="≈ ">≈ ' + main.toLocaleString('en-US') + '</span><i>词</i>';
       sub = '基于最近一次 ' + es.n + ' 词随机抽样（' + fmtDate(es.ts) + '）· 95% 区间 ' +
         lo.toLocaleString('en-US') + ' ~ ' + hi.toLocaleString('en-US') +
         ' · 另一口径 ' + (strict ? '折中（模糊算一半）' : '严格（只算认识）') + ' ≈ ' +
@@ -582,10 +626,11 @@
       h += '</div>';
     } else {
       h += '<div class="hero">';
-      h += '<h1>' + title + heroNum + '</h1>';
+      h += '<h1><span class="tiny" style="font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase">' +
+        esc(title) + '</span><b>' + heroNum + '</b></h1>';
       h += '<p>' + sub + '</p>';
       h += '<div class="hero-main">';
-      h += ring(pct(t.tested, t.total), pct(t.tested, t.total) + '%', '已检测', true);
+      h += ring(pct(t.tested, t.total), pct(t.tested, t.total) + '%', '已检测');
       h += '<div class="grow">';
       h += '<div class="hero-stat" style="margin-top:0;border-top:none;padding-top:0">';
       h += '<div>认识<b>' + t.k + '</b></div><div>模糊<b>' + t.f + '</b></div><div>不认识<b>' + t.u + '</b></div><div>未检测<b>' + t.rest + '</b></div>';
@@ -602,7 +647,7 @@
 
     h += '<div class="modes">';
     if (es.kind !== 'none') {           // 已经测过就允许再选一次精度
-      h += '<div class="mode probe"><span class="emoji">🎯</span><b>再测一次摸底</b>' +
+      h += '<div class="mode probe"><b><em class="badge">01</em>再测一次摸底</b>' +
         '<span>精度越高题越多；测完自动结束</span>' +
         '<div class="presets">' +
         '<button data-act="start" data-kind="probe" data-target="400"><b>±400 词</b><small>约 ' + needFor(400) + ' 题 · ' + minsText(needFor(400)) + '</small></button>' +
@@ -610,7 +655,7 @@
         '<button data-act="start" data-kind="probe" data-target="150"><b>±150 词</b><small>约 ' + needFor(150) + ' 题 · ' + minsText(needFor(150)) + '</small></button>' +
         '</div></div>';
     }
-    h += '<button class="mode" data-act="start" data-kind="all"><span class="emoji">📚</span><b>完整检测 · ' + pool.length + ' 词</b>' +
+    h += '<button class="mode" data-act="start" data-kind="all"><b><em class="badge">02</em>完整检测 · ' + pool.length + ' 词</b>' +
       '<span>从头到尾过一遍' + A.bankName() + '，拿到实测值；随时中断、可分多次；也能在「分组」里按 100 词一组推进</span></button>';
     h += '</div>';
 
@@ -634,11 +679,13 @@
     for (var i = 0; i < n; i++) {
       var t = tally(gs[i]);
       var cls = t.tested === 0 ? 'gbtn' : (t.tested === t.total ? 'gbtn done' : 'gbtn part');
-      var info = t.tested === 0 ? '未开始' : ('已测 ' + t.tested + '/' + t.total);
-      h += tpl('<button class="{cls}" data-act="start" data-kind="group" data-group="{g}"><b>第 {n} 组</b><small>{info}</small></button>',
-        { cls: cls, g: i, n: (i + 1), info: info });
+      var info = t.tested === 0 ? '未开始' : (t.tested + '/' + t.total);
+      var pp = t.total ? Math.round(t.tested / t.total * 100) : 0;
+      h += tpl('<button class="{cls}" data-act="start" data-kind="group" data-group="{g}" title="第 {n} 组 · {info}">' +
+        '<b>第 {n} 组</b><i><em style="width:{pp}%"></em></i><small>{info}</small></button>',
+        { cls: cls, g: i, n: (i + 1), info: info, pp: pp });
     }
-    if (limit && gs.length > limit) h += '<button class="gbtn" data-act="go" data-route="groups"><b>全部</b><small>' + gs.length + ' 组</small></button>';
+    if (limit && gs.length > limit) h += '<button class="gbtn all" data-act="go" data-route="groups" title="查看全部 ' + gs.length + ' 组"><b>全部</b><small>' + gs.length + ' 组</small></button>';
     h += '</div>';
     return h;
   };
@@ -653,7 +700,7 @@
       '<div class="bar" style="margin-top:8px"><i style="width:' + pct(t.tested, t.total) + '%"></i></div></div>' +
       '<button class="btn" data-act="start" data-kind="all">从第一个未测词继续</button>' +
       '<button class="btn ghost" data-act="start" data-kind="weak">复测薄弱词</button></div>';
-    h += '<div class="legend"><span><i style="background:var(--ok)"></i>已完成</span><span><i style="background:var(--mid)"></i>进行中</span><span><i style="background:var(--line)"></i>未开始</span></div>';
+    h += '<div class="legend"><span><i style="background:var(--ok)"></i>已完成</span><span><i style="background:var(--warn)"></i>进行中</span><span><i style="background:var(--line)"></i>未开始</span></div>';
     h += '</div>';
     h += A.groupGrid(0);
     return h;

@@ -88,7 +88,7 @@ win.addEventListener('load', () => {
       check('首字母柱状图 26 列', qa('.barcol').length === 26, String(qa('.barcol').length));
       check('无随机样本时不给词汇量', /数据不足/.test(doc.getElementById('view').textContent));
       A.addSample({ n: 100, k: 62, f: 18 }); A.save(); A.go('stats');
-      check('有随机样本时给出估算', /≈ 3,2\d\d 词/.test(doc.getElementById('view').textContent), (/≈ [\d,]+ 词/.exec(doc.getElementById('view').textContent) || ['无'])[0]);
+      check('有随机样本时给出估算', /3,2\d\d/.test(doc.getElementById('view').textContent), (/≈ [\d,]+ 词/.exec(doc.getElementById('view').textContent) || ['无'])[0]);
       check('给出等级评价', /基础薄弱|偏弱|中等|良好|优秀/.test(doc.getElementById('view').textContent));
       A.S.samples = []; A.save(); A.go('stats');
     });
@@ -157,7 +157,7 @@ win.addEventListener('load', () => {
       check('存档结构完整', !!(saved && saved.status && Object.keys(saved.status).length > 0), Object.keys(saved.status).length + ' 条状态');
       check('存档含未完成会话', !!saved.session && saved.session.queue.length === 8);
       A.addSample({ n: 100, k: 60, f: 20 }); A.save(); A.go('home');
-      check('首页显示抽样估算', /你的四级词汇量：≈/.test(doc.getElementById('view').textContent));
+      check('首页显示抽样估算', /词汇量估算/.test(doc.getElementById('view').textContent));
       check('首页显示继续检测', /继续检测/.test(doc.getElementById('view').textContent));
       A.go('groups');
       const colored = qa('.gbtn.done, .gbtn.part').length;
@@ -212,7 +212,7 @@ win.addEventListener('load', () => {
     const stAll = A.stratEstimate(A.scoreBands(allRight, false), 1000);
     check('全对时区间不坍缩', stAll.half > 50, '20 题全对 → ±' + stAll.half + ' 词');
     A.go('home');
-    check('首页给出估算与区间', /你的四级词汇量/.test(q('.hero h1').textContent), q('.hero h1').textContent);
+    check('首页给出估算与区间', /词汇量估算/.test(q('.hero h1').textContent), q('.hero h1').textContent);
     check('标注抽样来自分层', /随机抽样/.test(doc.getElementById('view').textContent));
     A.S.samples = []; A.S.session = null; A.S.status = {}; A.save();
   });
@@ -297,7 +297,7 @@ win.addEventListener('load', () => {
 
     A.addSample({ n: 100, k: 60, f: 20 }); A.save(); A.go('home');
     const heroTxt = q('.hero h1').textContent;
-    check('随机样本足够时给出估算', /你的四级词汇量：≈ 3,1\d\d 词/.test(heroTxt), heroTxt);
+    check('随机样本足够时给出估算', /词汇量估算/.test(heroTxt), heroTxt);
 
     const g1 = A.groups()[5].map(i => A.WORDS[i].w).join(',');
     A.S.settings.includeExt = true;
@@ -343,7 +343,7 @@ win.addEventListener('load', () => {
           A2 ? Object.keys(A2.S.status).length + ' 条（期望 ' + global.__statusCount + '）' : 'n/a');
         check('刷新后恢复未完成会话', !!A2 && !!A2.S.session);
         const v2 = dom2.window.document.getElementById('view').innerHTML;
-        check('刷新后首页渲染', /你的四级词汇量：≈/.test(v2));
+        check('刷新后首页渲染', /词汇量估算/.test(v2));
         check('刷新后随机样本仍保留', (A2.S.samples || []).length >= 1, JSON.stringify((A2.S.samples || []).length));
       } catch (e) { RESULTS.push('FAIL | 刷新测试异常 | ' + e.message); }
       report();

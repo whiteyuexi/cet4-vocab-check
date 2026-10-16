@@ -9,7 +9,7 @@
   A.viewResult = function () {
     var r = S.lastResult;
     if (!r) {
-      return '<div class="card" style="text-align:center;padding:34px 20px"><div style="font-size:40px">📈</div>' +
+      return '<div class="card" style="text-align:center;padding:40px 20px">' +
         '<b style="font-size:17px">还没有检测结果</b><div class="tiny" style="margin:10px 0 18px">先完成一次检测吧</div>' +
         '<button class="btn primary" data-act="start" data-kind="quick">开始快速摸底</button></div>';
     }
@@ -23,7 +23,7 @@
     var h = '';
     h += '<div class="card" style="text-align:center">';
     h += '<div class="tiny">' + esc(r.label) + ' · ' + A.fmtDate(r.ts) + '</div>';
-    h += '<div style="display:flex;justify-content:center;margin:14px 0">' + A.ring(A.pct(score, total), A.pct(score, total) + '%', '本次掌握率', false) + '</div>';
+    h += '<div style="display:flex;justify-content:center;margin:14px 0">' + A.ring(A.pct(score, total), A.pct(score, total) + '%', '本次掌握率') + '</div>';
     h += '<div style="font-size:30px;font-weight:850">' + (isQuick && est && enoughSample ? '≈ ' + est.vocab.toLocaleString('en-US') + ' 词' : '掌握 ' + (r.k + r.f) + ' / ' + total + ' 词') + '</div>';
     h += '<div class="tiny" style="margin-top:6px">' + (isQuick && est && enoughSample
       ? ('按随机抽样 ' + total + ' 词估算大纲词汇量，95% 置信区间 ' + est.lo.toLocaleString('en-US') + ' ~ ' + est.hi.toLocaleString('en-US') + (total < 50 ? '；样本偏小，误差较大' : ''))
@@ -34,11 +34,11 @@
 
     h += '<div class="card"><div class="segbar">' +
       '<i style="width:' + A.pct(r.k, total) + '%;background:var(--ok)"></i>' +
-      '<i style="width:' + A.pct(r.f, total) + '%;background:var(--mid)"></i>' +
-      '<i style="width:' + A.pct(r.u, total) + '%;background:var(--no)"></i></div>' +
+      '<i style="width:' + A.pct(r.f, total) + '%;background:var(--warn)"></i>' +
+      '<i style="width:' + A.pct(r.u, total) + '%;background:var(--bad)"></i></div>' +
       '<div class="legend"><span><i style="background:var(--ok)"></i>认识 ' + r.k + ' 词</span>' +
-      '<span><i style="background:var(--mid)"></i>模糊 ' + r.f + ' 词</span>' +
-      '<span><i style="background:var(--no)"></i>不认识 ' + r.u + ' 词</span></div>';
+      '<span><i style="background:var(--warn)"></i>模糊 ' + r.f + ' 词</span>' +
+      '<span><i style="background:var(--bad)"></i>不认识 ' + r.u + ' 词</span></div>';
     var g = A.tally(A.activePool());
     var ge = A.estimateNow();
     h += '<div class="tiny" style="margin-top:14px">累计进度：已测 ' + g.tested + ' / ' + g.total + ' 词' +
@@ -128,7 +128,7 @@
   A.copyText = function (text) {
     function fallback() {
       A.modal('<b>手动复制</b><div class="tiny" style="margin:8px 0">浏览器不允许直接写剪贴板，请手动复制：</div>' +
-        '<textarea style="width:100%;height:200px;font-size:12.5px;border-radius:10px;border:1px solid var(--track);padding:10px;background:var(--card2);color:var(--text)">' +
+        '<textarea style="width:100%;height:200px;font-size:12.5px;border-radius:10px;border:1px solid var(--line);padding:10px;background:var(--glass-2);color:var(--ink)">' +
         esc(text) + '</textarea>' +
         '<div class="row" style="margin-top:10px"><button class="btn primary grow" data-act="modal-close">好</button></div>');
     }
@@ -146,7 +146,8 @@
     var phon = w.p ? '<div class="tiny" style="font-weight:400">/' + esc(w.p) + '/</div>' : '';
     return tpl('<div class="witem"><div class="w">{word}{phon}</div>' +
       '<div class="t">{mean}{phrase}</div>' +
-      '<div class="acts"><button class="chip" data-act="speak" data-w="{word}" aria-label="朗读 {word}">🔊</button></div>' +
+      '<div class="acts"><button class="chip" data-act="speak" data-w="{word}" aria-label="朗读 {word}">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button></div>' +
       tag + '</div>',
       {
         i: i, word: esc(w.w), phon: phon, mean: esc(w.t),
@@ -178,7 +179,7 @@
           {
             name: A.BAND_NAMES[r.band] || ('频段 ' + r.band),
             w: has ? Math.max(2, p) : 0,
-            col: p === null ? 'var(--line)' : (p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--mid)' : 'var(--no)'),
+            col: p === null ? 'var(--line)' : (p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--warn)' : 'var(--bad)'),
             val: has ? (p + '%') : '—'
           });
         h += '<div class="bmeta">全段 ' + r.N + ' 词' + (prof.source === 'sample' ? ' · 抽到 ' + r.n + ' 词' : ' · 已测 ' + r.n + ' 词') + '</div>';
@@ -224,18 +225,18 @@
     h += '<div class="sec-title">总体掌握情况<span class="line"></span><span class="tiny">' + (S.settings.includeExt ? '含拓展词' : '仅四级大纲核心词') + '</span></div>';
 
     h += '<div class="card"><div class="row" style="flex-wrap:wrap;gap:18px">';
-    h += A.ring(A.pct(t.tested, t.total), A.pct(t.tested, t.total) + '%', '完成度', false);
+    h += A.ring(A.pct(t.tested, t.total), A.pct(t.tested, t.total) + '%', '完成度');
     h += '<div class="grow"><div style="font-size:26px;font-weight:850">' + headline + '</div>';
     h += '<div class="tiny">' + detail + '</div>';
     if (lv) h += '<div class="pill brand" style="margin-top:10px">' + lv.t + '</div><div class="tiny" style="margin-top:6px">' + lv.d + '</div>';
     h += '</div></div>';
     h += '<div class="segbar" style="margin-top:16px">' +
       '<i style="width:' + A.pct(t.k, t.total) + '%;background:var(--ok)"></i>' +
-      '<i style="width:' + A.pct(t.f, t.total) + '%;background:var(--mid)"></i>' +
-      '<i style="width:' + A.pct(t.u, t.total) + '%;background:var(--no)"></i></div>';
+      '<i style="width:' + A.pct(t.f, t.total) + '%;background:var(--warn)"></i>' +
+      '<i style="width:' + A.pct(t.u, t.total) + '%;background:var(--bad)"></i></div>';
     h += '<div class="legend"><span><i style="background:var(--ok)"></i>认识 ' + t.k + '</span>' +
-      '<span><i style="background:var(--mid)"></i>模糊 ' + t.f + '</span>' +
-      '<span><i style="background:var(--no)"></i>不认识 ' + t.u + '</span>' +
+      '<span><i style="background:var(--warn)"></i>模糊 ' + t.f + '</span>' +
+      '<span><i style="background:var(--bad)"></i>不认识 ' + t.u + '</span>' +
       '<span><i style="background:var(--line)"></i>未测 ' + t.rest + '</span></div>';
     h += '<div class="statgrid" style="margin-top:14px">' +
       '<div class="stat"><b>' + t.total + '</b><span>词库总量</span></div>' +
@@ -269,13 +270,13 @@
         var d = data[L];
         h += '<div class="barcol" title="' + L + '：认识 ' + d.k + ' / 模糊 ' + d.f + ' / 不认识 ' + d.u + '">' +
           '<div class="stack">' +
-          '<i style="height:' + (d.u / max * 100) + '%;background:var(--no)"></i>' +
-          '<i style="height:' + (d.f / max * 100) + '%;background:var(--mid)"></i>' +
+          '<i style="height:' + (d.u / max * 100) + '%;background:var(--bad)"></i>' +
+          '<i style="height:' + (d.f / max * 100) + '%;background:var(--warn)"></i>' +
           '<i style="height:' + (d.k / max * 100) + '%;background:var(--ok)"></i>' +
           '</div><span>' + L + '</span></div>';
       });
       h += '</div>';
-      h += '<div class="legend"><span><i style="background:var(--ok)"></i>认识</span><span><i style="background:var(--mid)"></i>模糊</span><span><i style="background:var(--no)"></i>不认识</span></div>';
+      h += '<div class="legend"><span><i style="background:var(--ok)"></i>认识</span><span><i style="background:var(--warn)"></i>模糊</span><span><i style="background:var(--bad)"></i>不认识</span></div>';
       var worst = letters.filter(function (L) { return data[L].t >= 10; })
         .sort(function (a, b) { return (data[a].k / data[a].t) - (data[b].k / data[b].t); }).slice(0, 4);
       if (worst.length) h += '<div class="tiny" style="margin-top:10px">掌握率最低的字母段：<b>' + worst.join('、') + '</b>，可以优先刷这些组的词。</div>';
@@ -550,8 +551,7 @@
   A.setTheme = function (t) {
     S.theme = t;
     document.documentElement.setAttribute('data-theme', t);
-    var b = el('themeBtn');
-    if (b) b.textContent = t === 'dark' ? '☀️' : '🌙';
+    // 图标由 CSS 按 data-theme 切换，这里不需要再改内容
     A.save();
     var tg = document.querySelector('[data-act="toggle-theme"]');
     if (tg) { tg.className = 'toggle' + (t === 'dark' ? ' on' : ''); tg.setAttribute('aria-checked', t === 'dark' ? 'true' : 'false'); }
@@ -562,6 +562,7 @@
     document.documentElement.setAttribute('data-theme', S.theme || 'light');
     A.bind();
     A.setTheme(S.theme || 'light');
+    A.armMotion();          // 首次进入也播一次进场动效
     A.render();
     if (A.storageBroken) A.toast('浏览器禁用了本地存储，本次数据无法保存');
     window.addEventListener('beforeunload', function () { A.save(); });
