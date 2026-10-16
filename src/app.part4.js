@@ -85,6 +85,15 @@
     '还剩 20 天考试，来得及吗？'
   ];
 
+  // 鲸鱼娘的「白饭」：这轮诊断烧掉多少 token。既是彩蛋也是 API 成本透明
+  function tokensLine() {
+    var t = A.S.tokens || 0;
+    if (!t) return '跑一次诊断会消耗一些 token —— 这只会算给你看，吃了多少一目了然。';
+    return '这只鲸鱼娘累计吃掉 <b>' + t.toLocaleString('en-US') + '</b> 个 token' +
+      (A.S.lastTokens ? '（最近一次 ' + A.S.lastTokens.toLocaleString('en-US') + '）' : '') + '。';
+  }
+  A.tokensLine = tokensLine;
+
   A.aiCardHTML = function () {
     var h = '';
     h += '<div class="sec-title">AI 诊断教练<span class="line"></span><span class="tiny">基于你的真实数据作答</span></div>';
@@ -99,6 +108,7 @@
     h += '<div class="row" style="margin-top:12px;gap:8px">' +
       '<input class="search" id="aiInput" placeholder="也可以直接输入你的问题，例如：我该怎么安排最后两周？">' +
       '<button class="btn primary" data-act="ai-send">开始诊断</button></div>';
+    h += '<div class="tiny" id="aiTokens" style="margin-top:9px">' + tokensLine() + '</div>';
     h += '</div>';
     return h;
   };
@@ -229,6 +239,15 @@
               text += evt.text;
               box.innerHTML = '<div class="ai-a">' + renderMD(text) + '</div>';
               log.scrollTop = log.scrollHeight;
+            } else if (evt.type === 'done') {
+              if (evt.tokens) {
+                A.S.tokens = (A.S.tokens || 0) + evt.tokens;
+                A.S.lastTokens = evt.tokens;
+                A.save();
+                var tn = el('aiTokens');
+                if (tn) tn.innerHTML = tokensLine();
+                if (A.renderPet) A.renderPet();
+              }
             } else if (evt.type === 'error') {
               text += '\n\n（模型调用出现问题：' + evt.message + '，已尝试降级处理）';
             }

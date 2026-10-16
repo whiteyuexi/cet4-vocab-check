@@ -15,6 +15,7 @@ const SEED = [
   'S.samples=[{ts:Date.now()-3600000,n:214,k:132,f:41,u:41,pre:9,bank:"c4",mode:"self",bands:null}];',
   'S.history=[{ts:Date.now()-86400000,kind:"probe",label:"摸底检测 · 目标 ±250 词",bank:"c4",total:214,k:132,f:41,u:41},',
   '{ts:Date.now()-3600000,kind:"group",label:"第 1 组 · 第 1-100 词",bank:"c4",total:100,k:70,f:17,u:13}];',
+  'S.tokens=12847;S.lastTokens=2157;',      // 让截图里能看到「投喂量」
   'A.save();'
 ].join('');
 

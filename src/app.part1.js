@@ -71,7 +71,8 @@
       lastResult: null,
       samples: [],
       settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
-      theme: 'light'
+      theme: 'light',
+      tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };
   }
   function loadState() {
@@ -87,6 +88,7 @@
         d.lastResult = o.lastResult || null;
         d.samples = o.samples || [];
         d.theme = o.theme || 'light';
+        d.tokens = o.tokens || 0;
         if (o.settings) for (var k in o.settings) if (o.settings.hasOwnProperty(k)) d.settings[k] = o.settings[k];
       }
     } catch (e) { A.storageBroken = true; }

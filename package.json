@@ -14,6 +14,7 @@
     "test": "node smoke-test.js",
     "test:browser": "node btest.js",
     "test:pet": "node scripts/pet-test.mjs",
+    "test:agent": "node scripts/test-agent-tokens.mjs",
     "audit": "node audit-fixes.js",
     "shots": "node shots.js",
     "shot": "node scripts/cdp-shot.mjs",

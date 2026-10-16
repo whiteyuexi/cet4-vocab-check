@@ -56,9 +56,11 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
   messages.push({ role: 'user', content: question });
   const MAX_TOOL_ROUNDS = 3;
   const usedTools = [];
+  let tokens = 0;                       // 本次诊断累计消耗的 token，随 done 事件回传前端
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const data = await llm.chat(messages, { stream: false, tools: tools.schema, maxTokens: 1000 });
+    if (data.usage && data.usage.total_tokens) tokens += data.usage.total_tokens;
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('模型返回格式异常');
     const calls = msg.tool_calls || [];
@@ -67,7 +69,7 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
       // 模型已直接给出答案（没有调工具），按块推给前端
       const text = msg.content || '';
       for (const piece of chunk(text, 18)) onEvent({ type: 'delta', text: piece });
-      onEvent({ type: 'done', tools: usedTools });
+      onEvent({ type: 'done', tools: usedTools, tokens });
       return text;
     }
 
@@ -86,10 +88,11 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
   const stream = await llm.chat(messages, { stream: true, maxTokens: 1000 });
   let full = '';
   for await (const evt of parseSSE(stream)) {
+      if (evt.usage && evt.usage.total_tokens) tokens += evt.usage.total_tokens;
     const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
     if (delta && delta.content) { full += delta.content; onEvent({ type: 'delta', text: delta.content }); }
   }
-  onEvent({ type: 'done', tools: usedTools });
+  onEvent({ type: 'done', tools: usedTools, tokens });
   return full;
 }
 

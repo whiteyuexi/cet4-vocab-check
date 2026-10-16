@@ -16,6 +16,8 @@ export function createOpenAICompat({ name, baseURL, apiKey, model, extraHeaders 
       body.tools = opts.tools;
       body.tool_choice = 'auto';
     }
+    // 流式默认不返回用量，显式要一下：前端拿它算「这只鲸鱼娘吃了多少」
+    if (opts.stream) body.stream_options = { include_usage: true };
 
     const res = await fetch(baseURL.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',

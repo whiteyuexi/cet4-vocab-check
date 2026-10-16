@@ -398,11 +398,11 @@ details.tips[open] summary::before{content:"− "}
 /* ---------- 桌宠 ----------
    固定在视口上自由漂浮：可拖动、松手有重力会落下、会自己溜达。
    容器本身 pointer-events:none，只有角色和气泡可点，避免挡住页面内容。 */
-.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:410px;display:none;pointer-events:none;
+.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:424px;display:none;pointer-events:none;
   transform:translate3d(var(--px,0px),var(--py,0px),0);will-change:transform}
 .pet.on{display:block}
 
-.pet-bubble{position:absolute;left:0;right:0;bottom:252px;max-height:150px;overflow:auto;
+.pet-bubble{position:absolute;left:0;right:0;bottom:268px;max-height:146px;overflow:auto;
   background:var(--glass);border:1px solid var(--line2);border-radius:15px;
   box-shadow:var(--lift-sm);backdrop-filter:var(--blur);padding:11px 13px;font-size:12.5px;line-height:1.68;
   color:var(--ink2);pointer-events:auto;transition:opacity .22s,transform .22s}
@@ -441,8 +441,9 @@ details.tips[open] summary::before{content:"− "}
   transition:opacity .2s,transform .2s}
 .pet.air .pet-shadow{opacity:.35;transform:scale(.72)}
 
-.pet-credit{position:absolute;left:0;right:0;bottom:232px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+.pet-credit{position:absolute;left:0;right:0;bottom:234px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 .pet-credit a{color:var(--ink3);text-decoration:underline}
+.pet-credit .fed{display:block;color:var(--accent);font-weight:600}
 
 @media (prefers-reduced-motion:reduce){
   .pet-fig svg,.pet-fig img,.pet-fig .pt-eye-open,.pet.poked .pet-fig,.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:none!important}
@@ -563,7 +564,8 @@ details.tips[open] summary::before{content:"− "}
       lastResult: null,
       samples: [],
       settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
-      theme: 'light'
+      theme: 'light',
+      tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };
   }
   function loadState() {
@@ -579,6 +581,7 @@ details.tips[open] summary::before{content:"− "}
         d.lastResult = o.lastResult || null;
         d.samples = o.samples || [];
         d.theme = o.theme || 'light';
+        d.tokens = o.tokens || 0;
         if (o.settings) for (var k in o.settings) if (o.settings.hasOwnProperty(k)) d.settings[k] = o.settings[k];
       }
     } catch (e) { A.storageBroken = true; }
@@ -2298,6 +2301,15 @@ details.tips[open] summary::before{content:"− "}
     '还剩 20 天考试，来得及吗？'
   ];
 
+  // 鲸鱼娘的「白饭」：这轮诊断烧掉多少 token。既是彩蛋也是 API 成本透明
+  function tokensLine() {
+    var t = A.S.tokens || 0;
+    if (!t) return '跑一次诊断会消耗一些 token —— 这只会算给你看，吃了多少一目了然。';
+    return '这只鲸鱼娘累计吃掉 <b>' + t.toLocaleString('en-US') + '</b> 个 token' +
+      (A.S.lastTokens ? '（最近一次 ' + A.S.lastTokens.toLocaleString('en-US') + '）' : '') + '。';
+  }
+  A.tokensLine = tokensLine;
+
   A.aiCardHTML = function () {
     var h = '';
     h += '<div class="sec-title">AI 诊断教练<span class="line"></span><span class="tiny">基于你的真实数据作答</span></div>';
@@ -2312,6 +2324,7 @@ details.tips[open] summary::before{content:"− "}
     h += '<div class="row" style="margin-top:12px;gap:8px">' +
       '<input class="search" id="aiInput" placeholder="也可以直接输入你的问题，例如：我该怎么安排最后两周？">' +
       '<button class="btn primary" data-act="ai-send">开始诊断</button></div>';
+    h += '<div class="tiny" id="aiTokens" style="margin-top:9px">' + tokensLine() + '</div>';
     h += '</div>';
     return h;
   };
@@ -2442,6 +2455,15 @@ details.tips[open] summary::before{content:"− "}
               text += evt.text;
               box.innerHTML = '<div class="ai-a">' + renderMD(text) + '</div>';
               log.scrollTop = log.scrollHeight;
+            } else if (evt.type === 'done') {
+              if (evt.tokens) {
+                A.S.tokens = (A.S.tokens || 0) + evt.tokens;
+                A.S.lastTokens = evt.tokens;
+                A.save();
+                var tn = el('aiTokens');
+                if (tn) tn.innerHTML = tokensLine();
+                if (A.renderPet) A.renderPet();
+              }
             } else if (evt.type === 'error') {
               text += '\n\n（模型调用出现问题：' + evt.message + '，已尝试降级处理）';
             }
@@ -2584,6 +2606,7 @@ details.tips[open] summary::before{content:"− "}
     var t = A.tally(A.activePool());
     var es = A.estimateNow();
     var pct = A.pct(t.tested, t.total);
+    var fed = A.S.tokens || 0;
 
     if (r === 'test' && A.S.session) {
       var sess = A.S.session;
@@ -2591,13 +2614,13 @@ details.tips[open] summary::before{content:"− "}
       if (sess.kind === 'probe') {
         var st = A.probeStats(sess);
         var need = st.n ? Math.max(0, Math.ceil(st.n * Math.pow(st.half / sess.target, 2)) - st.n) : 0;
-        if (!st.n) return { mood: 'idle', text: '开始吧。凭第一反应作答，别停下来想——想太久反而不准。' };
-        if (need === 0) return { mood: 'praise', text: '已经达到 ±' + sess.target + ' 词的精度了，随时可以结束看结果。' };
+        if (!st.n) return { mood: 'idle', text: '开始咯。凭第一反应答就行——想太久反而不准。我在这儿陪着你。' };
+        if (need === 0) return { mood: 'praise', text: '精度达标啦，±' + sess.target + ' 词到手，随时可以收工看结果。' };
         return { mood: 'idle', text: '答了 ' + st.n + ' 题，当前精度 ±' + (st.half === Infinity ? '—' : st.half) +
-          ' 词。再答约 ' + need + ' 题就能收到 ±' + sess.target + ' 词。' };
+          ' 词。再答约 ' + need + ' 题就能收到 ±' + sess.target + ' —— 快到了，别半途而废嘛。' };
       }
-      return { mood: 'idle', text: '本组第 ' + (c.answered) + ' 题，这次掌握率 ' +
-        (c.answered ? Math.round((c.k + 0.5 * c.f) / c.answered * 100) : 0) + '%。' };
+      return { mood: 'idle', text: '本组第 ' + c.answered + ' 题，这次掌握率 ' +
+        (c.answered ? Math.round((c.k + 0.5 * c.f) / c.answered * 100) : 0) + '%。一组 ' + A.GROUP_SIZE + ' 词，不着急。' };
     }
 
     if (r === 'result') {
@@ -2606,9 +2629,9 @@ details.tips[open] summary::before{content:"− "}
         var rate = Math.round((lr.k + 0.5 * lr.f) / lr.total * 100);
         return {
           mood: rate >= 80 ? 'praise' : rate >= 50 ? 'idle' : 'warn',
-          text: rate >= 80 ? '这次掌握率 ' + rate + '%，很稳。想更准就再来一轮窄区间的。'
-            : rate >= 50 ? '这次掌握率 ' + rate + '%。往下看「下一步做什么」，那里有具体的补法。'
-              : '这次掌握率只有 ' + rate + '%。先别急着刷，去总览看是哪个频段拖后腿。',
+          text: rate >= 80 ? '这次掌握率 ' + rate + '%，稳的。想更准就再来一轮窄区间的。'
+            : rate >= 50 ? '这次掌握率 ' + rate + '%。往下看「下一步做什么」，那儿写着具体怎么补。'
+              : '掌握率只有 ' + rate + '%…先别急着背。去总览看是哪个频段拖的后腿——打蛇打七寸。',
           acts: [{ label: '分析这次结果', act: 'ai-ask', q: '帮我分析这次检测结果，指出最该补的地方' },
                  { label: '看频段分布', act: 'go', route: 'stats' }]
         };
@@ -2616,46 +2639,49 @@ details.tips[open] summary::before{content:"− "}
     }
 
     if (r === 'stats') {
-      if (!t.tested) return { mood: 'idle', text: '还没有数据。先做一次快速摸底，3 分钟就能出结果。',
+      if (!t.tested) return { mood: 'idle', text: '还没有数据呢。先做一次快速摸底，3 分钟就够。',
         acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 }] };
       return { mood: 'idle', text: '已测 ' + t.tested + ' / ' + t.total + ' 词（' + pct + '%）。' +
-        (es.kind === 'full' ? '已经接近全库实测，估算值基本就是实际值。'
+        (es.kind === 'full' ? '已经接近全库实测，算出来的基本就是实际值了。'
           : es.kind === 'sample' ? '当前估算 ≈ ' + es.vocab.toLocaleString('en-US') + ' 词，95% 区间 ' +
             es.lo.toLocaleString('en-US') + '~' + es.hi.toLocaleString('en-US') + '。'
-            : '分组检测的结果不外推，补一次随机抽样才能算词汇量。'),
+            : '分组的结果我不外推——补一次随机抽样才能算出词汇量。'),
         acts: [{ label: '生成复习计划', act: 'ai-ask', q: '根据我的数据生成一个两周复习计划' }] };
     }
 
     if (r === 'settings') {
-      return { mood: 'idle', text: '作答只存在这台浏览器里，换设备看不到。测出满意结果后建议导出备份。',
+      return { mood: 'idle',
+        text: '作答只存在这台浏览器里，换台设备就看不见了。测出满意的结果记得导出备份。' +
+          (fed ? ' 对了，我已经吃掉你 ' + fed.toLocaleString('en-US') + ' 个 token 了，谢谢投喂～' : ''),
         acts: [{ label: '导出备份', act: 'export-json' }] };
     }
 
     if (r === 'groups') {
       return { mood: 'idle', text: '已测 ' + t.tested + ' 词，其中认识 ' + t.k + ' 词。想系统过一遍就从第一组开始，一组 ' + A.GROUP_SIZE + ' 词。',
-        acts: [{ label: '从第一组开始', act: 'start', kind: 'group', group: '0' }] };
+        acts: [{ label: '从第一组开始', act: 'start', kind: 'group', group: 0 }] };
     }
 
     // home
     if (es.kind === 'sample') {
       return { mood: 'idle', text: '上次估算 ≈ ' + es.vocab.toLocaleString('en-US') + ' 词（±' +
-        Math.round((es.hi - es.lo) / 2) + ' 词）。想收窄误差就再测一轮。',
+        Math.round((es.hi - es.lo) / 2) + ' 词）。想收窄误差就再测一轮，我陪你。',
         acts: [{ label: '让 AI 看看', act: 'ai-ask', q: '我现在该怎么提升？重点补哪里？' },
                { label: '再测一次', act: 'start', kind: 'probe', target: 250 }] };
     }
     if (t.tested) {
-      return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词（来自分组检测）。分组结果不能外推，补一次随机摸底才能算出词汇量。',
+      return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词了，不过那是分组检测——不能外推。补一次随机摸底才能算出词汇量。',
         acts: [{ label: '补一次摸底', act: 'start', kind: 'probe', target: 250 }] };
     }
-    return { mood: 'happy', text: '第一次来？做一次快速摸底就行——约 80 题、3 分钟，给你一个带误差范围的数字。',
+    return { mood: 'happy', text: '第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
       acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 },
              { label: '这是什么？', act: 'ai-ask', q: '这个工具是怎么算出我的词汇量的？' }] };
   }
 
+
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
   var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null;
   var lastText = '', lastMood = '', lastSig = '';
-  var NW = 232, NH = 410, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
+  var NW = 232, NH = 424, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
   var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
@@ -2776,9 +2802,17 @@ details.tips[open] summary::before{content:"− "}
   // 署名跟着实际形态走：Live2D 是第三方素材要署名，SVG 是本项目原创
   function setCredit(kind) {
     if (!creditEl) return;
-    creditEl.innerHTML = kind === 'svg'
+    creditEl.innerHTML = (kind === 'svg'
       ? '形象：本站原创 SVG · MIT'
-      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>';
+      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>') +
+      feedLine();
+  }
+
+  // 「白饭」：AI 诊断烧掉的 token。这条既是社区梗，也是真实的 API 成本
+  function feedLine() {
+    var t = A.S.tokens || 0;
+    if (!t) return '';
+    return '<span class="fed">已投喂 ' + t.toLocaleString('en-US') + ' token</span>';
   }
 
   // 离线形态：优先用 Live2D 模型渲染出的透明 PNG（与联网版同一形象），
@@ -2852,6 +2886,14 @@ details.tips[open] summary::before{content:"− "}
     var host = document.getElementById('pet');
     if (!host) return;
     if (!built) { built = true; hostEl = host; build(host); }
+
+    if (creditEl) {
+      var fedNow = feedLine();
+      if (creditEl.getAttribute('data-fed') !== fedNow) {
+        creditEl.setAttribute('data-fed', fedNow);
+        setCredit(L2D.ok ? 'live2d' : (window.PET_IMG ? 'img' : 'svg'));
+      }
+    }
 
     var d = compose();
     if (d.text !== lastText) {

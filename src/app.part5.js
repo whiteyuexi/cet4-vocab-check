@@ -122,6 +122,7 @@
     var t = A.tally(A.activePool());
     var es = A.estimateNow();
     var pct = A.pct(t.tested, t.total);
+    var fed = A.S.tokens || 0;
 
     if (r === 'test' && A.S.session) {
       var sess = A.S.session;
@@ -129,13 +130,13 @@
       if (sess.kind === 'probe') {
         var st = A.probeStats(sess);
         var need = st.n ? Math.max(0, Math.ceil(st.n * Math.pow(st.half / sess.target, 2)) - st.n) : 0;
-        if (!st.n) return { mood: 'idle', text: '开始吧。凭第一反应作答，别停下来想——想太久反而不准。' };
-        if (need === 0) return { mood: 'praise', text: '已经达到 ±' + sess.target + ' 词的精度了，随时可以结束看结果。' };
+        if (!st.n) return { mood: 'idle', text: '开始咯。凭第一反应答就行——想太久反而不准。我在这儿陪着你。' };
+        if (need === 0) return { mood: 'praise', text: '精度达标啦，±' + sess.target + ' 词到手，随时可以收工看结果。' };
         return { mood: 'idle', text: '答了 ' + st.n + ' 题，当前精度 ±' + (st.half === Infinity ? '—' : st.half) +
-          ' 词。再答约 ' + need + ' 题就能收到 ±' + sess.target + ' 词。' };
+          ' 词。再答约 ' + need + ' 题就能收到 ±' + sess.target + ' —— 快到了，别半途而废嘛。' };
       }
-      return { mood: 'idle', text: '本组第 ' + (c.answered) + ' 题，这次掌握率 ' +
-        (c.answered ? Math.round((c.k + 0.5 * c.f) / c.answered * 100) : 0) + '%。' };
+      return { mood: 'idle', text: '本组第 ' + c.answered + ' 题，这次掌握率 ' +
+        (c.answered ? Math.round((c.k + 0.5 * c.f) / c.answered * 100) : 0) + '%。一组 ' + A.GROUP_SIZE + ' 词，不着急。' };
     }
 
     if (r === 'result') {
@@ -144,9 +145,9 @@
         var rate = Math.round((lr.k + 0.5 * lr.f) / lr.total * 100);
         return {
           mood: rate >= 80 ? 'praise' : rate >= 50 ? 'idle' : 'warn',
-          text: rate >= 80 ? '这次掌握率 ' + rate + '%，很稳。想更准就再来一轮窄区间的。'
-            : rate >= 50 ? '这次掌握率 ' + rate + '%。往下看「下一步做什么」，那里有具体的补法。'
-              : '这次掌握率只有 ' + rate + '%。先别急着刷，去总览看是哪个频段拖后腿。',
+          text: rate >= 80 ? '这次掌握率 ' + rate + '%，稳的。想更准就再来一轮窄区间的。'
+            : rate >= 50 ? '这次掌握率 ' + rate + '%。往下看「下一步做什么」，那儿写着具体怎么补。'
+              : '掌握率只有 ' + rate + '%…先别急着背。去总览看是哪个频段拖的后腿——打蛇打七寸。',
           acts: [{ label: '分析这次结果', act: 'ai-ask', q: '帮我分析这次检测结果，指出最该补的地方' },
                  { label: '看频段分布', act: 'go', route: 'stats' }]
         };
@@ -154,46 +155,49 @@
     }
 
     if (r === 'stats') {
-      if (!t.tested) return { mood: 'idle', text: '还没有数据。先做一次快速摸底，3 分钟就能出结果。',
+      if (!t.tested) return { mood: 'idle', text: '还没有数据呢。先做一次快速摸底，3 分钟就够。',
         acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 }] };
       return { mood: 'idle', text: '已测 ' + t.tested + ' / ' + t.total + ' 词（' + pct + '%）。' +
-        (es.kind === 'full' ? '已经接近全库实测，估算值基本就是实际值。'
+        (es.kind === 'full' ? '已经接近全库实测，算出来的基本就是实际值了。'
           : es.kind === 'sample' ? '当前估算 ≈ ' + es.vocab.toLocaleString('en-US') + ' 词，95% 区间 ' +
             es.lo.toLocaleString('en-US') + '~' + es.hi.toLocaleString('en-US') + '。'
-            : '分组检测的结果不外推，补一次随机抽样才能算词汇量。'),
+            : '分组的结果我不外推——补一次随机抽样才能算出词汇量。'),
         acts: [{ label: '生成复习计划', act: 'ai-ask', q: '根据我的数据生成一个两周复习计划' }] };
     }
 
     if (r === 'settings') {
-      return { mood: 'idle', text: '作答只存在这台浏览器里，换设备看不到。测出满意结果后建议导出备份。',
+      return { mood: 'idle',
+        text: '作答只存在这台浏览器里，换台设备就看不见了。测出满意的结果记得导出备份。' +
+          (fed ? ' 对了，我已经吃掉你 ' + fed.toLocaleString('en-US') + ' 个 token 了，谢谢投喂～' : ''),
         acts: [{ label: '导出备份', act: 'export-json' }] };
     }
 
     if (r === 'groups') {
       return { mood: 'idle', text: '已测 ' + t.tested + ' 词，其中认识 ' + t.k + ' 词。想系统过一遍就从第一组开始，一组 ' + A.GROUP_SIZE + ' 词。',
-        acts: [{ label: '从第一组开始', act: 'start', kind: 'group', group: '0' }] };
+        acts: [{ label: '从第一组开始', act: 'start', kind: 'group', group: 0 }] };
     }
 
     // home
     if (es.kind === 'sample') {
       return { mood: 'idle', text: '上次估算 ≈ ' + es.vocab.toLocaleString('en-US') + ' 词（±' +
-        Math.round((es.hi - es.lo) / 2) + ' 词）。想收窄误差就再测一轮。',
+        Math.round((es.hi - es.lo) / 2) + ' 词）。想收窄误差就再测一轮，我陪你。',
         acts: [{ label: '让 AI 看看', act: 'ai-ask', q: '我现在该怎么提升？重点补哪里？' },
                { label: '再测一次', act: 'start', kind: 'probe', target: 250 }] };
     }
     if (t.tested) {
-      return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词（来自分组检测）。分组结果不能外推，补一次随机摸底才能算出词汇量。',
+      return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词了，不过那是分组检测——不能外推。补一次随机摸底才能算出词汇量。',
         acts: [{ label: '补一次摸底', act: 'start', kind: 'probe', target: 250 }] };
     }
-    return { mood: 'happy', text: '第一次来？做一次快速摸底就行——约 80 题、3 分钟，给你一个带误差范围的数字。',
+    return { mood: 'happy', text: '第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
       acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 },
              { label: '这是什么？', act: 'ai-ask', q: '这个工具是怎么算出我的词汇量的？' }] };
   }
 
+
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
   var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null;
   var lastText = '', lastMood = '', lastSig = '';
-  var NW = 232, NH = 410, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
+  var NW = 232, NH = 424, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
   var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
@@ -314,9 +318,17 @@
   // 署名跟着实际形态走：Live2D 是第三方素材要署名，SVG 是本项目原创
   function setCredit(kind) {
     if (!creditEl) return;
-    creditEl.innerHTML = kind === 'svg'
+    creditEl.innerHTML = (kind === 'svg'
       ? '形象：本站原创 SVG · MIT'
-      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>';
+      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>') +
+      feedLine();
+  }
+
+  // 「白饭」：AI 诊断烧掉的 token。这条既是社区梗，也是真实的 API 成本
+  function feedLine() {
+    var t = A.S.tokens || 0;
+    if (!t) return '';
+    return '<span class="fed">已投喂 ' + t.toLocaleString('en-US') + ' token</span>';
   }
 
   // 离线形态：优先用 Live2D 模型渲染出的透明 PNG（与联网版同一形象），
@@ -390,6 +402,14 @@
     var host = document.getElementById('pet');
     if (!host) return;
     if (!built) { built = true; hostEl = host; build(host); }
+
+    if (creditEl) {
+      var fedNow = feedLine();
+      if (creditEl.getAttribute('data-fed') !== fedNow) {
+        creditEl.setAttribute('data-fed', fedNow);
+        setCredit(L2D.ok ? 'live2d' : (window.PET_IMG ? 'img' : 'svg'));
+      }
+    }
 
     var d = compose();
     if (d.text !== lastText) {

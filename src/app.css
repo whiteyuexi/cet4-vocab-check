@@ -390,11 +390,11 @@ details.tips[open] summary::before{content:"− "}
 /* ---------- 桌宠 ----------
    固定在视口上自由漂浮：可拖动、松手有重力会落下、会自己溜达。
    容器本身 pointer-events:none，只有角色和气泡可点，避免挡住页面内容。 */
-.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:410px;display:none;pointer-events:none;
+.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:424px;display:none;pointer-events:none;
   transform:translate3d(var(--px,0px),var(--py,0px),0);will-change:transform}
 .pet.on{display:block}
 
-.pet-bubble{position:absolute;left:0;right:0;bottom:252px;max-height:150px;overflow:auto;
+.pet-bubble{position:absolute;left:0;right:0;bottom:268px;max-height:146px;overflow:auto;
   background:var(--glass);border:1px solid var(--line2);border-radius:15px;
   box-shadow:var(--lift-sm);backdrop-filter:var(--blur);padding:11px 13px;font-size:12.5px;line-height:1.68;
   color:var(--ink2);pointer-events:auto;transition:opacity .22s,transform .22s}
@@ -433,8 +433,9 @@ details.tips[open] summary::before{content:"− "}
   transition:opacity .2s,transform .2s}
 .pet.air .pet-shadow{opacity:.35;transform:scale(.72)}
 
-.pet-credit{position:absolute;left:0;right:0;bottom:232px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+.pet-credit{position:absolute;left:0;right:0;bottom:234px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 .pet-credit a{color:var(--ink3);text-decoration:underline}
+.pet-credit .fed{display:block;color:var(--accent);font-weight:600}
 
 @media (prefers-reduced-motion:reduce){
   .pet-fig svg,.pet-fig img,.pet-fig .pt-eye-open,.pet.poked .pet-fig,.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:none!important}
