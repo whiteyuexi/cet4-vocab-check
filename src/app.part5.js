@@ -196,7 +196,7 @@
 
 
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
-  var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null;
+  var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null, shadowEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var NW = 232, NH = 424, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
@@ -255,7 +255,7 @@
   function tick(now) {
     rafId = requestAnimationFrame(tick);
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
-    if (P.dragging) return;
+    if (P.dragging) { applyDepth(lastNx, lastNy, Math.max(0, floorY() - P.y)); return; }
     if (P.air) {
       P.vy += 0.0022 * dt * dt * 0.5;
       P.y += P.vy * dt * 0.06;
@@ -266,6 +266,7 @@
         setTimeout(function () { hostEl.classList.remove('poked'); }, 500);
       }
       apply();
+      applyDepth(lastNx, lastNy, Math.max(0, floorY() - P.y));
     }
   }
 
@@ -305,6 +306,25 @@
     scheduleWalk();
   }
 
+  // 立体感三件套：透视倾斜 + 接触投影 + 气泡视差
+  var lastNx = 0, lastNy = 0;
+  function applyDepth(nx, ny, lift) {
+    lastNx = nx; lastNy = ny;
+    if (figEl) {
+      figEl.style.setProperty('--ty', (nx * 9).toFixed(2) + 'deg');    // 左右转向
+      figEl.style.setProperty('--tx', (-ny * 6).toFixed(2) + 'deg');   // 上下俯仰
+    }
+    if (sayEl) sayEl.style.setProperty('--bx', (nx * -7).toFixed(1) + 'px');  // 气泡反向视差，拉开层次
+    if (shadowEl) {
+      var k = Math.max(0, Math.min(1, (lift || 0) / 260));
+      shadowEl.style.setProperty('--shs', (1 - k * 0.55).toFixed(3));
+      shadowEl.style.setProperty('--shx', (nx * -14 * (1 - k)).toFixed(1) + 'px');
+      shadowEl.style.opacity = (0.92 - k * 0.62).toFixed(2);
+      // 影子锚在地面：她升多高，影子就往下补多少，视觉上留在原地
+      shadowEl.style.bottom = (18 - (lift || 0)).toFixed(0) + 'px';
+    }
+  }
+
   // 让她看你：Live2D 内置的 focusController 会把焦点换算成转头与转眼参数。
   // 之前完全没驱动这个，所以她永远直视前方 —— 看着就像一张贴纸。
   function bindGaze() {
@@ -326,6 +346,7 @@
         dy = Math.max(-1, Math.min(1, dy));
         // focus 期望模型内部坐标系，所以映射到模型尺寸上
         try { m.focus(m.width * (0.5 + dx * 0.45), m.height * (0.5 + dy * 0.45)); } catch (e) {}
+        applyDepth(dx, dy, P.dragging ? 0 : Math.max(0, floorY() - P.y));
       });
     }, { passive: true });
   }
@@ -374,12 +395,14 @@
     host.innerHTML =
       '<div class="pet-bubble empty" id="petSay"></div>' +
       '<div class="pet-fig" id="petFig"></div>' +
+      '<div class="pet-shadow" id="petShadow"></div>' +
       '<div class="pet-credit" id="petCredit"></div>';
     figEl = document.getElementById('petFig');
     sayEl = document.getElementById('petSay');
     actsEl = null;
     creditEl = document.getElementById('petCredit');
-    figEl.innerHTML = artHTML() + '<div class="pet-shadow"></div>';
+    shadowEl = document.getElementById('petShadow');
+    figEl.innerHTML = artHTML();
 
     figEl.addEventListener('pointerdown', onDown);
     figEl.addEventListener('pointermove', onMove);
