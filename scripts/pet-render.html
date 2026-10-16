@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>桌宠帧渲染</title>
+<style>
+html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+#stage{width:232px;height:214px;position:relative;overflow:hidden}
+</style></head><body>
+<div id="stage"></div>
+<script src="/vendor/live2dcubismcore.min.js"></script>
+<script src="/vendor/live2d-vendor.js"></script>
+<script>
+(function () {
+  var FACE = { x: 2019, y: 1871 };
+  var W = 232, H = 214;
+  window.__ready = false;
+  window.__err = '';
+  (async function () {
+    try {
+      var v = window.__dshLive2dPetVendor;
+      v.extensions.add(v.Live2DPlugin);
+      v.configureCubismSDK({ memorySizeMB: 64 });
+      var stage = document.getElementById('stage');
+      var app = new v.Application();
+      await app.init({ width: W, height: H, backgroundAlpha: 0, antialias: true, autoDensity: false,
+        resolution: 2, preference: 'webgl', preserveDrawingBuffer: true });
+      app.canvas.style.width = '100%'; app.canvas.style.height = '100%'; app.canvas.style.display = 'block';
+      stage.appendChild(app.canvas);
+      var m = await v.Live2DModel.from('/assets/whale-girl/c_0120.model3.json',
+        { autoUpdate: false, autoHitTest: false, autoFocus: false });
+      app.stage.addChild(m);
+      var s = W * 0.00044;
+      m.anchor.set(0, 0); m.scale.set(s);
+      m.x = W / 2 - FACE.x * s;
+      m.y = H * 0.30 - FACE.y * s;
+      m.automator.autoUpdate = true;
+      var cm = m.internalModel.coreModel;
+      // 动作会覆盖参数，所以直接接管 coreModel.update：在它重算网格之前把眼睛写进去
+      var eyeOpen = 1, patched = false;
+      window.__updateCalls = 0;
+      window.__probe = function () {
+        var out = { updateCalls: window.__updateCalls, getEye: null, setErr: null, hasUpdate: typeof cm.update };
+        try { out.getEye = cm.getParameterValueById('ParamEyeLOpen'); } catch (e) { out.getEye = 'throw:' + e.message; }
+        try { cm.setParameterValueById('ParamEyeLOpen', 0.05); out.setErr = 'ok'; } catch (e) { out.setErr = 'throw:' + e.message; }
+        try { out.afterSet = cm.getParameterValueById('ParamEyeLOpen'); } catch (e) { out.afterSet = 'throw'; }
+        return JSON.stringify(out);
+      };
+      var origUpdate = cm.update.bind(cm);
+      cm.update = function () {
+        window.__updateCalls++;
+        if (eyeOpen < 1) {
+          try {
+            cm.setParameterValueById('ParamEyeLOpen', eyeOpen);
+            cm.setParameterValueById('ParamEyeROpen', eyeOpen);
+          } catch (e) {}
+        }
+        return origUpdate();
+      };
+      patched = true;
+      window.__setEyes = function (v) { eyeOpen = v; };
+      window.__motion = function (name) { try { m.motion(name); } catch (e) {} };
+      m.motion('Idle');
+      window.__ready = true;
+    } catch (e) { window.__err = e.message + ' | ' + String(e.stack).slice(0, 200); }
+  })();
+})();
+</script></body></html>

@@ -390,11 +390,11 @@ details.tips[open] summary::before{content:"− "}
 /* ---------- 桌宠 ----------
    固定在视口上自由漂浮：可拖动、松手有重力会落下、会自己溜达。
    容器本身 pointer-events:none，只有角色和气泡可点，避免挡住页面内容。 */
-.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:396px;display:none;pointer-events:none;
+.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:410px;display:none;pointer-events:none;
   transform:translate3d(var(--px,0px),var(--py,0px),0);will-change:transform}
 .pet.on{display:block}
 
-.pet-bubble{position:absolute;left:0;right:0;bottom:236px;max-height:158px;overflow:auto;
+.pet-bubble{position:absolute;left:0;right:0;bottom:252px;max-height:150px;overflow:auto;
   background:var(--glass);border:1px solid var(--line2);border-radius:15px;
   box-shadow:var(--lift-sm);backdrop-filter:var(--blur);padding:11px 13px;font-size:12.5px;line-height:1.68;
   color:var(--ink2);pointer-events:auto;transition:opacity .22s,transform .22s}
@@ -409,17 +409,19 @@ details.tips[open] summary::before{content:"− "}
 .pet-fig{position:absolute;left:0;bottom:16px;width:232px;height:214px;cursor:grab;pointer-events:auto;touch-action:none;
   display:grid;place-items:end center;user-select:none;-webkit-user-select:none}
 .pet-fig:active,.pet-fig.grabbing{cursor:grabbing}
-.pet-fig svg{width:158px;height:auto;display:block;transform-origin:50% 100%;animation:petBob 4.4s ease-in-out infinite}
-.pet-fig.is-live2d svg{display:none}
-/* Live2D 模型自带书桌场景，底部渐隐让桌面自然消失，避免硬切口 */
-.pet-fig.is-live2d{-webkit-mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.35) 93%,transparent 100%);
+.pet-fig svg,.pet-fig img{display:block;transform-origin:50% 100%;animation:petBob 4.4s ease-in-out infinite}
+.pet-fig svg{width:158px;height:auto}
+.pet-fig img{width:232px;height:214px}
+.pet-fig.is-live2d .pet-art,.pet-fig.is-live2d svg{display:none}
+/* 模型自带书桌场景，底部渐隐让桌面自然消失，避免硬切口 */
+.pet-fig.is-live2d,.pet-fig.is-static{-webkit-mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.35) 93%,transparent 100%);
   mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.35) 93%,transparent 100%)}
 @keyframes petBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .pet-fig .pt-eye-open{transform-box:fill-box;transform-origin:center;animation:petBlink 5.2s infinite}
 @keyframes petBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
 
 /* 走路时的小碎步；向左走时整体镜像 */
-.pet.walk .pet-fig svg{animation:petStep .36s ease-in-out infinite}
+.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:petStep .36s ease-in-out infinite}
 @keyframes petStep{0%,100%{transform:translateY(0) rotate(-1.8deg)}50%{transform:translateY(-5px) rotate(1.8deg)}}
 .pet.face-l .pet-fig{transform:scaleX(-1)}
 .pet.poked .pet-fig{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
@@ -431,11 +433,11 @@ details.tips[open] summary::before{content:"− "}
   transition:opacity .2s,transform .2s}
 .pet.air .pet-shadow{opacity:.35;transform:scale(.72)}
 
-.pet-credit{position:absolute;left:0;right:0;bottom:0;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+.pet-credit{position:absolute;left:0;right:0;bottom:232px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 .pet-credit a{color:var(--ink3);text-decoration:underline}
 
 @media (prefers-reduced-motion:reduce){
-  .pet-fig svg,.pet-fig .pt-eye-open,.pet.poked .pet-fig,.pet.walk .pet-fig svg{animation:none!important}
+  .pet-fig svg,.pet-fig img,.pet-fig .pt-eye-open,.pet.poked .pet-fig,.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:none!important}
 }
 /* 窄屏不出现桌宠，避免遮挡内容 */
 @media (min-width:820px){ .pet.on{display:block} }

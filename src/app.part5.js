@@ -193,7 +193,7 @@
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
   var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null;
   var lastText = '', lastMood = '', lastSig = '';
-  var NW = 232, NH = 396, CREDIT_H = 16;   // 容器 / 署名 的高度（与 CSS 对应）
+  var NW = 232, NH = 410, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
   var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
@@ -314,15 +314,22 @@
   // 署名跟着实际形态走：Live2D 是第三方素材要署名，SVG 是本项目原创
   function setCredit(kind) {
     if (!creditEl) return;
-    creditEl.innerHTML = kind === 'live2d'
-      ? '形象：DS鲸鱼娘（Live2D）· <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>'
-      : '形象：本站原创 SVG · MIT';
+    creditEl.innerHTML = kind === 'svg'
+      ? '形象：本站原创 SVG · MIT'
+      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>';
   }
 
-  function paint(mood) {
+  // 离线形态：优先用 Live2D 模型渲染出的透明 PNG（与联网版同一形象），
+  // 拿不到时才退回内置 SVG
+  function artHTML() {
+    if (window.PET_IMG) return '<img class="pet-art" src="' + window.PET_IMG + '" alt="" draggable="false">';
+    return mascotSVG('happy');
+  }
+  function paint() {
     if (!figEl || L2D.ok) return;
-    if (mood === lastMood && figEl.querySelector('svg')) return;
-    figEl.innerHTML = mascotSVG(mood) + '<div class="pet-shadow"></div>';
+    if (figEl.querySelector('.pet-art') || figEl.querySelector('svg')) return;
+    figEl.insertAdjacentHTML('afterbegin', artHTML());
+    if (window.PET_IMG) figEl.classList.add('is-static');   // 静态帧同样需要底部渐隐
   }
 
   function build(host) {
@@ -334,14 +341,14 @@
     sayEl = document.getElementById('petSay');
     actsEl = null;
     creditEl = document.getElementById('petCredit');
-    figEl.innerHTML = mascotSVG('happy') + '<div class="pet-shadow"></div>';
+    figEl.innerHTML = artHTML() + '<div class="pet-shadow"></div>';
 
     figEl.addEventListener('pointerdown', onDown);
     figEl.addEventListener('pointermove', onMove);
     figEl.addEventListener('pointerup', onUp);
     figEl.addEventListener('pointercancel', onUp);
 
-    setCredit('svg');
+    setCredit(window.PET_IMG ? 'img' : 'svg');
     try {
       if (live2dAllowed()) {
         mountLive2D(figEl).then(function () {
@@ -349,16 +356,16 @@
           setCredit('live2d');
         }).catch(function () {
           L2D.reason = 'load-failed';
-          document.documentElement.setAttribute('data-pet', 'svg');
-          setCredit('svg');
+          document.documentElement.setAttribute('data-pet', 'static');
+          setCredit(window.PET_IMG ? 'img' : 'svg');
         });
       } else {
         L2D.reason = 'not-allowed';
-        document.documentElement.setAttribute('data-pet', 'svg');
+        document.documentElement.setAttribute('data-pet', 'static');
       }
     } catch (e) {
       L2D.reason = 'threw:' + e.message;
-      document.documentElement.setAttribute('data-pet', 'svg');
+      document.documentElement.setAttribute('data-pet', 'static');
     }
 
     // 初始位置：右下角，直接站在地面上
@@ -391,7 +398,7 @@
       lastText = d.text;
       sayEl.classList.toggle('empty', !d.text);
     }
-    if (d.mood !== lastMood) { lastMood = d.mood; paint(d.mood); }
+    if (d.mood !== lastMood) { lastMood = d.mood; paint(); }
     if (L2D.ok) {
       var name = EXPR[d.mood];
       if (name) { try { L2D.model3.expression(name); } catch (e) {} }
