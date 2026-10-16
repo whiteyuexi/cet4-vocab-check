@@ -54,9 +54,10 @@
   }
   A.announce = announce;
 
-  function modal(html) {
+  function modal(html, wide) {
     var m = el('modal');
-    m.innerHTML = tpl('<div class="modal" data-act="modal-bg"><div class="box">{body}</div></div>', { body: html });
+    m.innerHTML = tpl('<div class="modal" data-act="modal-bg"><div class="box{w}">{body}</div></div>',
+      { body: html, w: wide ? ' wide' : '' });
   }
   function closeModal() { el('modal').innerHTML = ''; }
   A.modal = modal; A.closeModal = closeModal;

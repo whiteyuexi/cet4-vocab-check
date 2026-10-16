@@ -92,6 +92,7 @@
       '<button class="btn sm ghost" data-act="start" data-kind="all">再测一轮</button>' +
       '</div>';
     h += '</div>';
+    if (A.aiCardHTML) h += A.aiCardHTML();
     return h;
   };
 
@@ -475,6 +476,18 @@
           if (!lstB.length) { A.toast('这个词段本次没有未掌握的词'); break; }
           A.startSession('list', { list: lstB, label: '复测「' + A.BAND_NAMES[rbBand] + '」段 · ' + lstB.length + ' 词' });
           break;
+        case 'ai-ask': A.openAIDialog(t.getAttribute('data-q')); break;
+        case 'ai-send': {
+          var aiq = el('aiInput');
+          A.openAIDialog((aiq && aiq.value.trim()) || '我现在该怎么提升？重点补哪里？');
+          break;
+        }
+        case 'ai-send2': {
+          var aiq2 = el('aiInput2');
+          var v2 = aiq2 ? aiq2.value.trim() : '';
+          if (v2) { aiq2.value = ''; A.runAI(v2, true); }
+          break;
+        }
         case 'copy-report': A.copyText(A.reportText()); break;
         case 'print-report':
           try { window.print(); } catch (e) { A.toast('当前环境不支持打印'); }
