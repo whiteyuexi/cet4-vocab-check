@@ -27,10 +27,10 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden}
       var m = await v.Live2DModel.from('/assets/whale-girl/c_0120.model3.json',
         { autoUpdate: false, autoHitTest: false, autoFocus: false });
       app.stage.addChild(m);
-      var s = W * 0.00044;
+      var s = W * 0.000545;
       m.anchor.set(0, 0); m.scale.set(s);
       m.x = W / 2 - FACE.x * s;
-      m.y = H * 0.30 - FACE.y * s;
+      m.y = H * 0.277 - FACE.y * s;
       m.automator.autoUpdate = true;
       var cm = m.internalModel.coreModel;
       // 动作会覆盖参数，所以直接接管 coreModel.update：在它重算网格之前把眼睛写进去
@@ -57,6 +57,26 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden}
       patched = true;
       window.__setEyes = function (v) { eyeOpen = v; };
       window.__motion = function (name) { try { m.motion(name); } catch (e) {} };
+      // 道具隐藏开关：这些道具都是 Add 混合的参数，置 0 即可关掉
+      var PROP_PARAMS = ['baleite', 'bi', 'pi', 'chehui', 'mozhua', 'fangzhuoshang', 'jingyu', 'pengshui', 'shouji'];
+      var hideProps = false;
+      window.__hideProps = function (on) { hideProps = on; };
+      window.__probeProps = function () {
+        var out = {};
+        PROP_PARAMS.forEach(function (p) {
+          try { out[p] = cm.getParameterValueById(p); } catch (e) { out[p] = 'throw'; }
+        });
+        return JSON.stringify(out);
+      };
+      var origU = cm.update.bind(cm);
+      cm.update = function () {
+        if (hideProps) {
+          for (var i = 0; i < PROP_PARAMS.length; i++) {
+            try { cm.setParameterValueById(PROP_PARAMS[i], 0); } catch (e) {}
+          }
+        }
+        return origU();
+      };
       m.motion('Idle');
       window.__ready = true;
     } catch (e) { window.__err = e.message + ' | ' + String(e.stack).slice(0, 200); }

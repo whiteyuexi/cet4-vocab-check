@@ -97,11 +97,11 @@
       fig.appendChild(app.canvas);
       app.stage.addChild(m);
       // 取景：放大到头部填满侧栏，书桌等道具由容器裁掉
-      var s = o.W * 0.00044;
+      var s = o.W * 0.000545;   // 取景收紧，把桌面道具裁出画面
       m.anchor.set(0, 0);
       m.scale.set(s);
       m.x = o.W / 2 - FACE.x * s;
-      m.y = o.H * 0.30 - FACE.y * s;
+      m.y = o.H * 0.277 - FACE.y * s;
       m.automator.autoUpdate = true;
       L2D.app = app; L2D.model3 = m; L2D.ok = true;
       try { m.motion('Idle'); } catch (e) {}
