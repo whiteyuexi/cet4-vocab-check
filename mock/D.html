@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>方向D 柔和渐变玻璃</title>
+<style>
+:root{
+  --ink:#101319; --ink2:#575E6B; --ink3:#8A91A0;
+  --accent:#2A5BE0; --ok:#0F8A5F; --warn:#B7791F; --bad:#C0392B;
+  --glass:rgba(255,255,255,.72); --glass-line:rgba(255,255,255,.75); --line:rgba(16,19,25,.07);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  background:#EDF0F6;min-height:100vh;position:relative;overflow-x:hidden}
+/* 极低透明度的网格渐变：颜色取自产品自己的语义色 */
+body:before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(720px 460px at 82% -6%, rgba(245,165,36,.16), transparent 62%),
+    radial-gradient(680px 520px at 6% 8%, rgba(42,91,224,.14), transparent 60%),
+    radial-gradient(760px 560px at 58% 108%, rgba(15,138,95,.13), transparent 62%),
+    radial-gradient(500px 400px at 100% 72%, rgba(192,57,43,.09), transparent 60%);}
+/* 细微颗粒，避免渐变色带 */
+body:after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{position:relative;z-index:2;max-width:1000px;margin:0 auto;padding:0 24px 64px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.brand{display:flex;align-items:center;gap:9px;font-weight:650;font-size:15px;letter-spacing:-.01em}
+.dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(160deg,#3E6BE8,#1E43B8);color:#fff;
+  display:grid;place-items:center;font-size:11px;font-weight:700;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 4px 12px rgba(42,91,224,.32)}
+.stat{font-family:var(--mono);font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;
+  background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px);padding:5px 11px;border-radius:20px}
+.seg{display:inline-flex;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(20px);
+  border-radius:13px;padding:4px;box-shadow:0 2px 10px rgba(16,19,25,.05), inset 0 1px 0 #fff}
+.seg button{border:0;background:transparent;padding:8px 17px;border-radius:10px;font-size:13px;font-weight:600;
+  color:var(--ink2);cursor:pointer;font-family:inherit;transition:.16s}
+.seg button.on{background:#fff;color:var(--accent);box-shadow:0 2px 8px rgba(16,19,25,.1), inset 0 1px 0 #fff}
+.seg button small{font-family:var(--mono);font-weight:400;opacity:.55;margin-left:5px}
+.card{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(26px) saturate(150%);
+  border-radius:20px;box-shadow:0 1px 1px rgba(16,19,25,.03), 0 20px 48px -28px rgba(16,19,25,.34), inset 0 1px 0 rgba(255,255,255,.9)}
+.pad{padding:26px}
+.grid{display:grid;grid-template-columns:1.65fr 1fr;gap:16px;margin-top:16px}
+.lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink3);text-transform:uppercase}
+.big{font-size:62px;font-weight:760;letter-spacing:-.04em;line-height:1;margin:16px 0 0;font-variant-numeric:tabular-nums}
+.big i{font-style:normal;font-size:18px;font-weight:600;color:var(--ink2);margin-left:9px;letter-spacing:0}
+.iqr{margin-top:24px}
+.iqr .track{position:relative;height:30px}
+.iqr .track:before{content:"";position:absolute;left:0;right:0;top:14px;height:2px;background:rgba(16,19,25,.1);border-radius:2px}
+.iqr .rng{position:absolute;top:10px;height:10px;border-radius:5px;
+  background:linear-gradient(90deg,rgba(42,91,224,.25),rgba(42,91,224,.85));box-shadow:0 0 16px rgba(42,91,224,.35)}
+.iqr .pt{position:absolute;top:5px;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--accent);
+  box-shadow:0 3px 10px rgba(42,91,224,.45)}
+.iqr .lb{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:2px}
+.mix{display:flex;gap:3px;margin-top:22px;height:9px;border-radius:5px;overflow:hidden;background:rgba(16,19,25,.06)}
+.mix i{display:block;height:100%;border-radius:3px}
+.mixl{display:flex;gap:18px;margin-top:13px;font-size:12.5px;color:var(--ink2);flex-wrap:wrap}
+.mixl b{font-family:var(--mono);color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px}
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border:0;padding-bottom:0}
+.kv span{font-size:13px;color:var(--ink2)}
+.kv b{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+h2{font-size:14px;font-weight:650;margin:0;letter-spacing:-.005em}
+.sect{margin-top:28px}
+.sechead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;padding:0 4px}
+.sechead small{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.act{text-align:left;cursor:pointer;font-family:inherit;color:inherit;padding:22px;border-radius:18px;
+  background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(24px) saturate(150%);
+  box-shadow:0 1px 1px rgba(16,19,25,.03), 0 18px 40px -26px rgba(16,19,25,.32), inset 0 1px 0 rgba(255,255,255,.9);
+  transition:transform .2s cubic-bezier(.2,.7,.3,1), box-shadow .2s}
+.act:hover{transform:translateY(-3px);box-shadow:0 2px 3px rgba(16,19,25,.04), 0 26px 52px -26px rgba(16,19,25,.4), inset 0 1px 0 #fff}
+.act .t{font-size:15.5px;font-weight:660;display:flex;align-items:center;gap:9px}
+.act .t em{font-style:normal;width:22px;height:22px;border-radius:8px;background:rgba(42,91,224,.1);color:var(--accent);
+  display:grid;place-items:center;font-size:11px;font-weight:700}
+.act .d{font-size:12.5px;color:var(--ink2);margin-top:7px}
+.act .m{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:16px}
+.bands{display:flex;flex-direction:column;gap:5px}
+.band{display:grid;grid-template-columns:104px 1fr 50px;gap:12px;align-items:center;padding:6px 0}
+.band .n{font-size:12.5px;color:var(--ink2)}
+.band .tr{height:11px;background:rgba(16,19,25,.06);border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(16,19,25,.06)}
+.band .fl{height:100%;border-radius:6px;background:linear-gradient(90deg,#3FA97A,#0F8A5F);
+  box-shadow:0 0 14px rgba(15,138,95,.4)}
+.band.m2 .fl{background:linear-gradient(90deg,#D9A748,#B7791F);box-shadow:0 0 14px rgba(183,121,31,.35)}
+.band.m3 .fl{background:linear-gradient(90deg,#DE6A5C,#C0392B);box-shadow:0 0 14px rgba(192,57,43,.35)}
+.band .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.grp{display:grid;grid-template-columns:repeat(12,1fr);gap:8px}
+.g{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(16px);border-radius:11px;
+  padding:10px 0;text-align:center;box-shadow:0 1px 1px rgba(16,19,25,.03), inset 0 1px 0 rgba(255,255,255,.9)}
+.g b{display:block;font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--ink2)}
+.g i{display:block;height:3px;border-radius:2px;background:rgba(16,19,25,.08);margin:8px 8px 0;overflow:hidden}
+.g i em{display:block;height:100%;background:var(--ok);border-radius:2px}
+.g.done{background:rgba(42,91,224,.09);border-color:rgba(42,91,224,.2)}
+</style></head><body><div class="wrap">
+
+<div class="top">
+  <div class="brand"><span class="dot">V</span>四六级词汇量检测</div>
+  <div class="stat">四级 · 已测 3400 / 4540</div>
+</div>
+
+<div class="seg">
+  <button class="on">四级大纲<small>4540</small></button>
+  <button>六级大纲<small>5716</small></button>
+</div>
+
+<div class="grid">
+  <div class="card pad">
+    <div class="lab">Estimated Vocabulary · 四级大纲</div>
+    <div class="big">3,235<i>词</i></div>
+    <div class="iqr">
+      <div class="track"><div class="rng" style="left:22%;width:26%"></div><div class="pt" style="left:48%"></div></div>
+      <div class="lb"><span>2,967</span><span>95% 置信区间</span><span>3,504</span></div>
+    </div>
+    <div class="mix">
+      <i style="width:61%;background:var(--ok)"></i>
+      <i style="width:9.3%;background:var(--warn)"></i>
+      <i style="width:6.6%;background:var(--bad)"></i>
+    </div>
+    <div class="mixl">
+      <span><i class="sw" style="background:var(--ok)"></i>认识 <b>2777</b></span>
+      <span><i class="sw" style="background:var(--warn)"></i>模糊 <b>422</b></span>
+      <span><i class="sw" style="background:var(--bad)"></i>不认识 <b>301</b></span>
+      <span><i class="sw" style="background:rgba(16,19,25,.15)"></i>未测 <b>1040</b></span>
+    </div>
+  </div>
+  <div class="card pad">
+    <div class="lab">检测进度</div>
+    <div style="margin-top:12px">
+      <div class="kv"><span>已完成组数</span><b>31<span style="font-size:12px;color:#8A91A0"> / 46</span></b></div>
+      <div class="kv"><span>本轮抽样</span><b>214<span style="font-size:12px;color:#8A91A0"> 词</span></b></div>
+      <div class="kv"><span>当前精度</span><b>±269<span style="font-size:12px;color:#8A91A0"> 词</span></b></div>
+    </div>
+  </div>
+</div>
+
+<div class="sect">
+  <div class="sechead"><h2>继续检测</h2><small>STRATIFIED SAMPLING</small></div>
+  <div class="acts">
+    <button class="act"><div class="t"><em>01</em>摸底检测</div><div class="d">按词频分层抽题，精度达标自动结束</div><div class="m">≈ 80 题 · 3 分钟 · ±400 词</div></button>
+    <button class="act"><div class="t"><em>02</em>完整检测</div><div class="d">逐词过一遍整个四级大纲词库</div><div class="m">4540 词 · 46 组 · 可分多次</div></button>
+  </div>
+</div>
+
+<div class="sect">
+  <div class="sechead"><h2>频段剖面</h2><small>N = 214</small></div>
+  <div class="card pad">
+    <div class="bands">
+      <div class="band"><div class="n">最高频 1k</div><div class="tr"><div class="fl" style="width:98%"></div></div><div class="v">98%</div></div>
+      <div class="band"><div class="n">1k – 2k</div><div class="tr"><div class="fl" style="width:93%"></div></div><div class="v">93%</div></div>
+      <div class="band m2"><div class="n">2k – 3k</div><div class="tr"><div class="fl" style="width:83%"></div></div><div class="v">83%</div></div>
+      <div class="band m2"><div class="n">3k – 5k</div><div class="tr"><div class="fl" style="width:83%"></div></div><div class="v">83%</div></div>
+      <div class="band m3"><div class="n">5k – 10k</div><div class="tr"><div class="fl" style="width:77%"></div></div><div class="v">77%</div></div>
+      <div class="band m3"><div class="n">10k – 20k</div><div class="tr"><div class="fl" style="width:72%"></div></div><div class="v">72%</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sect">
+  <div class="sechead"><h2>分组进度</h2><small>100 词 / 组</small></div>
+  <div class="grp">
+    <div class="g done"><b>01</b><i><em style="width:88%"></em></i></div>
+    <div class="g done"><b>02</b><i><em style="width:91%"></em></i></div>
+    <div class="g done"><b>03</b><i><em style="width:74%"></em></i></div>
+    <div class="g done"><b>04</b><i><em style="width:80%"></em></i></div>
+    <div class="g"><b>05</b><i><em style="width:67%"></em></i></div>
+    <div class="g"><b>06</b><i><em style="width:77%"></em></i></div>
+    <div class="g"><b>07</b><i><em style="width:78%"></em></i></div>
+    <div class="g"><b>08</b><i><em style="width:72%"></em></i></div>
+    <div class="g done"><b>09</b><i><em style="width:85%"></em></i></div>
+    <div class="g"><b>10</b><i><em style="width:70%"></em></i></div>
+    <div class="g"><b>11</b><i><em style="width:0%"></em></i></div>
+    <div class="g"><b>12</b><i><em style="width:0%"></em></i></div>
+  </div>
+</div>
+</div></body></html>

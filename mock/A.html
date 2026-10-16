@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>方向A 纸白编辑部</title>
+<style>
+:root{
+  --paper:#FBFAF7; --ink:#16161A; --ink2:#5C5C66; --ink3:#9A9AA3;
+  --rule:#E3E0D8; --rule2:#CFCBC0;
+  --blue:#17324F; --red:#B4432B; --green:#1E6B4F; --amber:#A9700F;
+  --serif:Georgia,"Songti SC",SimSun,"Noto Serif SC",serif;
+  --sans:-apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono","Consolas",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6}
+.wrap{max-width:940px;margin:0 auto;padding:0 32px 80px}
+header{border-bottom:1px solid var(--rule2);padding:26px 0 18px;display:flex;align-items:baseline;justify-content:space-between}
+.brand{font-family:var(--serif);font-size:19px;letter-spacing:.01em}
+.brand b{font-weight:600}
+.meta{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.bankrow{display:flex;gap:0;margin:20px 0 0;border-bottom:1px solid var(--rule2)}
+.bank{padding:8px 0;margin-right:26px;font-size:13.5px;color:var(--ink2);border-bottom:2px solid transparent;cursor:pointer}
+.bank.on{color:var(--ink);border-bottom-color:var(--red);font-weight:600}
+.bank small{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-left:6px}
+.hero{padding:44px 0 34px;border-bottom:1px solid var(--rule)}
+.kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px}
+.bignum{font-family:var(--serif);font-size:88px;line-height:.95;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.bignum i{font-style:normal;font-size:26px;color:var(--ink2);margin-left:10px;letter-spacing:0}
+.cibar{margin:22px 0 0;max-width:520px}
+.ciline{position:relative;height:26px}
+.ciline:before{content:"";position:absolute;left:0;right:0;top:12px;height:1px;background:var(--rule2)}
+.cirange{position:absolute;top:9px;height:7px;background:var(--blue);opacity:.16}
+.cidot{position:absolute;top:6px;width:13px;height:13px;border:2px solid var(--blue);background:var(--paper);border-radius:50%}
+.cilabel{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-top:2px}
+.trio{display:flex;gap:0;margin-top:30px}
+.trio div{flex:1;border-right:1px solid var(--rule);padding-right:18px}
+.trio div:last-child{border:none}
+.trio b{display:block;font-family:var(--serif);font-size:34px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.trio span{font-size:12.5px;color:var(--ink2)}
+.trio .g b{color:var(--green)}.trio .a b{color:var(--amber)}.trio .r b{color:var(--red)}
+h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em}
+.sec{padding:34px 0;border-bottom:1px solid var(--rule)}
+.sechead{display:flex;align-items:baseline;gap:14px;margin-bottom:20px}
+.sechead em{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--ink3);letter-spacing:.08em}
+.sechead small{margin-left:auto;font-size:12px;color:var(--ink3)}
+.actions{display:flex;gap:14px;align-items:stretch;flex-wrap:wrap}
+.act{flex:1;min-width:250px;border:1px solid var(--rule2);padding:20px 22px;background:transparent;text-align:left;cursor:pointer;transition:.15s}
+.act:hover{border-color:var(--ink)}
+.act .t{font-size:16.5px;font-weight:600;margin-bottom:5px}
+.act .d{font-size:13px;color:var(--ink2);line-height:1.55}
+.act .m{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-top:12px}
+.act.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.act.primary .d{color:rgba(255,255,255,.72)}.act.primary .m{color:rgba(255,255,255,.55)}
+.band{display:grid;grid-template-columns:132px 1fr 62px;gap:10px;align-items:center;padding:7px 0}
+.band .n{font-size:13px}
+.band .track{height:9px;background:var(--rule);position:relative}
+.band .fill{height:100%;background:var(--blue)}
+.band .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.band.low .fill{background:var(--red)}
+.band.mid .fill{background:var(--amber)}
+.axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink3);border-top:1px solid var(--rule);padding-top:6px;margin-top:8px;margin-left:142px;margin-right:72px}
+.groups{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.g{border:1px solid var(--rule);padding:8px 4px;text-align:center}
+.g b{display:block;font-family:var(--mono);font-size:11px;font-weight:500}
+.g i{display:block;height:3px;background:var(--rule);margin-top:6px;position:relative}
+.g i em{position:absolute;left:0;top:0;height:100%;background:var(--green);font-style:normal}
+.note{font-size:12.5px;color:var(--ink2);margin-top:16px;padding-left:14px;border-left:2px solid var(--red)}
+footer{margin-top:34px;font-size:12px;color:var(--ink3);display:flex;justify-content:space-between;font-family:var(--mono)}
+</style></head><body><div class="wrap">
+
+<header>
+  <div class="brand"><b>四六级词汇量检测</b></div>
+  <div class="meta">四级 · 已测 3400 / 4540</div>
+</header>
+
+<div class="bankrow">
+  <div class="bank on">四级大纲<small>4540</small></div>
+  <div class="bank">六级大纲<small>5716</small></div>
+</div>
+
+<div class="hero">
+  <div class="kicker">Vocabulary Size · 四级大纲</div>
+  <div class="bignum">3,235<i>词</i></div>
+  <div class="cibar">
+    <div class="ciline">
+      <div class="cirange" style="left:22%;width:26%"></div>
+      <div class="cidot" style="left:48%"></div>
+    </div>
+    <div class="cilabel"><span>2,967</span><span>95% 置信区间</span><span>3,504</span></div>
+  </div>
+  <div class="trio">
+    <div class="g"><b>2777</b><span>认识</span></div>
+    <div class="a"><b>422</b><span>模糊</span></div>
+    <div class="r"><b>301</b><span>不认识</span></div>
+    <div><b>1040</b><span>未检测</span></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sechead"><em>01</em><h2>继续检测</h2><small>按词频分层抽样，达标自动停止</small></div>
+  <div class="actions">
+    <button class="act primary"><div class="t">摸底检测</div><div class="d">随机抽题，精度达标自动结束</div><div class="m">约 80 题 · 3 分钟 · ±400 词</div></button>
+    <button class="act"><div class="t">完整检测</div><div class="d">从头过一遍整个四级大纲词库</div><div class="m">4540 词 · 可分多次 · 46 组</div></button>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sechead"><em>02</em><h2>频段剖面</h2><small>来自最近一次 214 词分层抽样</small></div>
+  <div class="band low"><div class="n">最高频 1k</div><div class="track"><div class="fill" style="width:98%"></div></div><div class="v">98%</div></div>
+  <div class="band low"><div class="n">1k – 2k</div><div class="track"><div class="fill" style="width:93%"></div></div><div class="v">93%</div></div>
+  <div class="band mid"><div class="n">2k – 3k</div><div class="track"><div class="fill" style="width:83%"></div></div><div class="v">83%</div></div>
+  <div class="band mid"><div class="n">3k – 5k</div><div class="track"><div class="fill" style="width:83%"></div></div><div class="v">83%</div></div>
+  <div class="band"><div class="n">5k – 10k</div><div class="track"><div class="fill" style="width:77%"></div></div><div class="v">77%</div></div>
+  <div class="band"><div class="n">10k – 20k</div><div class="track"><div class="fill" style="width:72%"></div></div><div class="v">72%</div></div>
+  <div class="axis"><span>0%</span><span>50%</span><span>100%</span></div>
+  <div class="note">最弱的是 10k–20k 段（72%，共 1598 词），这是提分空间所在。</div>
+</div>
+
+<div class="sec" style="border-bottom:none">
+  <div class="sechead"><em>03</em><h2>分组进度</h2><small>每组 100 词 · 点击进入</small></div>
+  <div class="groups">
+    <div class="g"><b>1</b><i><em style="width:88%"></em></i></div>
+    <div class="g"><b>2</b><i><em style="width:91%"></em></i></div>
+    <div class="g"><b>3</b><i><em style="width:74%"></em></i></div>
+    <div class="g"><b>4</b><i><em style="width:80%"></em></i></div>
+    <div class="g"><b>5</b><i><em style="width:67%"></em></i></div>
+    <div class="g"><b>6</b><i><em style="width:77%"></em></i></div>
+    <div class="g"><b>7</b><i><em style="width:78%"></em></i></div>
+    <div class="g"><b>8</b><i><em style="width:72%"></em></i></div>
+    <div class="g"><b>9</b><i><em style="width:85%"></em></i></div>
+    <div class="g"><b>10</b><i><em style="width:70%"></em></i></div>
+  </div>
+</div>
+
+<footer><span>CET VOCABULARY CHECKER</span><span>数据仅存本机</span></footer>
+</div></body></html>
