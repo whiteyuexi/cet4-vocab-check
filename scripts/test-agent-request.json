@@ -1,0 +1,96 @@
+{
+ "question": "我现在该怎么提升？重点补哪里？",
+ "context": {
+  "bankName": "四级",
+  "bankSize": 4540,
+  "tested": 3200,
+  "looseVocab": 3235,
+  "strictVocab": 2800,
+  "interval": [
+   2967,
+   3504
+  ],
+  "sampleSize": 214,
+  "estimateNote": "基于最近一次 214 词分层抽样",
+  "bands": [
+   {
+    "name": "最高频 1k",
+    "p": 0.98,
+    "N": 738,
+    "n": 80
+   },
+   {
+    "name": "1k-2k",
+    "p": 0.93,
+    "N": 610,
+    "n": 60
+   },
+   {
+    "name": "2k-3k",
+    "p": 0.83,
+    "N": 478,
+    "n": 40
+   },
+   {
+    "name": "3k-5k",
+    "p": 0.83,
+    "N": 874,
+    "n": 30
+   },
+   {
+    "name": "5k-10k",
+    "p": 0.77,
+    "N": 1556,
+    "n": 35
+   },
+   {
+    "name": "10k-20k",
+    "p": 0.72,
+    "N": 1598,
+    "n": 40
+   }
+  ],
+  "weakWords": [
+   {
+    "w": "abandon",
+    "t": "v.放弃",
+    "band": "2k-3k",
+    "status": 0
+   },
+   {
+    "w": "abolish",
+    "t": "v.废除",
+    "band": "5k-10k",
+    "status": 0
+   },
+   {
+    "w": "absurd",
+    "t": "adj.荒谬的",
+    "band": "5k-10k",
+    "status": 1
+   },
+   {
+    "w": "adhere",
+    "t": "v.粘附",
+    "band": "10k-20k",
+    "status": 0
+   },
+   {
+    "w": "aesthetic",
+    "t": "adj.审美的",
+    "band": "10k-20k",
+    "status": 0
+   },
+   {
+    "w": "affiliate",
+    "t": "v.使附属",
+    "band": "10k-20k",
+    "status": 1
+   }
+  ],
+  "availableBanks": [
+   "四级",
+   "六级"
+  ]
+ }
+}
