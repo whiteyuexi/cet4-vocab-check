@@ -40,7 +40,8 @@ html = html.replace('/*__CSS__*/', function () { return css; });
 html = html.replace('/*__WORDS__*/', function () { return wordsJson; });
 html = html.replace('/*__SENTENCES__*/', function () { return sentencesJson; });
 html = html.replace('/*__JS__*/', function () { return js; });
-html = html.replace('</head>', '<!-- 生成时间 ' + new Date().toISOString() + ' · 词库 ' + words.length + ' 词 -->\n</head>');
+// 刻意不写入生成时间：产物必须可复现，否则每次构建都会让 index.html 产生假改动
+html = html.replace('</head>', '<!-- 四六级词汇量检测 · 词库 ' + words.length + ' 词 · 内联例句 ' + sentCount + ' 条 -->\n</head>');
 
 const out = path.join(ROOT, 'index.html');
 fs.writeFileSync(out, html);
@@ -51,4 +52,4 @@ console.log('词条总数:', words.length, '（核心', pick(true).length, '/ �
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
 console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
-console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB');
+console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB（构建于 ' + new Date().toISOString() + '，此时间不写入产物）');
