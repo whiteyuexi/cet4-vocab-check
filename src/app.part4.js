@@ -104,6 +104,46 @@
   };
 
   /* ---------- 对话弹层 ---------- */
+  /* 对话历史（仅存于内存，关闭即清空；不上传原始作答） */
+  var AI_HISTORY = [];
+  A.resetAIHistory = function () { AI_HISTORY = []; };
+
+  /* 把工具返回的数据渲染成可读的"依据"面板，让结论可核对 */
+  function evidenceHTML(list) {
+    if (!list || !list.length) return '';
+    var h = '<details class="ai-ev"><summary>查看 AI 依据的原始数据（' + list.length + ' 项）</summary>';
+    list.forEach(function (t) {
+      var r = t.result || {};
+      h += '<div class="ai-ev-item"><b>' + esc(t.label) + '</b>';
+      if (t.name === 'get_profile') {
+        h += '<table class="ai-ev-tb">';
+        h += '<tr><td>词库</td><td>' + esc(r.bank || '') + '（' + (r.bankSize || 0) + ' 词）</td></tr>';
+        h += '<tr><td>已测 / 覆盖</td><td>' + (r.tested || 0) + ' 词 / ' + (r.coverage || 0) + '%</td></tr>';
+        if (r.interval) h += '<tr><td>词汇量估算</td><td>' + (r.looseVocab || '?') + ' 词（区间 ' + r.interval[0] + '~' + r.interval[1] + '）</td></tr>';
+        if (r.strictVocab) h += '<tr><td>严格口径</td><td>' + r.strictVocab + ' 词（只算"认识"）</td></tr>';
+        if (r.sampleSize) h += '<tr><td>抽样规模</td><td>' + r.sampleSize + ' 词</td></tr>';
+        h += '</table>';
+      } else if (t.name === 'get_band_profile') {
+        h += '<table class="ai-ev-tb">';
+        (r.bands || []).forEach(function (b) {
+          h += '<tr><td>' + esc(b.band) + '</td><td>' + (b.mastery === null ? '无数据' : b.mastery + '%') +
+            '</td><td class="dim">' + b.total + ' 词 / 抽 ' + b.sampled + '</td></tr>';
+        });
+        h += '</table>';
+      } else if (t.name === 'get_weak_words') {
+        h += '<div class="ai-ev-words">' + (r.words || []).map(function (w) {
+          return '<span class="ai-word">' + esc(w.word) + '</span>';
+        }).join('') + '</div>';
+        if (r.count > (r.words || []).length) h += '<div class="dim small">共 ' + r.count + ' 个，此处列出前 ' + (r.words || []).length + ' 个</div>';
+      } else {
+        h += '<pre class="ai-ev-pre">' + esc(JSON.stringify(r, null, 1)) + '</pre>';
+      }
+      h += '</div>';
+    });
+    h += '</details>';
+    return h;
+  }
+
   A.openAIDialog = function (question) {
     A.modal('<div class="ai-head"><b>AI 诊断教练</b>' +
       '<span class="pill brand" id="aiMode">连接中…</span></div>' +
@@ -112,6 +152,7 @@
       '<input class="search" id="aiInput2" placeholder="继续追问，例如：那 2k-3k 段要管吗？">' +
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
+    A.resetAIHistory();
     if (question) A.runAI(question);
   };
 
@@ -134,6 +175,7 @@
     logHTML('<div class="ai-q">' + esc(question) + '</div>', 'me');
     var box = logHTML('<div class="ai-a"><span class="ai-dots">正在分析你的数据</span></div>', 'bot');
     var toolBox = null;
+    var evidence = [];
 
     var ctx;
     try { ctx = A.buildAIContext(); }
@@ -142,7 +184,7 @@
     fetch(apiBase() + '/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: question, context: ctx })
+      body: JSON.stringify({ question: question, context: ctx, history: AI_HISTORY.slice(-6) })
     }).then(function (res) {
       if (!res.ok || !res.body) throw new Error('后端返回 ' + res.status);
       var reader = res.body.getReader();
@@ -152,7 +194,11 @@
       function pump() {
         return reader.read().then(function (r) {
           if (r.done) {
-            box.innerHTML = '<div class="ai-a">' + renderMD(text) + '</div>';
+            box.innerHTML = '<div class="ai-a">' + renderMD(text) + evidenceHTML(evidence) + '</div>';
+            // 记入对话历史，支持追问时带上文
+            AI_HISTORY.push({ role: 'user', content: question });
+            AI_HISTORY.push({ role: 'assistant', content: text });
+            if (AI_HISTORY.length > 12) AI_HISTORY = AI_HISTORY.slice(-12);
             log.scrollTop = log.scrollHeight;
             return;
           }
@@ -173,6 +219,7 @@
                 box.parentNode.insertBefore(toolBox, box);
               }
               var label = { get_profile: '读取整体情况', get_band_profile: '读取频段数据', get_weak_words: '读取未掌握词', plan_schedule: '生成复习计划', list_banks: '读取词库信息' }[evt.name] || evt.name;
+              if (evt.result) evidence.push({ name: evt.name, label: label, result: evt.result });
               var chip = document.createElement('span');
               chip.className = 'ai-tool';
               chip.textContent = '✓ ' + label;

@@ -38,11 +38,17 @@ function execTool(tools, call) {
  * @param question 用户提出的问题
  * @param onEvent 回调：{type:'tool'|'delta'|'done', ...}
  */
-export async function runAgent({ llm, tools, question, onEvent }) {
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: question },
-  ];
+export async function runAgent({ llm, tools, question, history, onEvent }) {
+  // 多轮对话：把之前几轮带上，但每轮重新调用工具拿最新数据（数据可能已经变了）
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const hist = Array.isArray(history) ? history.slice(-6) : [];
+  for (const h of hist) {
+    if (!h || !h.content) continue;
+    const role = h.role === 'assistant' ? 'assistant' : 'user';
+    // 只保留纯文本，避免把上一轮的工具调用结构带进来干扰
+    messages.push({ role, content: String(h.content).slice(0, 2000) });
+  }
+  messages.push({ role: 'user', content: question });
   const MAX_TOOL_ROUNDS = 3;
   const usedTools = [];
 

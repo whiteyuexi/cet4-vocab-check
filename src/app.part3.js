@@ -283,6 +283,8 @@
     h += '</div>';
 
     // 历史
+    if (A.aiCardHTML) h += A.aiCardHTML();
+
     h += '<div class="sec-title">检测记录<span class="line"></span></div>';
     h += '<div class="card">';
     if (!S.history.length) h += '<div class="tiny">还没有记录。</div>';

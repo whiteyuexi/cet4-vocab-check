@@ -61,6 +61,7 @@ const server = http.createServer(async (req, res) => {
     try { payload = await readBody(req); } catch (e) { return json(res, 400, { error: e.message }); }
 
     const question = String(payload.question || '我现在该怎么提升？').slice(0, 500);
+    const history = Array.isArray(payload.history) ? payload.history : [];
     const tools = buildTools(payload.context || {});
 
     res.writeHead(200, {
@@ -83,7 +84,7 @@ const server = http.createServer(async (req, res) => {
         send({ type: 'done', tools: [] });
       } else {
         send({ type: 'mode', mode: 'llm', model: info.model });
-        await runAgent({ llm, tools, question, onEvent: send });
+        await runAgent({ llm, tools, question, history, onEvent: send });
       }
     } catch (e) {
       // 模型调用失败时自动降级到本地规则，保证功能不中断
