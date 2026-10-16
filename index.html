@@ -2589,6 +2589,7 @@ details.tips[open] summary::before{content:"− "}
       m.automator.autoUpdate = true;
       L2D.app = app; L2D.model3 = m; L2D.ok = true;
       try { m.motion('Idle'); } catch (e) {}
+      bindGaze();
       fig.classList.add('is-live2d');
       document.documentElement.setAttribute('data-pet', 'live2d');
       return true;
@@ -2684,7 +2685,7 @@ details.tips[open] summary::before{content:"− "}
   var NW = 232, NH = 424, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
   var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
-  var walkTimer = null, rafId = null, lastT = 0;
+  var walkTimer = null, rafId = null, lastT = 0, gazeBound = false;
 
   function wide() {
     try { return !!(window.matchMedia && window.matchMedia('(min-width:820px)').matches); } catch (e) { return false; }
@@ -2786,6 +2787,31 @@ details.tips[open] summary::before{content:"− "}
       if (P.y > floorY()) { P.y = floorY(); setAir(false); }
     }
     scheduleWalk();
+  }
+
+  // 让她看你：Live2D 内置的 focusController 会把焦点换算成转头与转眼参数。
+  // 之前完全没驱动这个，所以她永远直视前方 —— 看着就像一张贴纸。
+  function bindGaze() {
+    if (gazeBound) return;
+    gazeBound = true;
+    var px = 0, py = 0, queued = false;
+    document.addEventListener('pointermove', function (e) {
+      px = e.clientX; py = e.clientY;
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        var m = L2D.model3;
+        if (!L2D.ok || !m || !figEl) return;
+        var r = figEl.getBoundingClientRect();
+        var dx = (px - (r.left + r.width / 2)) / (window.innerWidth * 0.45);
+        var dy = (py - (r.top + r.height * 0.42)) / (window.innerHeight * 0.45);
+        dx = Math.max(-1, Math.min(1, dx));
+        dy = Math.max(-1, Math.min(1, dy));
+        // focus 期望模型内部坐标系，所以映射到模型尺寸上
+        try { m.focus(m.width * (0.5 + dx * 0.45), m.height * (0.5 + dy * 0.45)); } catch (e) {}
+      });
+    }, { passive: true });
   }
 
   function poke() {
