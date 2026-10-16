@@ -9,6 +9,7 @@ node_modules/
 # 生成物：跑 node shots.js / node btest.js 就能重建
 shots/*.html
 shots/*.png
+shots/*.pdf
 !docs/screenshots/
 
 # 第三方原始语料：体积大且各有授权，用 npm run data 重新拉取（说明文档要保留）
