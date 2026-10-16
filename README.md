@@ -65,6 +65,22 @@
 | --- | --- | --- |
 | ![首屏](docs/screenshots/01-home.png) | ![答题](docs/screenshots/02-testing.png) | ![报告](docs/screenshots/03-report.png) |
 
+## AI 诊断教练（开发中）
+
+检测完成后，可以点「AI 诊断教练」，用自然语言问「我该怎么补」。它的设计原则是**不让大模型做算术**：
+
+- 所有数字由工具层提供（`get_profile` / `get_band_profile` / `get_weak_words` / `plan_schedule`），模型只负责解释与规划；
+- 界面上会显示「✓ 读取整体情况」「✓ 读取频段数据」等标签，把工具调用过程可视化，结论可核对；
+- 只上传**汇总数据**（覆盖率、频段掌握率、未掌握词清单），逐题作答记录不出本机；
+- **降级设计**：未配置 API Key 或模型服务不可用时，自动切换为本地规则诊断，功能不中断。
+
+```bash
+cp .env.example .env    # 填入 API Key（.env 不会进入仓库）
+npm run server          # 启动后端，默认 http://127.0.0.1:8787
+```
+
+支持的模型：DeepSeek / 通义千问 / 智谱（OpenAI 兼容协议）与本地 Ollama，改 `.env` 里 `LLM_PROVIDER` 一行即可切换。
+
 ## 技术架构
 
 ```
