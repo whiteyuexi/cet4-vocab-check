@@ -101,7 +101,7 @@
       m.anchor.set(0, 0);
       m.scale.set(s);
       m.x = o.W / 2 - FACE.x * s;
-      m.y = o.H * 0.62 - FACE.y * s;
+      m.y = o.H * 0.30 - FACE.y * s;
       m.automator.autoUpdate = true;
       L2D.app = app; L2D.model3 = m; L2D.ok = true;
       try { m.motion('Idle'); } catch (e) {}
@@ -190,74 +190,207 @@
              { label: '这是什么？', act: 'ai-ask', q: '这个工具是怎么算出我的词汇量的？' }] };
   }
 
-  /* ---------- 渲染 ---------- */
-  var built = false, figEl = null, sayEl = null, actsEl = null, creditEl = null, lastText = '', lastMood = '';
+  /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
+  var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null;
+  var lastText = '', lastMood = '', lastSig = '';
+  var NW = 232, NH = 396, CREDIT_H = 16;   // 容器 / 署名 的高度（与 CSS 对应）
+  var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
+  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
+  var walkTimer = null, rafId = null, lastT = 0;
 
-  // 署名必须跟着实际用的形象走：Live2D 是第三方素材要署名，SVG 是本项目原创
+  function wide() {
+    try { return !!(window.matchMedia && window.matchMedia('(min-width:820px)').matches); } catch (e) { return false; }
+  }
+  function navH() {
+    var n = document.querySelector('.nav');
+    return n ? n.getBoundingClientRect().height : 0;
+  }
+  // 脚底 = 容器底往上 CREDIT_H，让它正好踩在底部导航的上沿
+  function feetTop() { return window.innerHeight - navH() + 8 - (NH - CREDIT_H); }
+  function floorY() { return feetTop(); }
+  function maxX() { return window.innerWidth - NW - 8; }
+
+  function apply() {
+    if (!hostEl) return;
+    hostEl.style.setProperty('--px', Math.round(P.x) + 'px');
+    hostEl.style.setProperty('--py', Math.round(P.y) + 'px');
+  }
+  function setAir(on) { if (P.air !== on) { P.air = on; hostEl.classList.toggle('air', on); } }
+  function setWalk(on) { if (P.walking !== on) { P.walking = on; hostEl.classList.toggle('walk', on); } }
+  function setFace(l) { if (P.faceL !== l) { P.faceL = l; hostEl.classList.toggle('face-l', l); } }
+
+  function stopWalk() {
+    if (walkTimer) { clearTimeout(walkTimer); walkTimer = null; }
+    P.vx = 0; setWalk(false);
+  }
+
+  // 溜达：隔一段时间挑一个附近的落点走过去；拖拽中或页面不可见时不动
+  function scheduleWalk() {
+    if (walkTimer) clearTimeout(walkTimer);
+    if (!wide() || document.hidden) return;
+    walkTimer = setTimeout(function () {
+      if (P.dragging || document.hidden) return scheduleWalk();
+      var span = Math.min(320, window.innerWidth * 0.32);
+      var tx = Math.max(8, Math.min(maxX(), P.x + (Math.random() * 2 - 1) * span));
+      var dur = Math.abs(tx - P.x) / 0.075;            // 约 75 px/s
+      var from = P.x, t0 = performance.now();
+      setWalk(true); setFace(tx < from);
+      (function step(now) {
+        if (!P.walking) return;
+        var k = Math.min(1, (now - t0) / dur);
+        P.x = from + (tx - from) * (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+        apply();
+        if (k < 1) requestAnimationFrame(step);
+        else { setWalk(false); scheduleWalk(); }
+      })(t0);
+    }, 9000 + Math.random() * 12000);
+  }
+
+  // 物理：只有竖直方向，松手后自由落体到地面
+  function tick(now) {
+    rafId = requestAnimationFrame(tick);
+    var dt = Math.min(48, now - (lastT || now)); lastT = now;
+    if (P.dragging) return;
+    if (P.air) {
+      P.vy += 0.0022 * dt * dt * 0.5;
+      P.y += P.vy * dt * 0.06;
+      var fy = floorY();
+      if (P.y >= fy) {
+        P.y = fy; P.vy = 0; setAir(false);
+        hostEl.classList.add('poked');                     // 落地小弹一下
+        setTimeout(function () { hostEl.classList.remove('poked'); }, 500);
+      }
+      apply();
+    }
+  }
+
+  function startLoop() {
+    if (rafId || !wide()) return;
+    lastT = 0; rafId = requestAnimationFrame(tick);
+  }
+
+  function onDown(e) {
+    if (!hostEl) return;
+    drag.on = true; drag.moved = 0;
+    drag.sx = e.clientX; drag.sy = e.clientY;
+    drag.ox = P.x; drag.oy = P.y;
+    P.dragging = true; stopWalk(); setAir(false);
+    figEl.classList.add('grabbing');
+    try { figEl.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!drag.on) return;
+    var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
+    P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
+    P.y = Math.max(4, Math.min(window.innerHeight - 40, drag.oy + dy));
+    setFace(dx < -4 ? true : dx > 4 ? false : P.faceL);
+    apply();
+  }
+  function onUp() {
+    if (!drag.on) return;
+    drag.on = false; P.dragging = false;
+    figEl.classList.remove('grabbing');
+    if (drag.moved < 6) { poke(); }                       // 没怎么动就算「戳一下」
+    else {
+      P.vy = 0; setAir(true);
+      if (P.y > floorY()) { P.y = floorY(); setAir(false); }
+    }
+    scheduleWalk();
+  }
+
+  function poke() {
+    hostEl.classList.remove('poked');
+    void hostEl.offsetWidth;
+    hostEl.classList.add('poked');
+    setTimeout(function () { hostEl.classList.remove('poked'); }, 520);
+    if (L2D.ok) {
+      var pool = ['SelfieQuick', 'BubbleGum', 'Hammer', 'SprayWater'];
+      try { L2D.model3.motion(pool[Math.floor(Math.random() * pool.length)]); } catch (e) {}
+    }
+  }
+
+  // 署名跟着实际形态走：Live2D 是第三方素材要署名，SVG 是本项目原创
   function setCredit(kind) {
     if (!creditEl) return;
     creditEl.innerHTML = kind === 'live2d'
-      ? '形象：DS鲸鱼娘（Live2D）· <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a><br>原作 上善无形 / 二次设计 ZipZipPipe / 建模 氵六青'
+      ? '形象：DS鲸鱼娘（Live2D）· <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>'
       : '形象：本站原创 SVG · MIT';
   }
 
   function paint(mood) {
     if (!figEl || L2D.ok) return;
     if (mood === lastMood && figEl.querySelector('svg')) return;
-    figEl.innerHTML = mascotSVG(mood);
+    figEl.innerHTML = mascotSVG(mood) + '<div class="pet-shadow"></div>';
+  }
+
+  function build(host) {
+    host.innerHTML =
+      '<div class="pet-bubble empty" id="petSay"></div>' +
+      '<div class="pet-fig" id="petFig"></div>' +
+      '<div class="pet-credit" id="petCredit"></div>';
+    figEl = document.getElementById('petFig');
+    sayEl = document.getElementById('petSay');
+    actsEl = null;
+    creditEl = document.getElementById('petCredit');
+    figEl.innerHTML = mascotSVG('happy') + '<div class="pet-shadow"></div>';
+
+    figEl.addEventListener('pointerdown', onDown);
+    figEl.addEventListener('pointermove', onMove);
+    figEl.addEventListener('pointerup', onUp);
+    figEl.addEventListener('pointercancel', onUp);
+
+    setCredit('svg');
+    try {
+      if (live2dAllowed()) {
+        mountLive2D(figEl).then(function () {
+          document.documentElement.setAttribute('data-pet', 'live2d');
+          setCredit('live2d');
+        }).catch(function () {
+          L2D.reason = 'load-failed';
+          document.documentElement.setAttribute('data-pet', 'svg');
+          setCredit('svg');
+        });
+      } else {
+        L2D.reason = 'not-allowed';
+        document.documentElement.setAttribute('data-pet', 'svg');
+      }
+    } catch (e) {
+      L2D.reason = 'threw:' + e.message;
+      document.documentElement.setAttribute('data-pet', 'svg');
+    }
+
+    // 初始位置：右下角，直接站在地面上
+    P.x = Math.max(8, window.innerWidth - NW - 26);
+    P.y = feetTop();
+    apply();
+    if (wide()) {
+      host.classList.add('on');
+      startLoop();
+      scheduleWalk();
+    }
+    window.addEventListener('resize', function () {
+      if (!hostEl) return;
+      if (wide()) hostEl.classList.add('on'); else hostEl.classList.remove('on');
+      P.x = Math.max(8, Math.min(maxX(), P.x));
+      P.y = Math.min(P.y, feetTop());
+      apply(); startLoop();
+    });
   }
 
   A.renderPet = function () {
     var host = document.getElementById('pet');
     if (!host) return;
-    if (!built) {
-      host.innerHTML = '<div class="pet-card">' +
-        '<div class="pet-fig" id="petFig"></div>' +
-        '<div class="pet-say" id="petSay"></div>' +
-        '<div class="pet-acts" id="petActs"></div>' +
-        '<div class="pet-credit" id="petCredit"></div></div>';
-      figEl = document.getElementById('petFig');
-      sayEl = document.getElementById('petSay');
-      actsEl = document.getElementById('petActs');
-      creditEl = document.getElementById('petCredit');
-      built = true;
-      figEl.innerHTML = mascotSVG('happy');
-      figEl.addEventListener('click', function () {
-        if (L2D.ok) {
-          var pool = ['SelfieQuick', 'BubbleGum', 'Hammer'];
-          try { L2D.model3.motion(pool[Math.floor(Math.random() * pool.length)]); } catch (e) {}
-        } else {
-          figEl.classList.remove('is-poked');
-          void figEl.offsetWidth;
-          figEl.classList.add('is-poked');
-        }
-      });
-      try {
-        if (live2dAllowed()) {
-          L2D.base = '';
-          setCredit('svg');
-          mountLive2D(figEl).then(function () {
-            document.documentElement.setAttribute('data-pet', 'live2d');
-            setCredit('live2d');
-          }).catch(function () {
-            L2D.reason = 'load-failed';
-            document.documentElement.setAttribute('data-pet', 'svg');   // 静默退回 SVG
-            setCredit('svg');
-          });
-        } else {
-          L2D.reason = 'not-allowed';
-          document.documentElement.setAttribute('data-pet', 'svg');
-          setCredit('svg');
-        }
-      } catch (e) {
-        L2D.reason = 'threw:' + e.message;
-        document.documentElement.setAttribute('data-pet', 'svg');
-        setCredit('svg');
-      }
-    }
+    if (!built) { built = true; hostEl = host; build(host); }
 
     var d = compose();
-    if (d.text !== lastText) { sayEl.textContent = d.text; lastText = d.text; }
+    if (d.text !== lastText) {
+      sayEl.textContent = '';
+      sayEl.appendChild(document.createTextNode(d.text));
+      lastText = d.text;
+      sayEl.classList.toggle('empty', !d.text);
+    }
     if (d.mood !== lastMood) { lastMood = d.mood; paint(d.mood); }
     if (L2D.ok) {
       var name = EXPR[d.mood];
@@ -266,9 +399,11 @@
 
     var acts = d.acts || [];
     var sig = acts.map(function (x) { return x.label; }).join('|');
-    if (actsEl.getAttribute('data-sig') !== sig) {
-      actsEl.setAttribute('data-sig', sig);
-      actsEl.innerHTML = acts.map(function (x) {
+    if (sig !== lastSig) {
+      lastSig = sig;
+      var box = sayEl.querySelector('.pet-acts');
+      if (!box) { box = document.createElement('div'); box.className = 'pet-acts'; sayEl.appendChild(box); }
+      box.innerHTML = acts.map(function (x) {
         var attr = 'data-act="' + x.act + '"';
         if (x.kind) attr += ' data-kind="' + x.kind + '"';
         if (x.target) attr += ' data-target="' + x.target + '"';
@@ -280,8 +415,9 @@
     }
   };
 
-  /* 供调试：?pet=live2d / ?pet=svg 强制切换 */
+  /* 供调试：?pet=live2d / ?pet=svg 强制切换；A.petInfo() 看当前形态 */
   A.petInfo = function () {
-    return { live2d: L2D.ok, tried: L2D.tried, reason: L2D.reason || '' };
+    return { live2d: L2D.ok, reason: L2D.reason || '', x: Math.round(P.x), y: Math.round(P.y), air: P.air };
   };
+
 })(window.__APP__ || (window.__APP__ = {}));
