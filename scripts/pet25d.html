@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>2.5D 原型</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#EDF0F6;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+#stage{position:absolute;inset:0;display:grid;place-items:end center;perspective:900px;perspective-origin:50% 45%}
+#glow{position:absolute;left:50%;top:46%;width:420px;height:420px;margin:-210px 0 0 -210px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(42,91,224,.16),rgba(42,91,224,0) 70%);pointer-events:none}
+#shadow{position:absolute;left:50%;bottom:86px;width:250px;height:34px;margin-left:-125px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(16,19,25,.26),rgba(16,19,25,0));pointer-events:none;
+  transform:translateX(var(--shx,0)) scale(var(--shs,1))}
+#hero{position:relative;width:340px;height:340px;margin-bottom:70px;
+  transform-style:preserve-3d;
+  transform:rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));
+  transform-origin:50% 96%;transition:transform .25s cubic-bezier(.2,.7,.3,1)}
+#hero img{width:100%;height:100%;object-fit:contain;display:block;
+  filter:drop-shadow(0 18px 26px rgba(16,19,25,.18));animation:bob 4.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+#tag{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font:12px/1 ui-monospace,Consolas,monospace;color:#6B7280}
+</style></head><body>
+<div id="stage">
+  <div id="glow"></div>
+  <div id="shadow"></div>
+  <div id="hero"><img src="/assets/whale-art/dsh-whale-state-greet.webp" alt=""></div>
+  <div id="tag">鼠标移动看倾斜 · 全身立绘 512×512 透明底</div>
+</div>
+<script>
+(function(){
+  var hero=document.getElementById('hero'), sh=document.getElementById('shadow');
+  var qx=0,qy=0,tx=0,ty=0;
+  document.addEventListener('pointermove',function(e){
+    qx=(e.clientX/window.innerWidth-0.5)*2;
+    qy=(e.clientY/window.innerHeight-0.5)*2;
+    qx=Math.max(-1,Math.min(1,qx)); qy=Math.max(-1,Math.min(1,qy));
+  });
+  (function loop(){
+    tx+=(-qy*9-tx)*0.10; ty+=(qx*13-ty)*0.10;
+    hero.style.setProperty('--tx',tx.toFixed(2)+'deg');
+    hero.style.setProperty('--ty',ty.toFixed(2)+'deg');
+    sh.style.setProperty('--shx',(qx*-22).toFixed(0)+'px');
+    sh.style.setProperty('--shs',(1-Math.abs(qy)*0.15).toFixed(3));
+    requestAnimationFrame(loop);
+  })();
+})();
+</script></body></html>
