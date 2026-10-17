@@ -1,12 +1,14 @@
 // scripts/cdp-shot.mjs — 用 DevTools 协议截图，可等待页面自定义条件（避免虚拟时钟与 Worker 死锁）
-// 用法: node scripts/cdp-shot.mjs <url> <out.png> [waitExpr] [timeoutMs] [width] [height]
+// 用法: node scripts/cdp-shot.mjs <url> <out.png> [waitExpr] [timeoutMs] [width] [height] [clipX,clipY,clipW,clipH[,scale]]
+//   最后一段给了就只截那块区域（逗号分隔），第 5 个数是放大倍数，默认 2。
+//   例：只想看右下角桌宠 → node scripts/cdp-shot.mjs <url> out.png "..." 30000 1500 950 "1120,470,380,420"
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 const CH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const [url, out, waitExpr = 'document.readyState === "complete"', timeoutMs = '30000', W = '1400', H = '900'] = process.argv.slice(2);
+const [url, out, waitExpr = 'document.readyState === "complete"', timeoutMs = '30000', W = '1400', H = '900', clipArg = ''] = process.argv.slice(2);
 if (!url || !out) { console.error('用法: node scripts/cdp-shot.mjs <url> <out.png> [waitExpr] [timeoutMs] [w] [h]'); process.exit(1); }
 
 const PORT = 9333 + Math.floor(Math.random() * 300);
@@ -63,7 +65,16 @@ try {
   console.log('等待条件: ' + (hit ? '已满足' : '超时（' + last + '）') + '  title=' + title.result?.result?.value);
   if (body.result?.result?.value) console.log('--- 页面日志 ---\n' + body.result.result.value);
 
-  const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  const shotParams = { format: 'png', captureBeyondViewport: false };
+  if (clipArg) {
+    const p = clipArg.split(',').map(Number);
+    if (p.length >= 4 && p.slice(0, 4).every(n => isFinite(n))) {
+      shotParams.clip = { x: p[0], y: p[1], width: p[2], height: p[3], scale: p[4] || 2 };
+    } else {
+      console.log('提示：clip 参数格式不对，已忽略（应为 "x,y,w,h[,scale]"）');
+    }
+  }
+  const shot = await send('Page.captureScreenshot', shotParams);
   if (shot.result?.data) { fs.writeFileSync(out, Buffer.from(shot.result.data, 'base64')); console.log('截图已保存 ' + out); }
   else console.log('截图失败');
   cleanup(hit ? 0 : 2);

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>2.5D 实验台</title>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#EDF0F6;font:12px/1.4 ui-monospace,Consolas,monospace}
+#stage{position:absolute;inset:0}
+#tag{position:absolute;left:10px;bottom:8px;color:#6B7280;font-size:11px;white-space:pre}
+</style></head><body>
+<div id="stage"></div>
+<div id="tag"></div>
+<script src="/vendor/live2dcubismcore.min.js"></script>
+<script src="/vendor/live2d-vendor.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var W = +(q.get('w') || 600), H = +(q.get('h') || 760);
+  var RES = +(q.get('res') || 2);
+  // 桌面上那套道具（键鼠/桌布/手柄）的部件索引
+  var DESK = [1, 33, 34, 35, 36, 37, 38, 46, 47, 48, 59, 60, 61, 62, 85, 86, 87];
+  var hide = (q.get('hide') === 'desk') ? DESK
+    : (q.get('hide') || '').split(',').filter(Boolean).map(Number);
+  var padX = +(q.get('padx') || 0.06), padY = +(q.get('pady') || 0.06);
+  window.__ready = false; window.__err = '';
+  (async function () {
+    var tag = document.getElementById('tag');
+    try {
+      var v = window.__dshLive2dPetVendor;
+      v.extensions.add(v.Live2DPlugin);
+      v.configureCubismSDK({ memorySizeMB: 128 });
+      var app = new v.Application();
+      await app.init({ width: W, height: H, backgroundAlpha: +(q.get('alpha') || 0.0),
+        backgroundColor: 0xEDF0F6, antialias: true, autoDensity: false, resolution: RES,
+        preference: 'webgl', preserveDrawingBuffer: true });
+      app.canvas.style.width = W + 'px'; app.canvas.style.height = H + 'px'; app.canvas.style.display = 'block';
+      document.getElementById('stage').appendChild(app.canvas);
+      var m = await v.Live2DModel.from('/assets/whale-girl/c_0120.model3.json',
+        { autoUpdate: false, autoHitTest: false, autoFocus: false });
+      app.stage.addChild(m);
+      m.automator.autoUpdate = true;
+      m.motion('Idle');
+
+      var cm = m.internalModel.coreModel;
+      if (hide.length) {
+        var origUpdate = cm.update.bind(cm);
+        cm.update = function () {
+          var r = origUpdate();
+          for (var i = 0; i < hide.length; i++) { try { cm._partOpacities[hide[i]] = 0; } catch (e) {} }
+          return r;
+        };
+      }
+
+      var off = document.createElement('canvas');
+      var octx = off.getContext('2d', { willReadFrequently: true });
+      function measure() {
+        var c = app.canvas;
+        off.width = c.width; off.height = c.height;
+        octx.clearRect(0, 0, off.width, off.height);
+        octx.drawImage(c, 0, 0);
+        var d = octx.getImageData(0, 0, off.width, off.height).data;
+        var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+        for (var y = 0; y < off.height; y++) {
+          for (var x = 0; x < off.width; x++) {
+            if (d[(y * off.width + x) * 4 + 3] > 8) {
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }
+          }
+        }
+        if (x1 < 0) return null;
+        return { x0: x0 / RES, y0: y0 / RES, x1: (x1 + 1) / RES, y1: (y1 + 1) / RES };
+      }
+      function waitFrames(n) {
+        return new Promise(function (res) {
+          var i = 0;
+          (function step() { if (++i > n) return res(); requestAnimationFrame(step); })();
+        });
+      }
+
+      // 初始粗放：先用一个任意比例渲染一帧，测量真实内容包围盒，再按包围盒反推比例
+      m.anchor.set(0, 0);
+      m.scale.set(0.12); m.x = 0; m.y = 0;
+      await waitFrames(6);
+      var b = measure();
+      if (!b) throw new Error('测量失败：画布全透明');
+
+      var bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+      var targetW = W * (1 - padX * 2), targetH = H * (1 - padY * 2);
+      var k = Math.min(targetW / bw, targetH / bh);
+      var s1 = 0.12 * k;
+      // screen = m.x + model*s  → 保持内容左上角落在 (padX*W, padY*H)
+      m.scale.set(s1);
+      m.x = W * padX - b.x0 * k;
+      m.y = H * padY - b.y0 * k;
+      await waitFrames(6);
+      var b2 = measure();
+      window.__info = {
+        scale: s1, x: m.x, y: m.y,
+        bbox: b2, W: W, H: H,
+        boxW: b2 ? b2.x1 - b2.x0 : null, boxH: b2 ? b2.y1 - b2.y0 : null,
+        aspect: b2 ? (b2.x1 - b2.x0) / (b2.y1 - b2.y0) : null,
+        hidden: hide, originalWidth: m.internalModel.originalWidth,
+        originalHeight: m.internalModel.originalHeight
+      };
+      tag.textContent = 's=' + s1.toFixed(5) + ' box=' + (b2 ? (b2.x1 - b2.x0).toFixed(0) + 'x' + (b2.y1 - b2.y0).toFixed(0) : '?')
+        + ' aspect=' + (window.__info.aspect || 0).toFixed(2) + ' hide=[' + hide.join(',') + ']';
+      window.__ready = true;
+    } catch (e) {
+      window.__err = e.message;
+      tag.textContent = 'ERR ' + e.message;
+      window.__ready = true;
+    }
+  })();
+})();
+</script></body></html>

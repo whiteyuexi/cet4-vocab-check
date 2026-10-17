@@ -24,15 +24,48 @@
 
 <main class="wrap" id="view" tabindex="-1" aria-label="主内容区"></main>
 
+<!-- 视效层：极光缓动 + 纸颗粒（纯装饰，aria-hidden） -->
+<div class="aurora" aria-hidden="true"><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
 <!-- 桌宠：固定在视口上自由漂浮，可拖动、有重力、会自己溜达 -->
 <div class="pet" id="pet" aria-label="学习助手"></div>
 
+<!-- 左侧信息栏：报告信封 + 本轮进度。窄屏整栏不出现，避免压到正文 -->
+<div class="rail" id="rail">
+  <div class="mail" id="mail" role="button" tabindex="0" aria-label="查看词汇等级报告">
+    <div class="mail-env" aria-hidden="true">
+      <div class="mail-body"></div>
+      <div class="mail-flap"></div>
+      <div class="mail-seal locked" id="mailSeal"></div>
+    </div>
+    <div class="mail-tag" id="mailTag">词汇报告</div>
+  </div>
+
+  <button class="rail-card" id="railProg" title="本轮检测进度 · 点开按分组推进">
+    <svg class="rail-ring" viewBox="0 0 48 48" aria-hidden="true">
+      <circle class="rail-ring-bg" cx="24" cy="24" r="19"></circle>
+      <circle class="rail-ring-fg" id="railRing" cx="24" cy="24" r="19"></circle>
+    </svg>
+    <b id="railPct">0%</b>
+    <small id="railCov">已测 0 词</small>
+  </button>
+</div>
+
+<!-- 右上角等级印章：测完后显示等级字母，未测完显示完成度 -->
+<button class="seal" id="seal" title="词汇等级 · 点开看报告">
+  <span class="seal-in" id="sealIn">?</span>
+  <small id="sealNote">测完出等级</small>
+</button>
+
 <nav class="nav">
   <div class="nav-in">
+    <span class="nav-pill" id="navPill" aria-hidden="true"></span>
     <button data-nav="home" class="on">首页</button>
     <button data-nav="test">检测</button>
     <button data-nav="groups">分组</button>
     <button data-nav="stats">总览</button>
+    <button data-nav="report">报告</button>
     <button data-nav="settings">设置</button>
   </div>
 </nav>
@@ -41,7 +74,7 @@
 <div class="sr-only" id="live" role="status" aria-live="polite"></div>
 <div id="modal"></div>
 
-<script>window.PET_IMG = /*__PETIMG__*/;</script>
+<script>window.PET_ART = /*__PETART__*/;</script>
 <script>window.WORDS = /*__WORDS__*/;</script>
 <script>window.SENTENCES = /*__SENTENCES__*/;</script>
 <script>

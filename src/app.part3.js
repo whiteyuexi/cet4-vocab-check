@@ -279,7 +279,9 @@
       h += '<div class="legend"><span><i style="background:var(--ok)"></i>认识</span><span><i style="background:var(--warn)"></i>模糊</span><span><i style="background:var(--bad)"></i>不认识</span></div>';
       var worst = letters.filter(function (L) { return data[L].t >= 10; })
         .sort(function (a, b) { return (data[a].k / data[a].t) - (data[b].k / data[b].t); }).slice(0, 4);
-      if (worst.length) h += '<div class="tiny" style="margin-top:10px">掌握率最低的字母段：<b>' + worst.join('、') + '</b>，可以优先刷这些组的词。</div>';
+      if (worst.length) h += '<div class="tiny" style="margin-top:10px">掌握率最低的字母段：<b>' + worst.join('、') +
+        '</b>。这一项按首字母统计，<b>和你测到第几组无关</b>；如果低的全挤在开头几个字母，' +
+        '通常说明当初是照着字母表背的、没走到底——那部分要回头补。</div>';
     }
     h += '</div>';
 
@@ -351,6 +353,15 @@
       '<b>判定建议：</b>能在 3 秒内想起主要中文意思算「认识」；见过但不确定算「模糊」；完全没印象算「不认识」。<br>' +
       '<b>词库说明：</b>四级大纲 <b>' + A.bankCounts().c4 + '</b> 词、六级大纲 <b>' + A.bankCounts().c6 + '</b> 词（含四级全部）、六级新增 <b>' + A.bankCounts().c6new + '</b> 词，全部带国际音标；另可选用 ' + A.WORDS.filter(function (w) { return w.x; }).length + ' 个常见派生词（默认不计入）。<br>' +
       '<b>快捷键：</b>自评模式 <span class="kbd">1</span> 不认识 <span class="kbd">2</span> 模糊 <span class="kbd">3</span> 认识；四选一模式 <span class="kbd">1</span>-<span class="kbd">4</span> 选项；<span class="kbd">空格</span> 发音/下一题；<span class="kbd">退格</span> 撤销。' +
+      '</div>';
+
+    h += '<div class="sec-title">素材来源<span class="line"></span></div>';
+    h += '<div class="card tiny" style="line-height:1.95">' +
+      '桌宠立绘：<b>DS鲸鱼娘</b> · Sutera-Diffusus · ' +
+      '<a href="https://github.com/Sutera-Diffusus/dsh-whale-musume" target="_blank" rel="noopener">MIT 许可</a>' +
+      '（经 1TRYOUT/dsh-whale-pixel-pet 分发，作者署名保留）<br>' +
+      '例句语料：Tatoeba 英中对照句库（CC-BY 2.0 FR）<br>' +
+      '词库：四六级大纲词表，附国际音标与词频分层；界面与算法为本项目原创（MIT）。' +
       '</div>';
     return h;
   };
@@ -502,6 +513,27 @@
           A.startSession('list', { list: weak, label: '复测本次未掌握词 · ' + weak.length + ' 词' });
           break;
         case 'export-csv': A.exportCSV(); break;
+        case 'new-round':
+          var cur = A.roundNo(), nx = cur + 1;
+          var R0 = A.levelReport();
+          A.modal('<b>开始第 ' + nx + ' 轮检测？</b>' +
+            '<div class="tiny" style="margin:8px 0 16px;line-height:1.9">' +
+            '<b>会清空：</b>本轮的每词作答、检测记录、随机抽样样本。<br>' +
+            '<b>会保留：</b>第 ' + cur + ' 轮的等级报告（' + R0.rank.k + ' ' + R0.rank.name + ' · ' +
+            R0.loose.toLocaleString('en-US') + ' 词）会存进「历轮报告」，随时可查、可和新一轮对比。<br>' +
+            '清空后无法恢复本轮的逐题作答。' +
+            '</div>' +
+            '<div class="row"><button class="btn primary grow" data-act="do-new-round">开始第 ' + nx + ' 轮</button>' +
+            '<button class="btn ghost grow" data-act="modal-close">取消</button></div>');
+          break;
+        case 'do-new-round':
+          if (A.startNewRound()) {
+            A.closeModal(); A.go('home');
+            A.toast('已开始第 ' + A.roundNo() + ' 轮，上一轮的报告在「报告 → 历轮」里');
+          } else {
+            A.closeModal(); A.toast('本轮还没测完整个词库，先测完再开新一轮');
+          }
+          break;
         case 'export-json': A.exportJSON(); break;
         case 'import-json': A.importJSON(); break;
         case 'clear-answers':
@@ -564,6 +596,8 @@
     A.setTheme(S.theme || 'light');
     A.armMotion();          // 首次进入也播一次进场动效
     A.render();
+    // 视效层（卡片聚光 / 磁吸 / 导航滑块）。纯装饰，挂了也不能影响主流程
+    if (A.initFx) { try { A.initFx(); } catch (e) {} }
     if (A.storageBroken) A.toast('浏览器禁用了本地存储，本次数据无法保存');
     window.addEventListener('beforeunload', function () { A.save(); });
   };

@@ -56,6 +56,43 @@ try {
   ok('松手后开始下落', landed.y > justDropped.y, justDropped.y + ' -> ' + landed.y);
   ok('最终落到地面（导航条上沿）', Math.abs(landed.y - a.y) < 4, 'y=' + landed.y + ' 初始 y=' + a.y);
 
+  /* 回归：pointerup 丢在浏览器窗口外。
+     以前 pointerup 只绑在立绘上，事件一丢 P.dragging 就永远为 true，
+     tick 里的重力被挡住，她会永久冻在半空（拖到左上角就是"卡在左上角"）。
+     现在 window 上兜底 + buttons===0 就地收尾，必须能自己落回地面。 */
+  const dragUpLeft = `
+    (function(){
+      var fig = document.getElementById('petFig');
+      var r = fig.getBoundingClientRect();
+      var cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
+      function pe(t, x, y, b, tg) {
+        (tg || window).dispatchEvent(new PointerEvent(t, { clientX: x, clientY: y, buttons: b,
+          pointerId: 1, bubbles: true, cancelable: true, pointerType: 'mouse' }));
+      }
+      pe('pointerdown', cx, cy, 1, fig);
+      for (var i = 1; i <= 6; i++) pe('pointermove', cx - i * 100, cy - i * 60, 1, window);
+      return JSON.stringify(window.__APP__.petInfo());
+    })()`;
+  const stuck = JSON.parse(await evalJs(dragUpLeft));
+  ok('能拖到左上角（拖拽态）', stuck.dragging === true && stuck.y < 200, 'x=' + stuck.x + ' y=' + stuck.y);
+
+  // 只来一个 buttons=0 的 pointermove —— 等价于 pointerup 丢了
+  await evalJs(`(function(){window.dispatchEvent(new PointerEvent('pointermove',
+    { clientX: 5, clientY: 5, buttons: 0, pointerId: 1, bubbles: true, pointerType: 'mouse' }));return 1;})()`);
+  await sleep(2600);
+  const recovered = await info();
+  ok('pointerup 丢失也能自己落地（不再永久卡住）',
+    recovered.dragging === false && Math.abs(recovered.y - a.y) < 4,
+    'dragging=' + recovered.dragging + ' y=' + recovered.y + ' 期望 y=' + a.y);
+  ok('主循环一直在跑', recovered.loop === true, 'loop=' + recovered.loop);
+
+  // 双击回原位：卡住了也有救
+  await evalJs(`(function(){document.getElementById('petFig')
+    .dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));return 1;})()`);
+  await sleep(300);
+  const reset = await info();
+  ok('双击回到原位', reset.x > 800 && Math.abs(reset.y - a.y) < 4, 'x=' + reset.x + ' y=' + reset.y);
+
   // 戳一下（不移动的点击）
   const f2 = await evalJs('JSON.stringify((function(){var r=document.getElementById("petFig").getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};})())').then(JSON.parse);
   const px = Math.round(f2.x + f2.w / 2), py = Math.round(f2.y + f2.h / 2);
@@ -65,13 +102,24 @@ try {
   const poked = await evalJs('document.getElementById("pet").classList.contains("poked")');
   ok('点一下有反应', poked === true, 'poked=' + poked);
 
-  // 溜达：等一段时间看 x 是否自己变过
+  // 溜达：等一段时间看她是否自己走动过。
+  // 阈值只要求 2px：落点是随机的，抽到很近的一点也是"走过了"，
+  // 之前卡 20px 会偶发误报（她本来就在右侧边缘，正方向很快就被 maxX 夹住）。
   const before = (await info()).x;
   let moved = false;
-  for (let i = 0; i < 28; i++) { await sleep(1000); const n = (await info()).x; if (Math.abs(n - before) > 20) { moved = true; break; } }
+  for (let i = 0; i < 56; i++) { await sleep(500); const n = (await info()).x; if (Math.abs(n - before) > 2) { moved = true; break; } }
   ok('会自己溜达（等待 ≤28s）', moved, 'x ' + before + ' -> ' + (await info()).x);
 
-  ok('署名跟着形态走', /SVG|CC BY-NC-SA/.test(await evalJs('document.getElementById("petCredit").textContent')), await evalJs('document.getElementById("petCredit").textContent'));
+  const credit = await evalJs('document.getElementById("petCredit").textContent');
+  ok('桌宠上方不再有署名行', !/Sutera/.test(credit) && !/形象：/.test(credit), JSON.stringify(credit));
+
+  // 署名从桌宠挪到「设置 → 素材来源」：MIT 要求保留出处，不能直接消失
+  await evalJs(`window.__APP__.go('settings')`);
+  await sleep(400);
+  const about = await evalJs('document.getElementById("view").textContent');
+  ok('素材署名保留在设置页', /Sutera/.test(about) && /MIT/.test(about),
+    about.slice(0, 90).replace(/\s+/g, ' '));
+  await evalJs(`window.__APP__.go('home')`);
 
   console.log(out.join('\n'));
   console.log('\n通过 ' + out.filter(x => x.startsWith('PASS')).length + ' / ' + out.length);

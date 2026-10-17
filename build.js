@@ -4,7 +4,7 @@ const path = require('path');
 const ROOT = __dirname;
 
 const css = fs.readFileSync(path.join(ROOT, 'src', 'app.css'), 'utf8');
-const parts = ['app.part1.js', 'app.part2.js', 'app.part3.js', 'app.part4.js', 'app.part5.js'];
+const parts = ['app.part1.js', 'app.part2.js', 'app.part3.js', 'app.part4.js', 'app.part6.js', 'app.part5.js', 'app.part7.js'];
 const js = parts.map(function (f) {
   return '/* ===== ' + f + ' ===== */\n' + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
 }).join('\n');
@@ -35,19 +35,21 @@ try {
   console.log('提示：未找到 sentences.json，本次产物不含例句（可运行 node build-corpus.js 生成）');
 }
 
-// 桌宠帧：由 Live2D 模型渲染出的透明 PNG，内联后离线版和联网版长得一样
-let petImg = '';
+// 桌宠立绘：Sutera-Diffusus 的 MIT 全身立绘（assets/whale-art/*.webp）
+// 单文件离线版只内联「待机」这一张，其余状态在联网（npm run server）时才按需加载。
+// 内联多张会把 index.html 顶到 3 MB 以上，待机帧足够撑住离线版的形象。
+let petArt = {};
 try {
-  const b = fs.readFileSync(path.join(ROOT, 'assets', 'pet-frames', 'idle0.png'));
-  petImg = 'data:image/png;base64,' + b.toString('base64');
+  const b = fs.readFileSync(path.join(ROOT, 'assets', 'whale-art', 'dsh-whale-state-idle-cute.webp'));
+  petArt = { 'idle-cute': 'data:image/webp;base64,' + b.toString('base64') };
 } catch (e) {
-  console.log('提示：未找到 assets/pet-frames/idle0.png，离线版将退回内置 SVG 形象');
-  console.log('      （可用 node scripts/render-pet-frames.mjs 重新渲染，需先启动本地服务）');
+  console.log('提示：未找到 assets/whale-art/dsh-whale-state-idle-cute.webp');
+  console.log('      离线版桌宠将只显示气泡（可用 npm run art:fetch 拉取立绘）');
 }
 
 let html = fs.readFileSync(path.join(ROOT, 'src', 'index.template.html'), 'utf8');
 html = html.replace('/*__CSS__*/', function () { return css; });
-html = html.replace('/*__PETIMG__*/', function () { return JSON.stringify(petImg); });
+html = html.replace('/*__PETART__*/', function () { return JSON.stringify(petArt); });
 html = html.replace('/*__WORDS__*/', function () { return wordsJson; });
 html = html.replace('/*__SENTENCES__*/', function () { return sentencesJson; });
 html = html.replace('/*__JS__*/', function () { return js; });
@@ -63,5 +65,5 @@ console.log('词条总数:', words.length, '（核心', pick(true).length, '/ �
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
 console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
-if (petImg) console.log('桌宠帧:', (petImg.length / 1024).toFixed(0) + ' KB（内联，离线版与 Live2D 同款形象）');
+if (petArt['idle-cute']) console.log('桌宠立绘:', (petArt['idle-cute'].length / 1024).toFixed(0) + ' KB（内联待机帧，其余状态联网按需加载）');
 console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB（构建于 ' + new Date().toISOString() + '，此时间不写入产物）');

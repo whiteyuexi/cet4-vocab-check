@@ -64,7 +64,13 @@ body::after{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border:none;background:none;transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s, background .18s, border-color .18s, color .18s}
+/* 注意：这里刻意不给 background 加过渡。
+   很多按钮的底色来自 var(--glass) / var(--accent-soft) 这类 CSS 变量，
+   而主题切换只换变量值。一旦 background 在过渡列表里，Chrome 会把过渡后残留的
+   旧底色锁住不更新 —— 切到暗色后卡片和分组格子会变成"浅底浅字"，几乎看不清。
+   去掉 background 过渡后主题切换立即生效；代价只是少数按钮的底色不再淡入，
+   这些地方本来也靠 box-shadow / transform 表达反馈。 */
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border:none;background:none;transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s, border-color .18s, color .18s}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 #view:focus,#view:focus-visible{outline:none}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -389,60 +395,528 @@ details.tips[open] summary::before{content:"− "}
 
 /* ---------- 桌宠 ----------
    固定在视口上自由漂浮：可拖动、松手有重力会落下、会自己溜达。
-   容器本身 pointer-events:none，只有角色和气泡可点，避免挡住页面内容。 */
-.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:424px;display:none;pointer-events:none;
+   容器本身 pointer-events:none，只有角色和气泡可点，避免挡住页面内容。
+   2.5D 三层：透视倾斜（.pet-fig）+ 接地投影（.pet-shadow 两层）+ 受光膜（.pet-sheen） */
+.pet{position:fixed;left:0;top:0;z-index:45;width:232px;height:458px;display:none;pointer-events:none;
+  --ground:16px;--art-trim:4px;
   transform:translate3d(var(--px,0px),var(--py,0px),0);will-change:transform}
 .pet.on{display:block}
 
-.pet-bubble{position:absolute;left:0;right:0;bottom:268px;max-height:146px;overflow:auto;
-  transform:translateX(var(--bx,0px));transition:transform .26s cubic-bezier(.2,.7,.3,1);
-  background:var(--glass);border:1px solid var(--line2);border-radius:15px;
-  box-shadow:var(--lift-sm);backdrop-filter:var(--blur);padding:11px 13px;font-size:12.5px;line-height:1.68;
-  color:var(--ink2);pointer-events:auto;transition:opacity .22s,transform .22s}
-.pet-bubble::after{content:"";position:absolute;left:50%;bottom:-5.5px;margin-left:-5px;width:10px;height:10px;
-  background:var(--glass);border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);transform:rotate(45deg)}
-.pet-bubble.empty{opacity:0;transform:translateY(5px);pointer-events:none}
+/* 说话气泡：圆角卡片 + 独立的「尾巴」，两者在 drop-shadow 里合成同一个剪影，
+   所以阴影和描边会顺着尾巴的形状走，而不是画成一个方块。
+   质感来自四层叠加：底渐变、左下角品牌色微晕、1px 内描边 + 顶部高光、细颗粒。
+   尾巴顶边用和卡片底部完全相同的颜色，接缝处看不出来。 */
+.pet{
+  --pet-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+}
+.pet-bubble{position:absolute;left:0;right:0;bottom:276px;max-height:146px;overflow:auto;
+  padding:11px 13px 17px;font-size:12.5px;line-height:1.68;color:var(--ink2);
+  pointer-events:auto;isolation:isolate;
+  transform:translateX(var(--bx,0px));transform-origin:50% calc(100% - 8px);
+  transition:opacity .22s ease, transform .26s cubic-bezier(.2,.7,.3,1);
+  filter:drop-shadow(0 0 .65px rgba(16,19,25,.30))
+         drop-shadow(0 14px 26px rgba(16,19,25,.20))
+         drop-shadow(0 2px 5px rgba(16,19,25,.07))}
+/* 卡片本体 */
+.pet-bubble::before{content:"";position:absolute;left:0;right:0;top:0;bottom:10px;z-index:-1;
+  border-radius:16px;
+  background-image:
+    var(--pet-grain),
+    radial-gradient(132% 96% at 8% 106%, rgba(42,91,224,.11), transparent 64%),
+    linear-gradient(180deg,#FFFFFF 0%,#FCFDFF 38%,#F1F5FE 72%,#E7EFFD 88%,#E7EFFD 100%);
+  background-size:120px 120px,auto,auto;
+  background-repeat:repeat,no-repeat,no-repeat;
+  /* 只留顶部一道高光；外轮廓那圈细线交给外层 drop-shadow 统一描，尾巴才连得上 */
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95)}
+/* 尾巴：从底边收成一个略偏左的尖（尖端留 2px 小平面，免得像素化），
+   颜色往尖端压暗一点点，看起来是背光的一面 */
+.pet-bubble::after{content:"";position:absolute;left:calc(50% - 13px);bottom:0;width:26px;height:22px;z-index:-1;
+  background-image:var(--pet-grain),linear-gradient(180deg,#E7EFFD 0%,#DFE9FB 100%);
+  background-size:120px 120px,auto;
+  background-repeat:repeat,no-repeat;
+  clip-path:polygon(0% 0%,100% 0%,64% 54%,52% 100%,47% 100%,32% 50%)}
+.pet-bubble.empty{opacity:0;transform:translateY(6px) scale(.94);pointer-events:none}
+
+html[data-theme="dark"] .pet-bubble{
+  filter:drop-shadow(0 0 .65px rgba(0,0,0,.6))
+         drop-shadow(0 14px 26px rgba(0,0,0,.5))
+         drop-shadow(0 2px 5px rgba(0,0,0,.3))}
+html[data-theme="dark"] .pet-bubble::before{
+  background-image:
+    var(--pet-grain),
+    radial-gradient(132% 96% at 8% 106%, rgba(127,164,255,.14), transparent 64%),
+    linear-gradient(180deg,#2C3446 0%,#28303F 40%,#232B39 78%,#1F2632 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09)}
+html[data-theme="dark"] .pet-bubble::after{
+  background-image:var(--pet-grain),linear-gradient(180deg,#1F2632 0%,#1A212C 100%)}
+
 .pet-acts{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
 .pet-chip{font-size:11.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);
   border:1px solid rgba(42,91,224,.16);border-radius:999px;padding:4px 10px}
 .pet-chip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-.pet-fig{position:absolute;left:0;bottom:16px;width:232px;height:214px;cursor:grab;pointer-events:auto;touch-action:none;
-  display:grid;place-items:end center;user-select:none;-webkit-user-select:none;
-  /* 真 3D 透视：倾斜角与镜像都用变量组合，避免互相覆盖 */
-  transform:perspective(640px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) scaleX(var(--sx,1));
-  transform-origin:50% 92%;transition:transform .22s cubic-bezier(.2,.7,.3,1);will-change:transform}
+/* 立绘盒：盒底就是「地面线」，透视转轴压在 50% 100% 上，倾斜时脚不动 */
+.pet-fig{position:absolute;left:0;bottom:var(--ground);width:232px;height:232px;
+  cursor:grab;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
+  transform:perspective(620px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) scaleX(var(--sx,1));
+  transform-origin:50% 100%;will-change:transform}
 .pet-fig:active,.pet-fig.grabbing{cursor:grabbing}
-.pet-fig svg,.pet-fig img{display:block;transform-origin:50% 100%;animation:petBob 4.4s ease-in-out infinite}
-.pet-fig svg{width:158px;height:auto}
-.pet-fig img{width:232px;height:214px}
-.pet-fig.is-live2d .pet-art,.pet-fig.is-live2d svg{display:none}
-/* 模型自带书桌场景，底部渐隐让桌面自然消失，避免硬切口 */
-.pet-fig.is-live2d,.pet-fig.is-static{-webkit-mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.35) 93%,transparent 100%);
-  mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.35) 93%,transparent 100%)}
+
+/* 呼吸浮动单独一层，别和上面的透视抢同一个 transform */
+.pet-anim{position:absolute;left:0;top:0;width:100%;height:100%;
+  transform-origin:50% 100%;animation:petBob 4.4s ease-in-out infinite;will-change:transform}
 @keyframes petBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.pet-fig .pt-eye-open{transform-box:fill-box;transform-origin:center;animation:petBlink 5.2s infinite}
-@keyframes petBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
 
-/* 走路时的小碎步；向左走时整体镜像 */
-.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:petStep .36s ease-in-out infinite}
+.pet-art{position:absolute;left:0;top:var(--art-trim);width:232px;height:232px;object-fit:contain;
+  display:block;pointer-events:none;opacity:1;transition:opacity .26s ease;
+  filter:drop-shadow(0 7px 13px rgba(16,19,25,.17))}
+.pet-art-in{opacity:0}
+html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
+
+/* 受光膜：一条跟着倾斜转的斜向反光，暗示光从左上来。
+   用 soft-light 叠在立绘上，靠径向遮罩收在身体范围内，别糊到空白区 */
+.pet-sheen{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;
+  mix-blend-mode:soft-light;opacity:.5;
+  background:linear-gradient(var(--sang,118deg),rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 44%,
+    rgba(0,0,0,0) 62%,rgba(12,20,40,.34) 100%);
+  -webkit-mask-image:radial-gradient(58% 58% at 50% 46%,#000 34%,transparent 74%);
+  mask-image:radial-gradient(58% 58% at 50% 46%,#000 34%,transparent 74%)}
+
+/* 走路时的小碎步；向左走时整体镜像（镜像放在 img 上，不和外层变换打架） */
+.pet.walk .pet-anim{animation:petStep .36s ease-in-out infinite}
 @keyframes petStep{0%,100%{transform:translateY(0) rotate(-1.8deg)}50%{transform:translateY(-5px) rotate(1.8deg)}}
-.pet.face-l .pet-fig{--sx:-1}
-.pet.poked .pet-fig{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
-@keyframes petPoke{0%,100%{transform:none}35%{transform:translateY(-9px) scale(1.05)}}
+.pet.face-l .pet-art{transform:scaleX(-1)}
+.pet.poked .pet-anim{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
+@keyframes petPoke{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-9px) scale(1.05)}}
 
-/* 接触投影：锚在"地面"上。她离地越高，影子越小越淡，并朝倾斜反方向偏移 */
-.pet-shadow{position:absolute;left:50%;bottom:18px;width:118px;height:15px;margin-left:-59px;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(16,19,25,.2),rgba(16,19,25,0));pointer-events:none;
-  transition:opacity .18s,transform .18s,bottom .18s;
+/* 接触投影：两层。紧贴脚底的一小片最暗，外围一大圈更淡；离地越高越小越淡，
+   并朝倾斜反方向偏移，影子和人对不上就立刻「假」了 */
+.pet-shadow{position:absolute;left:50%;bottom:calc(var(--ground) - 8px);
+  width:126px;height:16px;margin-left:-63px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(16,19,25,.44),rgba(16,19,25,0) 78%);
+  filter:blur(1px);transition:opacity .18s;
   transform:translateX(var(--shx,0px)) scale(var(--shs,1))}
+.pet-shadow.soft{bottom:calc(var(--ground) - 21px);width:226px;height:44px;margin-left:-113px;
+  background:radial-gradient(closest-side,rgba(16,19,25,.2),rgba(16,19,25,0) 76%);filter:blur(5px)}
+html[data-theme="dark"] .pet-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
+html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,0) 76%)}
 
-.pet-credit{position:absolute;left:0;right:0;bottom:234px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+.pet-credit{position:absolute;left:0;right:0;bottom:252px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+/* 只有 token 计量一行；没投喂过就整块隐藏，别在那儿留一条会挡点击的空盒子 */
+.pet-credit:empty{display:none}
 .pet-credit a{color:var(--ink3);text-decoration:underline}
 .pet-credit .fed{display:block;color:var(--accent);font-weight:600}
 
 @media (prefers-reduced-motion:reduce){
-  .pet-fig svg,.pet-fig img,.pet-fig .pt-eye-open,.pet.poked .pet-fig,.pet.walk .pet-fig svg,.pet.walk .pet-fig img{animation:none!important}
+  .pet-anim,.pet.poked .pet-anim,.pet.walk .pet-anim{animation:none!important}
+  .pet-art{transition:none}
 }
 /* 窄屏不出现桌宠，避免遮挡内容 */
 @media (min-width:820px){ .pet.on{display:block} }
+
+
+/* ==========================================================================
+   视效层（零依赖，全部纯 CSS + CSS 变量）
+   目标：让"光"和"纸"动起来，而不是堆特效。
+   参考的视觉语言来自 reactbits / Aceternity 的 Aurora Background、Spotlight Card、
+   Magnet、Shiny Text，但均为按原理重写，未复制任何源码。
+   ========================================================================== */
+:root{
+  --fx-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* ---------- 1. 极光：两团缓慢漂移的柔光，叠在既有静态光晕之上 ---------- */
+.aurora{position:fixed;inset:-12%;z-index:0;pointer-events:none;overflow:hidden}
+.aurora i{position:absolute;display:block;border-radius:50%;will-change:transform}
+.aurora i:nth-child(1){left:-6%;top:2%;width:56vw;height:46vw;
+  background:radial-gradient(closest-side,rgba(42,91,224,.20),rgba(42,91,224,0) 70%);
+  animation:fxDrift1 46s ease-in-out infinite}
+.aurora i:nth-child(2){right:-10%;bottom:-8%;width:52vw;height:44vw;
+  background:radial-gradient(closest-side,rgba(15,138,95,.15),rgba(15,138,95,0) 70%);
+  animation:fxDrift2 58s ease-in-out infinite}
+html[data-theme="dark"] .aurora i:nth-child(1){
+  background:radial-gradient(closest-side,rgba(127,164,255,.20),rgba(127,164,255,0) 70%)}
+html[data-theme="dark"] .aurora i:nth-child(2){
+  background:radial-gradient(closest-side,rgba(95,207,155,.13),rgba(95,207,155,0) 70%)}
+@keyframes fxDrift1{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  33%{transform:translate3d(6vw,4vh,0) scale(1.09)}
+  66%{transform:translate3d(2vw,-3vh,0) scale(.96)}
+}
+@keyframes fxDrift2{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  40%{transform:translate3d(-5vw,-4vh,0) scale(1.07)}
+  75%{transform:translate3d(-2vw,3vh,0) scale(.97)}
+}
+
+/* ---------- 2. 纸颗粒：一层几乎看不见的噪点，去掉"纯数字渐变"的塑料感 ---------- */
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:var(--fx-grain);background-size:140px 140px;opacity:.55;mix-blend-mode:multiply}
+html[data-theme="dark"] .grain{mix-blend-mode:screen;opacity:.28}
+
+/* ---------- 3. 卡片聚光：光斑跟着指针走（Spotlight Card） ---------- */
+.card,.mode,.act,.hero{isolation:isolate}
+.card::after,.mode::after,.act::after,.hero::before{
+  content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+  /* 热核 + 外晕两层：单层太淡，在浅色玻璃上几乎看不见 */
+  background:
+    radial-gradient(150px circle at var(--mx,50%) var(--my,0%),
+      rgba(42,91,224,.20),rgba(42,91,224,0) 70%),
+    radial-gradient(380px circle at var(--mx,50%) var(--my,0%),
+      rgba(42,91,224,.09),rgba(42,91,224,0) 72%);
+  opacity:0;transition:opacity .28s ease}
+.card:hover::after,.mode:hover::after,.act:hover::after{opacity:1}
+.hero::before{opacity:1;
+  background:
+    radial-gradient(220px circle at var(--mx,78%) var(--my,0%),
+      rgba(42,91,224,.16),rgba(42,91,224,0) 70%),
+    radial-gradient(520px circle at var(--mx,78%) var(--my,0%),
+      rgba(42,91,224,.08),rgba(42,91,224,0) 74%)}
+html[data-theme="dark"] .card::after,
+html[data-theme="dark"] .mode::after,
+html[data-theme="dark"] .act::after{
+  background:
+    radial-gradient(150px circle at var(--mx,50%) var(--my,0%),
+      rgba(127,164,255,.26),rgba(127,164,255,0) 70%),
+    radial-gradient(380px circle at var(--mx,50%) var(--my,0%),
+      rgba(127,164,255,.12),rgba(127,164,255,0) 72%)}
+html[data-theme="dark"] .hero::before{
+  background:
+    radial-gradient(220px circle at var(--mx,78%) var(--my,0%),
+      rgba(127,164,255,.20),rgba(127,164,255,0) 70%),
+    radial-gradient(520px circle at var(--mx,78%) var(--my,0%),
+      rgba(127,164,255,.10),rgba(127,164,255,0) 74%)}
+
+/* ---------- 3b. 首屏标题：渐变文字 + 每隔几秒一道流光 ---------- */
+.hero.intro h1,.hero h1 b{
+  background-image:linear-gradient(100deg,
+    var(--ink) 0%,var(--ink) 36%,#2A5BE0 50%,var(--ink) 64%,var(--ink) 100%);
+  background-size:280% 100%;background-position:0% 0;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:fxTitleSweep 9.5s ease-in-out infinite}
+html[data-theme="dark"] .hero.intro h1,
+html[data-theme="dark"] .hero h1 b{
+  background-image:linear-gradient(100deg,
+    var(--ink) 0%,var(--ink) 36%,#8FB4FF 50%,var(--ink) 64%,var(--ink) 100%)}
+@keyframes fxTitleSweep{0%,74%,100%{background-position:0% 0}88%{background-position:100% 0}}
+
+/* ---------- 4. 主按钮：流光扫过 + 磁吸 ---------- */
+.fx-shine{position:relative;overflow:hidden;isolation:isolate}
+.fx-shine::after{content:"";position:absolute;top:-60%;left:-130%;width:55%;height:220%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:skewX(-18deg);pointer-events:none;animation:fxShine 6s ease-in-out infinite}
+@keyframes fxShine{0%,70%,100%{left:-130%}82%{left:140%}}
+.fx-magnet{transform:translate3d(var(--mgx,0px),var(--mgy,0px),0);
+  transition:transform .22s cubic-bezier(.2,.7,.3,1)}
+.fx-magnet:hover{transition:transform .08s linear}
+
+/* ---------- 5. 导航滑块：选中态是一块会滑动的指示片 ---------- */
+.nav-in{position:relative}
+.nav-pill{position:absolute;left:0;top:4px;bottom:4px;width:0;border-radius:11px;z-index:0;
+  background:var(--accent-soft);border:1px solid rgba(42,91,224,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 16px -10px rgba(42,91,224,.55);
+  opacity:0;pointer-events:none;
+  transition:transform .34s cubic-bezier(.2,.7,.3,1),width .34s cubic-bezier(.2,.7,.3,1),opacity .2s}
+.nav button{position:relative;z-index:1}
+.nav button.on{background:transparent}
+html[data-theme="dark"] .nav-pill{border-color:rgba(127,164,255,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 6px 16px -10px rgba(0,0,0,.7)}
+
+/* ---------- 6. 等级徽章：入场时一道高光扫过 ---------- */
+.rpt-badge{position:relative;overflow:hidden}
+.rpt-badge.fx-swept::after{content:"";position:absolute;top:-60%;left:-130%;width:55%;height:220%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);
+  transform:skewX(-18deg);animation:fxSweepOnce .9s cubic-bezier(.3,.7,.4,1) .15s 1 both}
+@keyframes fxSweepOnce{0%{left:-130%}100%{left:150%}}
+
+/* ---------- 降级：减少动态偏好下停掉所有位移与扫描 ---------- */
+@media (prefers-reduced-motion:reduce){
+  .aurora i,.fx-shine::after,.rpt-badge.fx-swept::after{animation:none!important}
+  .fx-magnet{transform:none!important;transition:none}
+  .nav-pill{transition:none}
+}
+
+
+/* ==========================================================================
+   词汇等级评估报告
+   ========================================================================== */
+/* 一个 --rk 变量驱动整套色调，三级等级各自覆盖 */
+.tone-ok{--rk:var(--ok);--rk-soft:var(--ok-soft)}
+.tone-warn{--rk:var(--warn);--rk-soft:var(--warn-soft)}
+.tone-bad{--rk:var(--bad);--rk-soft:var(--bad-soft)}
+
+/* ---------- 等级卡 ---------- */
+.rpt-hero{display:flex;align-items:center;gap:22px;padding:24px;
+  background:linear-gradient(148deg,var(--rk-soft,rgba(255,255,255,.5)) 0%,var(--glass) 58%)}
+.rpt-badge{flex:0 0 auto;width:100px;height:100px;border-radius:28px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;
+  background:linear-gradient(160deg,#fff 0%,var(--rk-soft,#f2f5fb) 100%);
+  border:1px solid var(--rk,rgba(16,19,25,.12));
+  box-shadow:0 12px 28px -16px rgba(16,19,25,.45), inset 0 1px 0 #fff;color:var(--rk,var(--ink))}
+.rpt-badge b{font-size:42px;font-weight:800;letter-spacing:-.03em}
+.rpt-badge small{font-size:11.5px;font-weight:700;margin-top:7px;opacity:.85;letter-spacing:.04em}
+.rpt-hero-main{min-width:0;flex:1}
+.rpt-hero-num{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.05;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.rpt-hero-num i{font-size:14px;font-weight:600;font-style:normal;color:var(--ink3);margin-left:5px;letter-spacing:0}
+.rpt-hero-meta{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-top:7px}
+.rpt-hero-desc{margin:10px 0 0;font-size:13.5px;line-height:1.7;color:var(--ink2)}
+.rpt-next{margin-top:12px;font-size:13px;color:var(--ink2);padding-top:11px;border-top:1px dashed var(--line2)}
+.rpt-next b{color:var(--ink)}
+/* 地基约束提示：等级被高频段封顶时说清原因 */
+.rpt-cap{margin-top:11px;padding:11px 13px;border-radius:12px;font-size:12.5px;line-height:1.75;
+  color:var(--ink2);background:var(--bad-soft);border:1px solid rgba(176,46,34,.14)}
+.rpt-cap b{color:var(--bad)}
+
+/* ---------- 评级阶梯 ---------- */
+.rpt-ladder{padding:14px 18px 18px}
+.rpt-rk{display:grid;grid-template-columns:38px 62px 1fr 1.15fr auto;align-items:center;gap:12px;
+  padding:11px 10px;border-radius:12px;font-size:13px;color:var(--ink2);transition:background .18s}
+.rpt-rk+.rpt-rk{border-top:1px solid var(--line)}
+.rpt-rk.reached{color:var(--ink)}
+.rpt-rk.cur{background:var(--rk-soft,var(--accent-soft));border-top-color:transparent}
+.rpt-rk.cur+.rpt-rk{border-top-color:transparent}
+.rpt-rk-k{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;font-weight:800;font-size:13px;
+  background:var(--line);color:var(--ink3)}
+.rpt-rk.reached .rpt-rk-k{background:var(--rk-soft);color:var(--rk)}
+.rpt-rk.cur .rpt-rk-k{background:var(--rk);color:#fff}
+.rpt-rk-n{font-weight:650}
+.rpt-rk-r{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+.rpt-rk-w{font-family:var(--mono);font-size:11.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.rpt-rk-s{font-size:11.5px;font-weight:700;text-align:right;color:var(--ink3);white-space:nowrap}
+.rpt-rk.cur .rpt-rk-s{color:var(--rk)}
+.rpt-refs{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line2)}
+.rpt-ref{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;
+  background:var(--glass-2);border:1px solid var(--line)}
+.rpt-ref span{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent)}
+.rpt-ref small{font-size:11px;color:var(--ink3)}
+
+/* ---------- 掌握深度 ---------- */
+.rpt-stack{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);gap:2px}
+.rpt-stack i{display:block;height:100%;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.rpt-stack i.ok,.rpt-stack-legend i.ok{background:var(--ok)}
+.rpt-stack i.mid,.rpt-stack-legend i.mid{background:var(--warn)}
+.rpt-stack i.no,.rpt-stack-legend i.no{background:var(--bad)}
+.rpt-stack-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:11px;font-size:12px;color:var(--ink3)}
+.rpt-stack-legend span{display:flex;align-items:center;gap:6px}
+.rpt-stack-legend i{display:block;width:9px;height:9px;border-radius:3px}
+.rpt-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.rpt-kv{padding:13px 15px;border-radius:14px;background:var(--glass-2);border:1px solid var(--line)}
+.rpt-kv b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rpt-kv small{display:block;font-size:11.5px;color:var(--ink3);margin-top:4px}
+
+/* ---------- 频段表 ---------- */
+.rpt-btable{padding:10px 18px 16px}
+.rpt-bhead{display:grid;grid-template-columns:1fr 174px 92px;gap:12px;padding:0 10px 8px;
+  font-size:11px;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.rpt-bhead span:nth-child(3){text-align:right}
+.rpt-brow{display:grid;grid-template-columns:1fr 174px 92px;align-items:center;gap:12px;
+  padding:10px;border-radius:12px}
+.rpt-brow+.rpt-brow{border-top:1px solid var(--line)}
+.rpt-brow.hot{background:var(--warn-soft)}
+.rpt-bname{font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
+.rpt-bname em{font-style:normal;font-size:10px;font-weight:700;color:var(--warn);
+  background:#fff;border-radius:999px;padding:1px 7px}
+.rpt-bstat{display:flex;align-items:center;gap:10px}
+.rpt-bbar{flex:1;height:8px;border-radius:5px;background:var(--line);overflow:hidden}
+.rpt-bbar i{display:block;height:100%;border-radius:5px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.rpt-bnum{flex:0 0 auto;width:38px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink)}
+.rpt-bgap{font-family:var(--mono);font-size:11.5px;text-align:right;color:var(--ink3);white-space:nowrap}
+.rpt-bmeta{grid-column:1/-1;font-size:11px;color:var(--ink3);margin-top:-3px}
+
+/* ---------- 提升路径 ---------- */
+.rpt-steps{list-style:none;margin:0;padding:0}
+.rpt-step{display:flex;align-items:center;gap:13px;padding:13px 0}
+.rpt-step+.rpt-step{border-top:1px solid var(--line)}
+.rpt-step-n{flex:0 0 auto;display:grid;place-items:center;width:26px;height:26px;border-radius:9px;
+  background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:800}
+.rpt-step-b{flex:1;min-width:0;font-size:13px;color:var(--ink2)}
+.rpt-step-b b{color:var(--ink)}
+.rpt-step-b small{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px;font-family:var(--mono)}
+
+/* ---------- 多轮检测：首页入口 / 对比 / 历轮 ---------- */
+.home-toprow{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.home-toprow .bankbar{margin:20px 0 0}
+.round-badge{margin:20px 0 0;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:700;
+  color:var(--accent);background:var(--accent-soft);border:1px solid rgba(42,91,224,.16);white-space:nowrap}
+.retest-btn{margin:20px 0 0 auto;white-space:nowrap}
+.retest-btn::before{content:"↻";margin-right:6px;font-weight:700}
+
+.rpt-cmp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rpt-cmp-cell{padding:13px 15px;border-radius:14px;background:var(--glass-2);border:1px solid var(--line)}
+.rpt-cmp-cell small{display:block;font-size:11px;color:var(--ink3);margin-bottom:7px;
+  font-family:var(--mono);letter-spacing:.04em}
+.rpt-cmp-cell b{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rpt-cmp-cell i{font-style:normal;color:var(--ink3);margin:0 7px;font-size:13px}
+.rpt-cmp-cell em{display:block;font-style:normal;font-size:11.5px;margin-top:5px;color:var(--ink3)}
+.rpt-cmp-cell b.up,.rpt-cmp-cell em.up{color:var(--ok)}
+.rpt-cmp-cell b.down,.rpt-cmp-cell em.down{color:var(--bad)}
+.rpt-cmp-cell b.flat,.rpt-cmp-cell em.flat{color:var(--ink2)}
+
+.rpt-cmp-warn{padding:13px 15px;border-radius:14px;font-size:12.5px;line-height:1.8;
+  color:var(--ink2);background:var(--warn-soft);border:1px solid rgba(138,90,16,.16)}
+.rpt-cmp-warn b{color:var(--ink)}
+
+.rpt-cmp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;
+  padding-top:14px;border-top:1px dashed var(--line2)}
+.rpt-cmp-stats span{font-size:12px;color:var(--ink3);line-height:1.6}
+.rpt-cmp-stats span b{display:block;font-size:20px;font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-bottom:2px}
+.rpt-cmp-stats span b.up{color:var(--ok)}
+.rpt-cmp-stats span b.down{color:var(--bad)}
+.rpt-cmp-stats span b.flat{color:var(--ink2)}
+.rpt-cmp-stats span i{font-style:normal;display:block;font-size:11px;opacity:.8}
+
+.rpt-forgot{margin-top:16px;padding:14px;border-radius:14px;background:var(--bad-soft);
+  border:1px solid rgba(176,46,34,.14)}
+.rpt-forgot-h b{font-size:13px;color:var(--bad)}
+.rpt-forgot-h small{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px}
+.rpt-fchips{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}
+.fc{padding:3px 9px;border-radius:999px;font-size:12px;background:#fff;color:var(--ink2);
+  border:1px solid var(--line);cursor:default}
+.fc.more{background:transparent;border-style:dashed;color:var(--ink3)}
+
+.rpt-hlist{padding:8px 10px}
+.rpt-hrow{display:grid;grid-template-columns:74px 34px 1fr 96px 74px 92px;align-items:center;gap:10px;
+  width:100%;text-align:left;padding:11px 12px;border-radius:12px;background:none;border:0;
+  border-top:1px solid var(--line);font-size:13px;color:var(--ink2);cursor:pointer;transition:background .16s}
+.rpt-hrow:first-child{border-top:0}
+.rpt-hrow:hover{background:var(--accent-soft)}
+.rpt-hrow-n{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+.rpt-hrow-k{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;
+  background:var(--rk-soft,var(--line));color:var(--rk,var(--ink2));font-weight:800;font-size:12px}
+.rpt-hrow-name{font-weight:650;color:var(--ink)}
+.rpt-hrow-v{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);text-align:right}
+.rpt-hrow-v i{font-style:normal;font-size:10px;color:var(--ink3);margin-left:2px;font-weight:400}
+.rpt-hrow-d{font-family:var(--mono);font-size:11.5px;color:var(--ok);text-align:right}
+.rpt-hrow-t{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right}
+
+html[data-theme="dark"] .rpt-cmp-cell{background:rgba(255,255,255,.04)}
+html[data-theme="dark"] .fc{background:rgba(255,255,255,.07)}
+
+@media (max-width:640px){
+  .rpt-cmp-grid,.rpt-cmp-stats{grid-template-columns:1fr}
+  .rpt-hrow{grid-template-columns:64px 28px 1fr auto;row-gap:4px}
+  .rpt-hrow-d,.rpt-hrow-t{grid-column:3/5;text-align:left}
+  .retest-btn{margin-left:0;width:100%}
+}
+
+/* ---------- 未解锁态 ---------- */
+.rpt-locked{display:flex;gap:18px;align-items:flex-start;padding:24px}
+.rpt-lock-ic{flex:0 0 auto;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent)}
+.rpt-lock-ic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rpt-lock-main{min-width:0;flex:1}
+.rpt-lock-main>b{font-size:15px;color:var(--ink)}
+.rpt-lock-main p{margin:8px 0 0;font-size:13.5px;line-height:1.75;color:var(--ink2)}
+.rpt-prog{height:9px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:14px}
+.rpt-prog i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#5B84EE,#2A5BE0);
+  transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.rpt-note{margin-top:16px}
+
+html[data-theme="dark"] .rpt-badge{background:linear-gradient(160deg,#2A3244 0%,var(--rk-soft,#232B39) 100%);
+  box-shadow:0 12px 28px -16px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.08)}
+html[data-theme="dark"] .rpt-bname em{background:rgba(255,255,255,.12);color:var(--warn)}
+html[data-theme="dark"] .rpt-kv{background:rgba(255,255,255,.04)}
+
+@media (max-width:640px){
+  .rpt-hero{flex-direction:column;align-items:flex-start;gap:16px}
+  .rpt-badge{width:78px;height:78px;border-radius:22px}
+  .rpt-badge b{font-size:32px}
+  .rpt-hero-num{font-size:32px}
+  .rpt-rk{grid-template-columns:32px 1fr auto;row-gap:3px}
+  .rpt-rk-r,.rpt-rk-w{grid-column:2/4;font-size:11px}
+  .rpt-bhead,.rpt-brow{grid-template-columns:1fr 78px 68px}
+  .rpt-2col{grid-template-columns:1fr}
+  .rpt-step{flex-wrap:wrap}
+}
+
+/* ==========================================================================
+   两侧信息栏：左侧「报告信封 + 本轮进度」，右上「等级印章」，右下「桌宠」
+   目的不是装饰，是把常驻状态放到视线两侧 —— 大屏时页面中间只有一条 1000px 的栏，
+   两边空着会显得没做完；填进去的东西必须都有意义，否则就是噪音。
+   窄屏（<1280px）整栏隐藏，不影响正文。
+   ========================================================================== */
+.rail{position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:44;
+  width:118px;display:none;flex-direction:column;align-items:center;gap:16px;pointer-events:none}
+.rail>*{pointer-events:auto}
+@media (min-width:1280px){ .rail{display:flex} }
+
+/* 本轮进度环 */
+.rail-card{position:relative;width:104px;padding:12px 8px 10px;border-radius:16px;
+  background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--lift-sm);
+  backdrop-filter:var(--blur);display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;transition:transform .22s cubic-bezier(.2,.7,.3,1),box-shadow .22s,border-color .22s}
+.rail-card:hover{transform:translateY(-3px);box-shadow:var(--lift-hover);border-color:rgba(42,91,224,.28)}
+.rail-ring{width:56px;height:56px;transform:rotate(-90deg)}
+.rail-ring-bg{fill:none;stroke:var(--line);stroke-width:4}
+.rail-ring-fg{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;
+  stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .6s cubic-bezier(.2,.7,.3,1)}
+.rail-card b{font-size:14px;font-weight:800;letter-spacing:-.02em;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-top:2px}
+.rail-card small{font-size:10px;color:var(--ink3);font-family:var(--mono);text-align:center;line-height:1.35}
+
+/* 右上角等级印章 */
+.seal{position:fixed;right:20px;top:88px;z-index:44;width:108px;display:none;
+  flex-direction:column;align-items:center;gap:7px;background:none;border:0;cursor:pointer;
+  transition:transform .26s cubic-bezier(.2,.7,.3,1)}
+.seal:hover{transform:translateY(-3px) rotate(-1.5deg)}
+.seal-in{display:grid;place-items:center;width:70px;height:70px;border-radius:50%;
+  font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1;
+  color:var(--rk,var(--ink3));
+  background:radial-gradient(circle at 34% 26%,#fff,var(--rk-soft,#F2F5FB) 78%);
+  border:2px dashed var(--rk,rgba(16,19,25,.22));
+  box-shadow:0 12px 26px -16px rgba(16,19,25,.5),inset 0 1px 0 #fff}
+.seal.tone-ok{--rk:var(--ok);--rk-soft:var(--ok-soft)}
+.seal.tone-warn{--rk:var(--warn);--rk-soft:var(--warn-soft)}
+.seal.tone-bad{--rk:var(--bad);--rk-soft:var(--bad-soft)}
+.seal.locked .seal-in{font-size:17px;color:var(--ink3);border-style:dashed;border-color:rgba(16,19,25,.2)}
+.seal small{font-size:10.5px;font-family:var(--mono);color:var(--ink3);text-align:center;
+  line-height:1.3;white-space:nowrap}
+.seal.ready small{color:var(--rk)}
+@media (min-width:1280px){ .seal{display:flex} }
+html[data-theme="dark"] .seal-in{background:radial-gradient(circle at 34% 26%,#3A4256,var(--rk-soft,#232B39) 78%);
+  box-shadow:0 12px 26px -16px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.09)}
+html[data-theme="dark"] .seal.locked .seal-in{border-color:rgba(255,255,255,.22)}
+
+/* ---------- 左侧悬浮信封（现在是信息栏的第一项） ---------- */
+.mail{position:relative;width:104px;cursor:pointer;
+  transition:transform .3s cubic-bezier(.2,.7,.3,1);outline:none}
+.mail:hover,.mail:focus-visible{transform:translateY(-6px)}
+.mail:focus-visible .mail-env{box-shadow:0 0 0 3px var(--accent-soft),0 16px 30px -16px rgba(16,19,25,.45)}
+.mail-env{position:relative;width:104px;height:72px;border-radius:10px;
+  background:linear-gradient(168deg,#FFFFFF 0%,#F4F8FE 100%);
+  border:1px solid var(--line2);
+  box-shadow:0 14px 28px -16px rgba(16,19,25,.45), inset 0 1px 0 #fff;
+  animation:mailFloat 5.4s ease-in-out infinite}
+/* 信封封盖：从顶边收成倒三角，用 drop-shadow 勾一道折边 */
+.mail-flap{position:absolute;inset:0;border-radius:10px;
+  clip-path:polygon(0 0,100% 0,50% 68%);
+  background:linear-gradient(172deg,#F1F6FF 0%,#D6E1F5 100%);
+  filter:drop-shadow(0 1.5px 0 rgba(16,19,25,.16))}
+/* 蜡封 */
+.mail-seal{position:absolute;left:50%;top:38px;transform:translateX(-50%);
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  font-size:13px;font-weight:800;color:#fff;letter-spacing:-.02em;
+  background:radial-gradient(circle at 34% 28%,#6C93F2,#22409A 78%);
+  box-shadow:0 5px 12px -4px rgba(16,19,25,.55), inset 0 1px 1px rgba(255,255,255,.45);
+  transition:transform .3s cubic-bezier(.2,.7,.3,1)}
+.mail-seal.locked{background:radial-gradient(circle at 34% 28%,#E4E9F3,#AEB7C7 80%);
+  font-size:11px;color:#4A5262}
+.mail.ready:hover .mail-seal{transform:translateX(-50%) scale(1.12)}
+.mail-tag{margin-top:9px;text-align:center;font-size:10.5px;font-weight:600;color:var(--ink3);
+  letter-spacing:.02em;white-space:nowrap}
+.mail.ready .mail-tag{color:var(--accent)}
+@keyframes mailFloat{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-6px) rotate(1.2deg)}}
+
+html[data-theme="dark"] .mail-env{background:linear-gradient(168deg,#2B3345 0%,#232B39 100%);
+  border-color:rgba(255,255,255,.12);box-shadow:0 14px 28px -14px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.08)}
+html[data-theme="dark"] .mail-flap{background:linear-gradient(172deg,#333C50 0%,#262E3C 100%);
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
+html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 34% 28%,#3A4256,#2A3242 80%);color:#93A0B5}
+
+/* 窗口够宽才挂出来：wrap 只有 1000px，两侧没余量的时候出现会压到正文 */
+/* 可见性由外层 .rail 统一控制（≥1280px 才出现） */
+@media (prefers-reduced-motion:reduce){ .mail-env{animation:none} }
+

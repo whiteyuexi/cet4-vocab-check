@@ -163,6 +163,28 @@ win.addEventListener('load', () => {
       const colored = qa('.gbtn.done, .gbtn.part').length;
       check('分组页进度着色', colored > 0, colored + ' 组已着色');
       check('分组总数正确', qa('.gbtn').length === A.groups().length, qa('.gbtn').length + ' / ' + A.groups().length);
+      // 回归：停在「分组」页时底部导航要亮「分组」，不能亮成「检测」
+      const onNav = q('.nav button.on');
+      check('分组页高亮的是分组', !!onNav && onNav.getAttribute('data-nav') === 'groups',
+        onNav ? onNav.getAttribute('data-nav') : 'n/a');
+      check('导航只亮一项', qa('.nav button.on').length === 1, qa('.nav button.on').length + ' 项亮着');
+
+      /* 检测顺序：打乱但稳定。
+         打乱是为了不按 a、b、c 一路测下去；稳定是为了「第 N 组」永远指向同一批词，
+         否则进度/历史/跨轮对比全部失真。 */
+      const poolNow = A.activePool();
+      const gsAll = A.groups();
+      const flat = [].concat.apply([], gsAll);
+      check('分组是词库的一个划分（不重不漏）',
+        flat.length === poolNow.length && new Set(flat).size === poolNow.length,
+        flat.length + ' vs ' + poolNow.length);
+      const rawOrder = A.WORDS.slice(0, 20).map(w => w.w).join(',');
+      const poolOrder = poolNow.slice(0, 20).map(i => A.WORDS[i].w).join(',');
+      check('检测顺序不是字母序', poolOrder !== rawOrder,
+        poolOrder.split(',').slice(0, 4).join(','));
+      const lettersInG1 = new Set(gsAll[0].map(i => A.WORDS[i].w[0].toLowerCase()));
+      check('第一组覆盖多个首字母（不是同一字母段）', lettersInG1.size >= 12, lettersInG1.size + ' 个首字母');
+      global.__g1 = gsAll[0].join(',');
       A.go('home');
       global.__savedRaw = win.localStorage.getItem(A.KEY);
       global.__statusCount = Object.keys(A.S.status).length;
@@ -345,7 +367,121 @@ win.addEventListener('load', () => {
         const v2 = dom2.window.document.getElementById('view').innerHTML;
         check('刷新后首页渲染', /词汇量估算/.test(v2));
         check('刷新后随机样本仍保留', (A2.S.samples || []).length >= 1, JSON.stringify((A2.S.samples || []).length));
+        check('刷新后检测顺序不变（第 1 组仍是同一批词）',
+          !!A2 && A2.groups()[0].join(',') === global.__g1,
+          A2 ? A2.groups()[0].slice(0, 3).map(i => A2.WORDS[i].w).join(',') : 'n/a');
       } catch (e) { RESULTS.push('FAIL | 刷新测试异常 | ' + e.message); }
+
+      // ---------- 词汇等级评估报告 ----------
+      step('level', () => {
+        const A2 = dom2.window.__APP__;   // 上面的 A2 是 try 块里的块级变量，这里重新取一次
+        const pool = A2.activePool();
+
+        // 极端案例 A：整库都认识 → 必须是最高等级、缺口为 0
+        pool.forEach(i => A2.setSt(i, 2));
+        let R = A2.levelReport();
+        check('整库认识 → 最高等级', R.rank.k === 'S' && Math.abs(R.ratio - 1) < 1e-9, R.rank.k + ' ' + R.ratio);
+        check('整库认识 → 无缺口', R.toNext === 0 && R.bands.every(b => b.deficit === 0));
+        check('整库认识 → 达到实测口径', R.ready === true && R.coverage > 0.999);
+
+        // 极端案例 B：只把最高频 1k 段全部改成不认识 → 等级必须掉，且"地基漏洞"要被算出来
+        const b1 = pool.filter(i => A2.bandOf(i) === 1);
+        b1.forEach(i => A2.setSt(i, 0));
+        R = A2.levelReport();
+        check('高频段全丢 → 等级下降', R.rank.k !== 'S', R.rank.k + ' @ ' + (R.ratio * 100).toFixed(1) + '%');
+        check('地基漏洞被单独算出来', R.baseGap > 0, 'baseGap=' + R.baseGap);
+        check('最高频段全丢 → 触发地基约束封顶', R.cap !== null && R.cap === R.rank,
+          '按比例=' + R.rankByRatio.k + ' 封顶后=' + R.rank.k);
+        check('提升优先级里含最高频段', R.gainTop.some(g => g.band === 1),
+          '优先级频段=' + R.gainTop.map(g => g.band).join(','));
+
+        /* 词频权重必须真的起作用：
+           让 3k-5k（band 4）和 10k-20k（band 6）都全没掌握，其余全认识。
+           10k-20k 的词数更多（缺口绝对值更大），但 3k-5k 频率高得多，
+           加权后 3k-5k 必须排在前面 —— 这正是"不按缺口绝对值排"的意义。 */
+        pool.forEach(i => A2.setSt(i, 2));
+        const b4 = pool.filter(i => A2.bandOf(i) === 4);
+        const b6 = pool.filter(i => A2.bandOf(i) === 6);
+        b4.forEach(i => A2.setSt(i, 0));
+        b6.forEach(i => A2.setSt(i, 0));
+        R = A2.levelReport();
+        const gi4 = R.gainTop.findIndex(g => g.band === 4);
+        const gi6 = R.gainTop.findIndex(g => g.band === 6);
+        check('缺口加权：高频段排在低频段前面', gi4 >= 0 && gi6 >= 0 && gi4 < gi6,
+          '3k-5k 位次=' + gi4 + '（缺' + (R.gainTop[gi4] || {}).deficit + '）' +
+          ' 10k-20k 位次=' + gi6 + '（缺' + (R.gainTop[gi6] || {}).deficit + '）');
+        check('增益值 = 缺口 × 词频权重', R.gainTop.every(g => Math.abs(g.gain - g.deficit * g.w) < 1e-9));
+        check('优先级按增益值降序', R.gainTop.every((g, i) => i === 0 || R.gainTop[i - 1].gain >= g.gain));
+
+        // 等级阶梯必须严格单调，否则 rankAt 会挑错
+        const mins = A2.RANKS.map(r => r.min);
+        check('评级阶梯单调递减', mins.every((v, i) => i === 0 || v < mins[i - 1]), mins.join(' > '));
+
+        // 报告页渲染 + 纯文本版 + 左侧信封
+        A2.go('report');
+        const rv = A2.el('view').innerHTML;
+        check('报告页渲染出等级卡与阶梯', /rpt-hero/.test(rv) && /rpt-badge/.test(rv) && /rpt-ladder/.test(rv));
+        check('报告页列出逐频段实测', /rpt-btable/.test(rv) && /rpt-brow/.test(rv));
+        const txt = A2.levelReportText();
+        check('报告文本含等级与两种口径', /等级：/.test(txt) && /严格口径/.test(txt) && /逐频段/.test(txt));
+        check('左侧信封同步显示等级', !!A2.el('mailSeal') && A2.el('mailSeal').textContent === R.rank.k,
+          A2.el('mailSeal') ? A2.el('mailSeal').textContent : 'n/a');
+
+        // 两侧信息栏：进度环与等级印章都要跟着真实状态走
+        check('左侧进度环显示 100%', (A2.el('railPct') || {}).textContent === '100%',
+          (A2.el('railPct') || {}).textContent);
+        check('进度环描边已走满',
+          parseFloat((A2.el('railRing') || { style: {} }).style.strokeDashoffset) < 1,
+          (A2.el('railRing') || { style: {} }).style.strokeDashoffset);
+        check('右上印章显示等级字母', (A2.el('sealIn') || {}).textContent === R.rank.k,
+          (A2.el('sealIn') || {}).textContent);
+        check('印章带 ready 态与色调',
+          /seal ready/.test((A2.el('seal') || {}).className || '') &&
+          (A2.el('seal').className || '').indexOf('tone-' + R.rank.tone) > 0,
+          (A2.el('seal') || {}).className);
+      });
+
+      // ---------- 多轮检测：轮次归档与逐词对比 ----------
+      step('rounds', () => {
+        const A3 = dom2.window.__APP__;
+        const before = A3.levelReport();
+
+        check('测完整个词库后可以开新一轮', A3.canRetest() === true);
+        check('归档前没有历史轮次', A3.roundHistory().length === 0, String(A3.roundHistory().length));
+
+        check('开新一轮成功', A3.startNewRound() === true);
+        check('轮次 +1', A3.roundNo() === 2, String(A3.roundNo()));
+        check('历史里多了一轮', A3.roundHistory().length === 1);
+        check('新一轮作答已清空', Object.keys(A3.S.status).length === 0, Object.keys(A3.S.status).length + ' 条');
+        check('会话/样本/历史一并清空', A3.S.session === null &&
+          (A3.S.samples || []).length === 0 && (A3.S.history || []).length === 0);
+        check('新一轮没测完就不给等级', A3.canRetest() === false);
+
+        const snap = A3.roundHistory()[0];
+        check('归档快照记住了上一轮的等级与词汇量',
+          snap.rank === before.rank.k && snap.loose === before.loose, snap.rank + ' ' + snap.loose);
+        check('归档快照含逐词位图与词表指纹', !!snap.snap && snap.snap.length > 100 && !!snap.fp,
+          (snap.snap || '').length + ' 字符');
+        check('归档快照含各频段数据', (snap.bands || []).length > 3, String((snap.bands || []).length));
+
+        // 造第二轮：绝大多数认识，少数退步（模拟"背了又忘"）
+        const pool2 = A3.activePool();
+        pool2.forEach((i, idx) => A3.setSt(i, idx % 97 === 0 ? 0 : 2));
+        const dd = A3.roundDiff();
+        check('逐词对比可用（指纹匹配）', !!dd && dd.stale === false);
+        check('保持率与"保留 + 遗忘"自洽', dd.retained + dd.forgottenCount === dd.prevKnown,
+          dd.retained + ' + ' + dd.forgottenCount + ' = ' + dd.prevKnown);
+        check('识别出新学会的词', dd.gained > 0, String(dd.gained));
+        check('遗忘词给出可复测的索引', dd.forgottenIdx.length === dd.forgottenCount && dd.forgottenCount > 0,
+          String(dd.forgottenCount));
+
+        // 第二轮测完后可以再开一轮，历史累积
+        check('第二轮也能归档', A3.startNewRound() === true && A3.roundHistory().length === 2,
+          String(A3.roundHistory().length));
+        check('历史轮次按顺序累积', A3.roundHistory().map(r => r.n).join(',') === '1,2',
+          A3.roundHistory().map(r => r.n).join(','));
+      });
+
       report();
     }, 250);
   } catch (e) {

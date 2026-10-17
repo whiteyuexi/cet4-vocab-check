@@ -1,0 +1,35 @@
+<!DOCTYPE html><meta charset="utf-8"><title>种一份「已测完整库」的数据（只用于截图）</title>
+<script>
+// 截「已解锁」的报告页需要一份测完整库的作答数据。
+// 直接读服务端已静态暴露的 /words.json（含 b 词库掩码、f 频段），
+// 按"高频掌握好、低频掌握差"造一份作答写进 localStorage，再跳回首页。
+// 无头 Chrome 每次都是全新 profile，不会污染真实用户。
+(async function () {
+  var words = await (await fetch('/words.json')).json();
+
+  // 各频段的"掌握率"：1 = 最高频 1k，0 = 20k 以外
+  var rate = { 1: 0.97, 2: 0.94, 3: 0.88, 4: 0.80, 5: 0.62, 6: 0.42, 0: 0.26 };
+  var st = {};
+  var n = 0;
+  words.forEach(function (w) {
+    if (!(w.b & 1)) return;      // 只种四级大纲词（默认词库）
+    if (w.x) return;             // 拓展派生词默认不计入
+    var p = rate[w.f || 0];
+    if (p === undefined) p = 0.5;
+    var r = Math.random();
+    st[String(w.w).toLowerCase()] = r < p ? 2 : (r < p + 0.09 ? 1 : 0);
+    n++;
+  });
+
+  var S = {};
+  try { S = JSON.parse(localStorage.getItem('cet4vocab_v1') || '{}') || {}; } catch (e) { S = {}; }
+  S.status = st;
+  S.samples = [];        // 清掉旧抽样，让报告只认实测
+  S.session = null;
+  S.history = [];
+  S.lastResult = null;
+  localStorage.setItem('cet4vocab_v1', JSON.stringify(S));
+  console.log('seeded ' + n + ' words');
+  location.replace('/');
+})();
+</script>

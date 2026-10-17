@@ -1,121 +1,42 @@
 /* ============ 第五部分：右侧常驻助手（鲸鱼娘） ============
-   两种形态共用一个接口：
-     - 离线单文件（file://）→ 内联 SVG，会呼吸/眨眼/变表情
-     - 联网或跑本地服务时 → 自动升级为 Live2D 模型（真 2.5D，物理摆动 + 44 个表情）
-   资源缺失或加载失败时静默退回 SVG，页面上不能出现空洞。 */
+   形象：Sutera-Diffusus 的 512×512 全身立绘（MIT），见 assets/whale-art/ATTRIBUTION.md
+   2.5D 的三层做法（平面立绘做出体积感的关键，缺一层就像贴纸）：
+     1) 透视倾斜：鼠标位置 → rotateX/rotateY，转轴压在脚底
+     2) 接地投影：上下两层椭圆，跟着倾斜偏移、跟着离地缩小变淡
+     3) 受光膜：一条跟着倾斜转的斜向反光，暗示光从左上来
+   另加呼吸浮动、落地挤压、走路碎步、状态交叉淡入。
+   形象拿不到时不画东西（气泡照常工作），绝不留空洞或退回手绘 SVG。 */
 (function (A) {
   'use strict';
 
-  var Q = {};
-  try { Q = new URLSearchParams(location.search); } catch (e) { Q = { get: function () { return null; } }; }
-
-  /* ---------- 内联 SVG 形象 ---------- */
-  var FLUKE = 'M0 0C-8-2.7-17-8.1-20-15.3C-10-11.2-4-7.6 0-7.6C4-7.6 10-11.2 20-15.3C17-8.1 8-2.7 0 0Z';
-
-  function mascotSVG(mood) {
-    var eyes = mood === 'happy' || mood === 'praise' || mood === 'love'
-      ? '<g fill="none" stroke="#16233F" stroke-width="2.6" stroke-linecap="round"><path d="M41 63q6-8 12 0"/><path d="M67 63q6-8 12 0"/></g>'
-      : '<g class="pt-eye-open"><ellipse cx="47" cy="62" rx="6" ry="7.2" fill="#16233F"/>' +
-        '<ellipse cx="73" cy="62" rx="6" ry="7.2" fill="#16233F"/>' +
-        '<circle cx="49" cy="59" r="2.1" fill="#FFFFFF"/><circle cx="75" cy="59" r="2.1" fill="#FFFFFF"/></g>';
-    var mouth = mood === 'warn' || mood === 'think'
-      ? '<path d="M56 74q4-3.5 8 0" fill="none" stroke="#B4644F" stroke-width="2" stroke-linecap="round"/>'
-      : '<path d="M56.5 72q3.5 4 7 0" fill="none" stroke="#B4644F" stroke-width="2" stroke-linecap="round"/>';
-    return '<svg class="pet-svg" viewBox="0 0 120 136" aria-hidden="true">' +
-      '<g transform="translate(86,128) rotate(52) scale(1.25)"><path d="' + FLUKE + '" fill="#2450C8"/></g>' +
-      '<path d="M60 14C31 14 16 32 16 57c0 24 8 42 17 52h54c9-10 17-28 17-52C104 32 89 14 60 14z" fill="#2450C8"/>' +
-      '<ellipse cx="31" cy="104" rx="6.5" ry="10" fill="#FFE0CE"/><ellipse cx="89" cy="104" rx="6.5" ry="10" fill="#FFE0CE"/>' +
-      '<path d="M60 80c-14 0-24 8-27 19l-5 22c-1 4 2 7 6 7h52c4 0 7-3 6-7l-5-22c-3-11-13-19-27-19z" fill="#FFFFFF" stroke="#DAE2F5" stroke-width="1.5"/>' +
-      '<path d="M49 82c3 6 7 9 11 9s8-3 11-9c-4-2-7-3-11-3s-7 1-11 3z" fill="#2A5BE0"/>' +
-      '<path d="M33 52C19 53 7 62 3 73c11 6 24 5 32-2z" fill="#3B6BE8"/>' +
-      '<path d="M87 52c14 1 26 10 30 21-11 6-24 5-32-2z" fill="#3B6BE8"/>' +
-      '<ellipse cx="60" cy="58" rx="32" ry="30" fill="#FFE0CE"/>' +
-      '<path d="M28 56c0-23 14-33 32-33s32 10 32 33c0 0-4-11-13-11-6 0-8 7-14 7s-6-9-12-9c-8 0-13 9-18 9-4 0-7 4-7 4z" fill="#3B6BE8"/>' +
-      '<g transform="translate(60,30) scale(1.2)"><path d="' + FLUKE + '" fill="#5B84EE"/></g>' +
-      eyes +
-      '<ellipse cx="35" cy="70" rx="7" ry="4" fill="#FF9BA8" opacity=".5"/>' +
-      '<ellipse cx="85" cy="70" rx="7" ry="4" fill="#FF9BA8" opacity=".5"/>' + mouth + '</svg>';
-  }
-
-  /* ---------- Live2D ---------- */
-  var L2D = { base: '', core: 'vendor/live2dcubismcore.min.js', vendor: 'vendor/live2d-vendor.js',
-              model: 'assets/whale-girl/c_0120.model3.json', app: null, model3: null, ok: false, tried: false };
-
-  // 模型数据里的头部中心（模型坐标），用于把取景稳定地对到脸上
-  var FACE = { x: 2019, y: 1871 };
-
-  function loadScript(src) {
-    return new Promise(function (res, rej) {
-      var s = document.createElement('script');
-      s.src = L2D.base + src;
-      s.onload = function () { res(); };
-      s.onerror = function () { rej(new Error('脚本加载失败：' + src)); };
-      document.head.appendChild(s);
-    });
-  }
-
-  function live2dAllowed() {
-    // 测试环境（jsdom）与老浏览器没有 fetch，直接走 SVG
-    if (typeof fetch !== 'function' || typeof Promise !== 'function') return false;
-    if (typeof location === 'undefined') return false;
-    if (location.protocol === 'file:') return false;         // file:// 下 fetch 本地模型会被浏览器拦掉
-    var forced = String((Q && Q.get && Q.get('pet')) || '').toLowerCase();
-    if (forced === 'svg') return false;
-    return true;                                             // pet=live2d 或默认：能试就试
-  }
-
-  function mountLive2D(fig) {
-    return fetch(L2D.base + L2D.model, { method: 'HEAD' }).then(function (r) {
-      if (!r.ok) throw new Error('模型不可达');
-      return loadScript(L2D.core);
-    }).then(function () {
-      return loadScript(L2D.vendor);
-    }).then(function () {
-      var v = window.__dshLive2dPetVendor;
-      if (!v) throw new Error('Live2D 运行时未挂载');
-      v.extensions.add(v.Live2DPlugin);
-      v.configureCubismSDK({ memorySizeMB: 64 });
-      var rect = fig.getBoundingClientRect();
-      var W = Math.max(120, Math.round(rect.width));
-      var H = Math.max(120, Math.round(rect.height));
-      var app = new v.Application();
-      return app.init({
-        width: W, height: H, backgroundAlpha: 0, antialias: true, autoDensity: false,
-        resolution: Math.max(2, window.devicePixelRatio || 1),
-        preference: 'webgl', preserveDrawingBuffer: true
-      }).then(function () { return { v: v, app: app, W: W, H: H }; });
-    }).then(function (o) {
-      return o.v.Live2DModel.from(L2D.base + L2D.model, {
-        autoUpdate: false, autoHitTest: true, autoFocus: false
-      }).then(function (m) { o.model = m; return o; });
-    }).then(function (o) {
-      var app = o.app, m = o.model;
-      app.canvas.style.width = '100%';
-      app.canvas.style.height = '100%';
-      app.canvas.style.display = 'block';
-      fig.innerHTML = '';
-      fig.appendChild(app.canvas);
-      app.stage.addChild(m);
-      // 取景：放大到头部填满侧栏，书桌等道具由容器裁掉
-      var s = o.W * 0.00044;
-      m.anchor.set(0, 0);
-      m.scale.set(s);
-      m.x = o.W / 2 - FACE.x * s;
-      m.y = o.H * 0.30 - FACE.y * s;
-      m.automator.autoUpdate = true;
-      L2D.app = app; L2D.model3 = m; L2D.ok = true;
-      try { m.motion('Idle'); } catch (e) {}
-      bindGaze();
-      fig.classList.add('is-live2d');
-      document.documentElement.setAttribute('data-pet', 'live2d');
-      return true;
-    });
-  }
-
-  var EXPR = {
-    idle: null, happy: '开心兴奋', praise: '星星眼', love: '爱心眼',
-    think: '问号', warn: '流汗', sad: '悲伤', star: '情绪花花'
+  /* ---------- 立绘 ---------- */
+  var ART_DIR = 'assets/whale-art/';
+  var FILE = 'dsh-whale-state-';
+  // 情绪 → 立绘。99 张里挑能表达状态的，缺图时沿 FALLBACK 回退
+  var MOOD_ART = {
+    idle: 'idle-cute', happy: 'celebrate', praise: 'levelup', love: 'blush',
+    think: 'curious', warn: 'meme-doubt', sad: 'meme-cry', star: 'achievement'
   };
+  var FALLBACK_ART = ['idle-cute', 'greet'];
+  // 戳一下会短暂切过去的小动作
+  var POKE_ART = ['greet', 'blush', 'celebrate', 'curious', 'angry'];
+
+  function artURL(name) {
+    // 单文件离线版把立绘内联成 data URI；联网时直接读目录里的 webp
+    var inline = window.PET_ART;
+    if (inline && inline[name]) return inline[name];
+    return ART_DIR + FILE + name + '.webp';
+  }
+
+  /* ---------- 尺寸与几何 ----------
+     容器 232×424；立绘盒子 232×232，盒底 = 地面线（距容器底 FIG_BOTTOM）。
+     512×512 方图里角色脚底之上还有约 1.6% 的透明留白，用 --art-trim 抵掉，
+     这样鞋底正好压在地面线上，投影才不会"浮在半空"。 */
+  var NW = 232, NH = 458;
+  var FIG_BOTTOM = 16;                       // 立绘盒底距容器底
+  var FIG_H = 232;                           // 立绘盒高（和 CSS 里的 .pet-fig height 一致）
+  var ART_TRIM = 4;                          // 232 px 显示高度下约 1.6%
+  var GROUND_FROM_BOTTOM = FIG_BOTTOM;       // 地面线距容器底
 
   /* ---------- 根据当前页面和数据决定说什么 ---------- */
   function compose() {
@@ -178,6 +99,23 @@
         acts: [{ label: '从第一组开始', act: 'start', kind: 'group', group: 0 }] };
     }
 
+    if (r === 'report') {
+      var R = A.levelReport ? A.levelReport() : null;
+      if (!R) return { mood: 'idle', text: '报告还没准备好。' };
+      if (!R.ready) {
+        var need = Math.max(0, Math.ceil(R.total * 0.95) - R.tested);
+        return { mood: 'idle',
+          text: '等级要靠整库实测才站得住。现在已测 ' + R.tested + ' / ' + R.total + ' 词，再测 ' + need + ' 词就能出评级了。',
+          acts: [{ label: '继续完整检测', act: 'start', kind: 'all' }] };
+      }
+      return { mood: R.rank.tone === 'ok' ? 'praise' : R.rank.tone === 'bad' ? 'warn' : 'idle',
+        text: '你这次拿下 ' + R.rank.k + ' ' + R.rank.name + '，掌握率 ' + Math.round(R.ratio * 100) +
+          '%。' + (R.nextRank ? '再补 ' + R.toNext + ' 词就是 ' + R.nextRank.k + ' 了。' : '已经到顶，接下来是别让它回落。') +
+          (R.fuzzyShare >= 0.4 ? ' 注意「模糊」那部分占了 ' + Math.round(R.fuzzyShare * 100) + '%，词汇量有点虚。' : ''),
+        acts: [{ label: '让 AI 深读报告', act: 'ai-ask', q: '根据我的词汇等级报告，帮我制定下一步提升计划' },
+               { label: '看缺口词表', act: 'go', route: 'stats' }] };
+    }
+
     // home
     if (es.kind === 'sample') {
       return { mood: 'idle', text: '上次估算 ≈ ' + es.vocab.toLocaleString('en-US') + ' 词（±' +
@@ -196,12 +134,20 @@
 
 
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
-  var built = false, hostEl = null, figEl = null, sayEl = null, actsEl = null, creditEl = null, shadowEl = null;
+  var built = false, hostEl = null, figEl = null, sayEl = null, creditEl = null;
+  var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null;
   var lastText = '', lastMood = '', lastSig = '';
-  var NW = 232, NH = 424, CREDIT_H = 16;   // 容器高度；脚底 = 容器底往上 16px（与 CSS 对应）
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
-  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0 };
-  var walkTimer = null, rafId = null, lastT = 0, gazeBound = false;
+  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0 };
+  var walkTimer = null, rafId = null, lastT = 0;
+  // 最后一道保险：按住不动超过这么久才当作松手，正常操作不会碰到
+  var DRAG_STALE_MS = 8000;
+  var HANDLERS_BOUND = false;
+
+  // 视觉缓动量：透视角、两圈投影的缩放、受光角
+  var V = { tx: 0, ty: 0, cs: 1, as: 1, ang: 118 };
+  var look = { x: 0, y: 0 };
+  var artState = { name: '', loading: false, want: '', revertTimer: null };
 
   function wide() {
     try { return !!(window.matchMedia && window.matchMedia('(min-width:820px)').matches); } catch (e) { return false; }
@@ -210,10 +156,19 @@
     var n = document.querySelector('.nav');
     return n ? n.getBoundingClientRect().height : 0;
   }
-  // 脚底 = 容器底往上 CREDIT_H，让它正好踩在底部导航的上沿
-  function feetTop() { return window.innerHeight - navH() + 8 - (NH - CREDIT_H); }
+  // 地面线（= 立绘盒底）正好压到底部导航的上沿：脚踩在导航上，不悬空也不插进去。
+  // 上下都夹一道：导航变高、浏览器缩放、窗口极矮时都不会把她顶出视口。
+  function groundLine() {
+    var g = window.innerHeight - navH();
+    var lo = FIG_H + 16;                       // 至少让整只立绘留在视口里
+    var hi = window.innerHeight - 12;
+    if (g < lo) g = lo;
+    if (g > hi) g = Math.max(lo, hi);
+    return Math.round(g);
+  }
+  function feetTop() { return groundLine() - (NH - GROUND_FROM_BOTTOM); }
   function floorY() { return feetTop(); }
-  function maxX() { return window.innerWidth - NW - 8; }
+  function maxX() { return Math.max(8, window.innerWidth - NW - 8); }
 
   function apply() {
     if (!hostEl) return;
@@ -251,12 +206,17 @@
     }, 9000 + Math.random() * 12000);
   }
 
-  // 物理：只有竖直方向，松手后自由落体到地面
+  function lift() { return Math.max(0, floorY() - P.y); }
+
+  // 主循环：重力 + 透视倾斜 + 两圈投影 + 受光角
   function tick(now) {
     rafId = requestAnimationFrame(tick);
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
-    if (P.dragging) { applyDepth(lastNx, lastNy, Math.max(0, floorY() - P.y)); return; }
-    if (P.air) {
+
+    // 兜底：拖拽状态卡住时自己解开，否则重力会被永久挡住
+    if (P.dragging && now - drag.lastMove > DRAG_STALE_MS) endDrag();
+
+    if (!P.dragging && P.air) {
       P.vy += 0.0022 * dt * dt * 0.5;
       P.y += P.vy * dt * 0.06;
       var fy = floorY();
@@ -266,13 +226,28 @@
         setTimeout(function () { hostEl.classList.remove('poked'); }, 500);
       }
       apply();
-      applyDepth(lastNx, lastNy, Math.max(0, floorY() - P.y));
     }
+
+    applyDepth();
   }
 
   function startLoop() {
     if (rafId || !wide()) return;
     lastT = 0; rafId = requestAnimationFrame(tick);
+  }
+  function stopLoop() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  // 把她送回右下角的老位置（双击桌宠、或 A.petReset() 都能用）
+  function resetPos() {
+    stopWalk();
+    P.dragging = false; drag.on = false;
+    P.vy = 0; setAir(false);
+    P.x = Math.max(8, window.innerWidth - NW - 26);
+    P.y = floorY();
+    apply();
+    scheduleWalk();
   }
 
   function onDown(e) {
@@ -280,6 +255,7 @@
     drag.on = true; drag.moved = 0;
     drag.sx = e.clientX; drag.sy = e.clientY;
     drag.ox = P.x; drag.oy = P.y;
+    drag.lastMove = performance.now();
     P.dragging = true; stopWalk(); setAir(false);
     figEl.classList.add('grabbing');
     try { figEl.setPointerCapture(e.pointerId); } catch (err) {}
@@ -287,6 +263,9 @@
   }
   function onMove(e) {
     if (!drag.on) return;
+    // 左键已经松开了：说明 pointerup 丢了，就地收尾
+    if (e.buttons === 0) { endDrag(); return; }
+    drag.lastMove = performance.now();
     var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
     P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
@@ -294,60 +273,80 @@
     setFace(dx < -4 ? true : dx > 4 ? false : P.faceL);
     apply();
   }
-  function onUp() {
-    if (!drag.on) return;
+  /* 结束拖拽。必须幂等、且只认 P.dragging —— 之前这里用 drag.on 提前 return，
+     一旦 pointerup 丢在窗口外，drag.on 和 P.dragging 就会不一致，
+     而她从此刻起永远停在半空（重力被 P.dragging 挡住）。 */
+  function endDrag() {
+    if (!P.dragging && !drag.on) return;
+    var moved = drag.moved;
     drag.on = false; P.dragging = false;
-    figEl.classList.remove('grabbing');
-    if (drag.moved < 6) { poke(); }                       // 没怎么动就算「戳一下」
-    else {
-      P.vy = 0; setAir(true);
-      if (P.y > floorY()) { P.y = floorY(); setAir(false); }
+    if (figEl) figEl.classList.remove('grabbing');
+    if (moved < 6) {
+      // 没怎么动 = 戳一下；顺手把她放回地面，别留在半空
+      poke();
+      if (P.y > floorY()) { P.y = floorY(); }
+      apply();
+    } else if (P.y > floorY()) {
+      P.y = floorY(); P.vy = 0; setAir(false); apply();
+    } else {
+      P.vy = 0; setAir(true);                            // 交给重力落下
+      apply();
     }
     scheduleWalk();
   }
 
-  // 立体感三件套：透视倾斜 + 接触投影 + 气泡视差
-  var lastNx = 0, lastNy = 0;
-  function applyDepth(nx, ny, lift) {
-    lastNx = nx; lastNy = ny;
-    if (figEl) {
-      figEl.style.setProperty('--ty', (nx * 9).toFixed(2) + 'deg');    // 左右转向
-      figEl.style.setProperty('--tx', (-ny * 6).toFixed(2) + 'deg');   // 上下俯仰
-    }
-    if (sayEl) sayEl.style.setProperty('--bx', (nx * -7).toFixed(1) + 'px');  // 气泡反向视差，拉开层次
-    if (shadowEl) {
-      var k = Math.max(0, Math.min(1, (lift || 0) / 260));
-      shadowEl.style.setProperty('--shs', (1 - k * 0.55).toFixed(3));
-      shadowEl.style.setProperty('--shx', (nx * -14 * (1 - k)).toFixed(1) + 'px');
-      shadowEl.style.opacity = (0.92 - k * 0.62).toFixed(2);
-      // 影子锚在地面：她升多高，影子就往下补多少，视觉上留在原地
-      shadowEl.style.bottom = (18 - (lift || 0)).toFixed(0) + 'px';
-    }
+  // 指针事件挂在 window 上：pointerup 一旦丢在浏览器窗口外，
+  // 只绑在立绘上的监听就永远收不到，那她就会卡住不动。
+  function bindDragHandlers() {
+    if (HANDLERS_BOUND) return;
+    HANDLERS_BOUND = true;
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    // 拖到窗口外松手时通常只剩 blur 能收到
+    window.addEventListener('blur', function () { if (P.dragging) endDrag(); });
   }
 
-  // 让她看你：Live2D 内置的 focusController 会把焦点换算成转头与转眼参数。
-  // 之前完全没驱动这个，所以她永远直视前方 —— 看着就像一张贴纸。
+  /* 立体感三件套：透视倾斜 + 接地投影 + 受光膜。
+     倾斜角由鼠标位置缓动逼近；投影跟着反向横移、随离地高度缩小变淡。 */
+  function applyDepth() {
+    var k = Math.min(1, lift() / 260);
+    var ttx = -look.y * 9;
+    var tty = look.x * 15;
+
+    V.tx += (ttx - V.tx) * 0.10;
+    V.ty += (tty - V.ty) * 0.10;
+    V.cs += ((1 - k * 0.55) * (1 + Math.abs(look.y) * 0.06) - V.cs) * 0.12;
+    V.as += ((1 - k * 0.42) * (1 + Math.abs(look.y) * 0.05) - V.as) * 0.12;
+    V.ang += ((118 + V.ty * 2.2 - V.tx * 1.4) - V.ang) * 0.12;
+
+    if (figEl) {
+      figEl.style.setProperty('--tx', V.tx.toFixed(2) + 'deg');
+      figEl.style.setProperty('--ty', V.ty.toFixed(2) + 'deg');
+    }
+    if (sheenEl) sheenEl.style.setProperty('--sang', V.ang.toFixed(1) + 'deg');
+    if (shadowEl) {
+      shadowEl.style.setProperty('--shs', V.cs.toFixed(3));
+      shadowEl.style.setProperty('--shx', (-V.ty * 1.5).toFixed(1) + 'px');
+      shadowEl.style.opacity = (0.92 - k * 0.6).toFixed(2);
+    }
+    if (shadowSoftEl) {
+      shadowSoftEl.style.setProperty('--shs', V.as.toFixed(3));
+      shadowSoftEl.style.setProperty('--shx', (-V.ty * 2.4).toFixed(1) + 'px');
+      shadowSoftEl.style.opacity = (0.85 - k * 0.5).toFixed(2);
+    }
+    if (sayEl) sayEl.style.setProperty('--bx', (look.x * -7).toFixed(1) + 'px');
+  }
+
+  // 让她跟着鼠标看：平面立绘转不了头，就用整体倾斜 + 气泡反向视差来暗示朝向
   function bindGaze() {
-    if (gazeBound) return;
-    gazeBound = true;
-    var px = 0, py = 0, queued = false;
+    var queued = false;
     document.addEventListener('pointermove', function (e) {
-      px = e.clientX; py = e.clientY;
-      if (queued) return;
+      look.x = Math.max(-1, Math.min(1, (e.clientX / window.innerWidth - 0.5) * 2));
+      look.y = Math.max(-1, Math.min(1, (e.clientY / window.innerHeight - 0.5) * 2));
+      if (queued || rafId) return;                        // 主循环在跑就交给它
       queued = true;
-      requestAnimationFrame(function () {
-        queued = false;
-        var m = L2D.model3;
-        if (!L2D.ok || !m || !figEl) return;
-        var r = figEl.getBoundingClientRect();
-        var dx = (px - (r.left + r.width / 2)) / (window.innerWidth * 0.45);
-        var dy = (py - (r.top + r.height * 0.42)) / (window.innerHeight * 0.45);
-        dx = Math.max(-1, Math.min(1, dx));
-        dy = Math.max(-1, Math.min(1, dy));
-        // focus 期望模型内部坐标系，所以映射到模型尺寸上
-        try { m.focus(m.width * (0.5 + dx * 0.45), m.height * (0.5 + dy * 0.45)); } catch (e) {}
-        applyDepth(dx, dy, P.dragging ? 0 : Math.max(0, floorY() - P.y));
-      });
+      requestAnimationFrame(function () { queued = false; applyDepth(); });
     }, { passive: true });
   }
 
@@ -356,19 +355,69 @@
     void hostEl.offsetWidth;
     hostEl.classList.add('poked');
     setTimeout(function () { hostEl.classList.remove('poked'); }, 520);
-    if (L2D.ok) {
-      var pool = ['SelfieQuick', 'BubbleGum', 'Hammer', 'SprayWater'];
-      try { L2D.model3.motion(pool[Math.floor(Math.random() * pool.length)]); } catch (e) {}
-    }
+    // 短暂换个动作，再回到当前情绪对应的立绘
+    var pick = POKE_ART[Math.floor(Math.random() * POKE_ART.length)];
+    showArt(pick);
+    if (artState.revertTimer) clearTimeout(artState.revertTimer);
+    artState.revertTimer = setTimeout(function () {
+      artState.revertTimer = null;
+      showArt(MOOD_ART[lastMood] || MOOD_ART.idle);
+    }, 1400);
   }
 
-  // 署名跟着实际形态走：Live2D 是第三方素材要署名，SVG 是本项目原创
-  function setCredit(kind) {
+  /* ---------- 立绘切换：先探针加载，成功才交叉淡入 ---------- */
+  function showArt(name, done) {
+    if (!name || name === artState.name) { if (done) done(true); return; }
+    artState.want = name;
+    var url = artURL(name);
+    var probe = new Image();
+    probe.onload = function () {
+      if (artState.want !== name) { if (done) done(true); return; }   // 期间又切了别的
+      artState.name = name;
+      var next = document.createElement('img');
+      next.className = 'pet-art pet-art-in';
+      next.alt = '';
+      next.src = url;
+      animEl.appendChild(next);
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          next.style.opacity = '1';
+          if (artEl) artEl.style.opacity = '0';
+          setTimeout(function () {
+            var old = artEl;
+            artEl = next;
+            next.classList.remove('pet-art-in');
+            if (old && old.parentNode) {
+              var keep = old.classList.contains('pet-art-fallback');
+              old.parentNode.removeChild(old);
+              if (keep) next.classList.add('pet-art-fallback');
+            }
+          }, 280);
+        });
+      });
+      if (done) done(true);
+    };
+    probe.onerror = function () { if (done) done(false); };
+    probe.src = url;
+  }
+
+  function showArtWithFallback(name, i, done) {
+    i = i || 0;
+    showArt(name, function (ok) {
+      if (ok) { if (done) done(true); return; }
+      while (i < FALLBACK_ART.length && FALLBACK_ART[i] === name) i++;
+      if (i >= FALLBACK_ART.length) { if (done) done(false); return; }
+      showArtWithFallback(FALLBACK_ART[i], i + 1, done);
+    });
+  }
+
+  /* 桌宠上方只保留 token 计量那一行。
+     立绘署名（DS鲸鱼娘 · Sutera-Diffusus · MIT）按用户要求从这儿去掉了，
+     挪到「设置 → 素材来源」长期保留——MIT 要求保留出处，不能直接消失。
+     没有投喂记录时整块为空，CSS 里 :empty 会把它隐藏，不占位也不挡点击。 */
+  function refreshFeed() {
     if (!creditEl) return;
-    creditEl.innerHTML = (kind === 'svg'
-      ? '形象：本站原创 SVG · MIT'
-      : '形象：DS鲸鱼娘 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>') +
-      feedLine();
+    creditEl.innerHTML = feedLine();
   }
 
   // 「白饭」：AI 诊断烧掉的 token。这条既是社区梗，也是真实的 API 成本
@@ -378,56 +427,50 @@
     return '<span class="fed">已投喂 ' + t.toLocaleString('en-US') + ' token</span>';
   }
 
-  // 离线形态：优先用 Live2D 模型渲染出的透明 PNG（与联网版同一形象），
-  // 拿不到时才退回内置 SVG
-  function artHTML() {
-    if (window.PET_IMG) return '<img class="pet-art" src="' + window.PET_IMG + '" alt="" draggable="false">';
-    return mascotSVG('happy');
-  }
-  function paint() {
-    if (!figEl || L2D.ok) return;
-    if (figEl.querySelector('.pet-art') || figEl.querySelector('svg')) return;
-    figEl.insertAdjacentHTML('afterbegin', artHTML());
-    if (window.PET_IMG) figEl.classList.add('is-static');   // 静态帧同样需要底部渐隐
-  }
-
   function build(host) {
     host.innerHTML =
       '<div class="pet-bubble empty" id="petSay"></div>' +
-      '<div class="pet-fig" id="petFig"></div>' +
+      '<div class="pet-fig" id="petFig">' +
+        '<div class="pet-anim" id="petAnim">' +
+          '<img class="pet-art pet-art-fallback" id="petArt" alt="" draggable="false">' +
+        '</div>' +
+        '<div class="pet-sheen" id="petSheen"></div>' +
+      '</div>' +
+      '<div class="pet-shadow soft" id="petShadowSoft"></div>' +
       '<div class="pet-shadow" id="petShadow"></div>' +
       '<div class="pet-credit" id="petCredit"></div>';
     figEl = document.getElementById('petFig');
     sayEl = document.getElementById('petSay');
-    actsEl = null;
     creditEl = document.getElementById('petCredit');
     shadowEl = document.getElementById('petShadow');
-    figEl.innerHTML = artHTML();
+    shadowSoftEl = document.getElementById('petShadowSoft');
+    animEl = document.getElementById('petAnim');
+    sheenEl = document.getElementById('petSheen');
+    artEl = document.getElementById('petArt');
+    artEl.style.opacity = '0';
+
+    host.style.setProperty('--art-trim', ART_TRIM + 'px');
+    host.style.setProperty('--ground', GROUND_FROM_BOTTOM + 'px');
 
     figEl.addEventListener('pointerdown', onDown);
-    figEl.addEventListener('pointermove', onMove);
-    figEl.addEventListener('pointerup', onUp);
-    figEl.addEventListener('pointercancel', onUp);
+    figEl.addEventListener('dblclick', resetPos);           // 双击回到原位，卡住了也有救
+    bindDragHandlers();
 
-    setCredit(window.PET_IMG ? 'img' : 'svg');
-    try {
-      if (live2dAllowed()) {
-        mountLive2D(figEl).then(function () {
-          document.documentElement.setAttribute('data-pet', 'live2d');
-          setCredit('live2d');
-        }).catch(function () {
-          L2D.reason = 'load-failed';
-          document.documentElement.setAttribute('data-pet', 'static');
-          setCredit(window.PET_IMG ? 'img' : 'svg');
-        });
+    refreshFeed();
+    bindGaze();
+
+    showArtWithFallback('idle-cute', 0, function (ok) {
+      if (ok) {
+        document.documentElement.setAttribute('data-pet', 'sprite');
+        if (artEl) artEl.classList.add('pet-art-ready');
       } else {
-        L2D.reason = 'not-allowed';
-        document.documentElement.setAttribute('data-pet', 'static');
+        // 一张都拿不到：不画错形象，桌宠退化成纯气泡助手
+        document.documentElement.setAttribute('data-pet', 'none');
+        figEl.style.display = 'none';
+        if (shadowEl) shadowEl.style.display = 'none';
+        if (shadowSoftEl) shadowSoftEl.style.display = 'none';
       }
-    } catch (e) {
-      L2D.reason = 'threw:' + e.message;
-      document.documentElement.setAttribute('data-pet', 'static');
-    }
+    });
 
     // 初始位置：右下角，直接站在地面上
     P.x = Math.max(8, window.innerWidth - NW - 26);
@@ -440,10 +483,21 @@
     }
     window.addEventListener('resize', function () {
       if (!hostEl) return;
-      if (wide()) hostEl.classList.add('on'); else hostEl.classList.remove('on');
+      if (wide()) { hostEl.classList.add('on'); startLoop(); scheduleWalk(); }
+      else { hostEl.classList.remove('on'); stopLoop(); }
       P.x = Math.max(8, Math.min(maxX(), P.x));
-      P.y = Math.min(P.y, feetTop());
-      apply(); startLoop();
+      // 不在空中就重新站回地面：窗口变大变小都不会把她留在半空或视口外
+      if (P.dragging) return;
+      P.y = P.air ? Math.min(P.y, floorY()) : floorY();
+      apply();
+    });
+
+    // 切走再切回来时补排一次溜达，不然回来后她就再也不动了
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      if (!hostEl || !wide()) return;
+      if (!rafId) startLoop();
+      scheduleWalk();
     });
   }
 
@@ -451,12 +505,14 @@
     var host = document.getElementById('pet');
     if (!host) return;
     if (!built) { built = true; hostEl = host; build(host); }
+    // 兜底：主循环万一没在跑，这里补上，别让她彻底不动
+    else if (wide() && !rafId) startLoop();
 
     if (creditEl) {
       var fedNow = feedLine();
       if (creditEl.getAttribute('data-fed') !== fedNow) {
         creditEl.setAttribute('data-fed', fedNow);
-        setCredit(L2D.ok ? 'live2d' : (window.PET_IMG ? 'img' : 'svg'));
+        refreshFeed();
       }
     }
 
@@ -467,10 +523,9 @@
       lastText = d.text;
       sayEl.classList.toggle('empty', !d.text);
     }
-    if (d.mood !== lastMood) { lastMood = d.mood; paint(); }
-    if (L2D.ok) {
-      var name = EXPR[d.mood];
-      if (name) { try { L2D.model3.expression(name); } catch (e) {} }
+    if (d.mood !== lastMood) {
+      lastMood = d.mood;
+      if (!artState.revertTimer) showArtWithFallback(MOOD_ART[d.mood] || MOOD_ART.idle);
     }
 
     var acts = d.acts || [];
@@ -491,9 +546,30 @@
     }
   };
 
-  /* 供调试：?pet=live2d / ?pet=svg 强制切换；A.petInfo() 看当前形态 */
+  /* 供调试：A.petInfo() 看当前形态与位置；A.petReset() 把她送回原位；?pet=none 整只关掉 */
   A.petInfo = function () {
-    return { live2d: L2D.ok, reason: L2D.reason || '', x: Math.round(P.x), y: Math.round(P.y), air: P.air };
+    return {
+      sprite: artState.name || '', form: document.documentElement.getAttribute('data-pet') || '',
+      x: Math.round(P.x), y: Math.round(P.y), air: P.air, dragging: P.dragging,
+      loop: !!rafId, walking: P.walking, floor: floorY(), ground: groundLine(),
+      tiltX: +V.tx.toFixed(1), tiltY: +V.ty.toFixed(1)
+    };
   };
+  A.petReset = function () { resetPos(); return A.petInfo(); };
+
+  // 允许用 ?pet=none 关掉桌宠（录屏或做对比图时用）
+  try {
+    if (new URLSearchParams(location.search).get('pet') === 'none') {
+      var disable = function () {
+        var h = document.getElementById('pet');
+        if (h) { h.classList.remove('on'); h.style.display = 'none'; }
+        stopWalk(); stopLoop();
+        built = true;
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', disable);
+      else setTimeout(disable, 0);
+      A.renderPet = function () {};
+    }
+  } catch (e) {}
 
 })(window.__APP__ || (window.__APP__ = {}));

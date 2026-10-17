@@ -1,0 +1,12 @@
+<!DOCTYPE html><meta charset="utf-8"><title>切暗色后跳回首页（只为截图用）</title>
+<script>
+// 一次性的截图辅助页：写好 localStorage 的 theme 再跳回首页。
+// 无头 Chrome 每次都用全新的 profile，所以不会污染真实用户的设置。
+try {
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem('cet4vocab_v1') || '{}') || {}; } catch (e) { s = {}; }
+  s.theme = 'dark';
+  localStorage.setItem('cet4vocab_v1', JSON.stringify(s));
+} catch (e) {}
+location.replace('/');
+</script>

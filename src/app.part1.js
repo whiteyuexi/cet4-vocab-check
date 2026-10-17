@@ -70,6 +70,8 @@
       session: null,
       lastResult: null,
       samples: [],
+      round: { n: 1, startedAt: Date.now() },   // 当前轮次
+      rounds: [],                               // 已完成并归档的历史轮次（报告快照）
       settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
       theme: 'light',
       tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
@@ -87,6 +89,8 @@
         d.session = o.session || null;
         d.lastResult = o.lastResult || null;
         d.samples = o.samples || [];
+        d.round = o.round || d.round;
+        d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
         d.theme = o.theme || 'light';
         d.tokens = o.tokens || 0;
         if (o.settings) for (var k in o.settings) if (o.settings.hasOwnProperty(k)) d.settings[k] = o.settings[k];
@@ -124,49 +128,89 @@
   A.inBank = inBank;
   /* 各词库规模（给切换按钮显示） */
   A.bankCounts = function () {
-    var c = { c4: 0, c6: 0 };
+    // c6 = 六级大纲全量（含四级），c6new = 六级新增（只在六级、不含四级）
+    // 设置页的「词库说明」三个数都要用，别只给两个
+    var c = { c4: 0, c6: 0, c6new: 0 };
     for (var i = 0; i < WORDS.length; i++) {
       var w = WORDS[i];
       if (!S.settings.includeExt && w.x) continue;
       if (w.b & 1) c.c4++;
       if (w.b & 3) c.c6++;
+      if ((w.b & 2) && !(w.b & 1)) c.c6new++;
     }
     return c;
   };
-  function activePool() {
-    var arr = [];
+  /* ---------- 检测顺序：稳定的伪随机 ----------
+     为什么不按字母序：按字母序测就是一路 a、b、c 地走下去，既机械，又容易靠首字母
+     提前猜到词义；而且一组 100 词会全挤在同一个字母段上，样本没有代表性。
+     为什么不能用 Math.random：分组是「按序位每 100 词切一组」，顺序一旦每次都不一样，
+     「第 N 组」就会指向另一批词，进度、历史、跨轮对比全部失真。
+     所以用「词本身的哈希」定序位：看起来是随机的，但每次打开、每台机器都完全一致。 */
+  var _ordPos = null;
+  function ordPos() {
+    if (_ordPos) return _ordPos;
+    var hash = new Uint32Array(WORDS.length), arr = [];
+    for (var i = 0; i < WORDS.length; i++) {
+      var s = WORDS[i].w, h = 2166136261;
+      for (var k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = (h * 16777619) >>> 0; }
+      hash[i] = h;
+      arr.push(i);
+    }
+    // 哈希相同（极少见）时用下标兜底，保证是一个稳定的全序
+    arr.sort(function (a, b) { return (hash[a] - hash[b]) || (a - b); });
+    var pos = new Int32Array(WORDS.length);
+    for (var j = 0; j < arr.length; j++) pos[arr[j]] = j;
+    _ordPos = pos;
+    return pos;
+  }
+
+  var _poolCache = {};
+  /* 缓存数组按「词库 + 拓展开关」分键；对外的 activePool() 返回副本，缓存本体只读 */
+  function orderedPool() {
+    var key = bankKey() + (S.settings.includeExt ? 'E' : 'C');
+    if (_poolCache[key]) return _poolCache[key];
+    var pos = ordPos(), arr = [];
     for (var i = 0; i < WORDS.length; i++) {
       var w = WORDS[i];
       if (!inBank(w)) continue;
       if (!S.settings.includeExt && w.x) continue;
       arr.push(i);
     }
+    arr.sort(function (a, b) { return pos[a] - pos[b]; });
+    _poolCache[key] = arr;
     return arr;
   }
+  function activePool() { return orderedPool().slice(); }
   A.activePool = activePool;
   A.keyOf = function (i) { return WORDS[i].w.toLowerCase(); };
   A.getSt = function (i) { return S.status[A.keyOf(i)]; };
   A.setSt = function (i, v) { S.status[A.keyOf(i)] = v; };
   A.clearSt = function (i) { delete S.status[A.keyOf(i)]; };
-  A.curPoolSize = function () { return activePool().length; };
+  A.curPoolSize = function () { return orderedPool().length; };
 
   function chunk(arr) {
     var out = [];
     for (var i = 0; i < arr.length; i += A.GROUP_SIZE) out.push(arr.slice(i, i + A.GROUP_SIZE));
     return out;
   }
+  var _bankCache = {};
   function bankIdx(wantExt) {
-    var a = [];
+    var key = bankKey() + (wantExt ? 'e' : 'c');
+    if (_bankCache[key]) return _bankCache[key];
+    var pos = ordPos(), a = [];
     for (var i = 0; i < WORDS.length; i++) {
       var w = WORDS[i];
       if (!inBank(w)) continue;
       if (wantExt ? !w.x : !!w.x) continue;
       a.push(i);
     }
+    a.sort(function (x, y) { return pos[x] - pos[y]; });
+    _bankCache[key] = a;
     return a;
   }
   /* 分组固定按当前词库的核心词切分，开启「拓展词」时在末尾追加拓展词组。
-     这样切换设置不会让「第 N 组」指向另一批词，进度与历史记录才站得住。 */
+     切分依据是稳定的伪随机序位（见 ordPos）——顺序是打乱的，但每次打开都一样，
+     所以「第 N 组」永远指向同一批词，进度与历史记录才站得住。 */
   function groups() {
     var g = chunk(bankIdx(false));
     if (S.settings.includeExt) g = g.concat(chunk(bankIdx(true)));
@@ -344,8 +388,9 @@
 
   /* 词汇量估算口径（这是整个工具最容易被误读的数字，所以口径写死在这里）：
      1) 已覆盖 95% 以上词库 → 直接数，接近实测；
-     2) 否则只认「快速摸底」产生的随机样本——分组检测是连续字母段、薄弱词复测全是不会的词，
-        两者都是非随机样本，不能外推到整个词库；
+     2) 否则只认「快速摸底」产生的随机样本——分组检测的词虽然已打乱顺序，但
+        「测哪几组」是用户自己挑的（有选择偏差），薄弱词复测更是全是不会的词，
+        两者都不能外推到整个词库；
      3) 随机样本不足 20 词时不给数字。 */
   /* 抽样必须和词库对应：四级抽的样不能拿来估六级 */
   /* 抽样样本 → 分层数据（四选一模式先扣除蒙对） */
@@ -410,6 +455,289 @@
     return { t: '基础薄弱 · 从高频词开始', d: '先过高中/初中核心词，再来刷四级大纲，效果更好。' };
   }
   A.levelText = levelText;
+
+  /* ================= 多轮检测（轮次 / 快照 / 逐词对比） =================
+     为什么要多轮：单轮只能告诉你"现在是多少"。有了两轮完整实测，就能算出
+     哪些词是这一轮真正学进来的（上轮不认识→这轮认识）、哪些是背了又忘的
+     （上轮认识→这轮不认识）。后者才是复习的第一优先级，单轮永远做不出来。
+     每轮归档两样东西：
+       1) 聚合报告快照 —— 给"历轮报告"和趋势图用
+       2) 逐词状态位图 —— 2 bit/词，7175 词约 1.8 KB，给逐词对比用
+     词表可能随版本变化，所以连指纹一起存；指纹对不上就只做聚合对比，不硬算逐词差异。 */
+  var ROUNDS_MAX = 12;
+
+  function wordsFingerprint() {
+    var h = 2166136261;
+    for (var i = 0; i < WORDS.length; i++) {
+      var w = WORDS[i].w;
+      for (var j = 0; j < w.length; j++) { h ^= w.charCodeAt(j); h = (h * 16777619) >>> 0; }
+      h ^= i; h = (h * 16777619) >>> 0;
+    }
+    return WORDS.length + ':' + h.toString(36);
+  }
+
+  // 每词 2 bit：0 未测 / 1 不认识 / 2 模糊 / 3 认识。字段总是 2 bit 且起点落在偶数位，不会跨字节。
+  function packStates() {
+    var n = WORDS.length, buf = new Uint8Array(Math.ceil(n * 2 / 8));
+    for (var i = 0; i < n; i++) {
+      var st = A.getSt(i);
+      var v = st === undefined ? 0 : (st + 1);
+      var pos = i * 2;
+      buf[pos >> 3] |= (v << (pos & 7)) & 0xff;
+    }
+    return buf;
+  }
+  function unpackStates(buf) {
+    var n = Math.min(WORDS.length, buf.length * 4), out = new Uint8Array(n);
+    for (var i = 0; i < n; i++) {
+      var pos = i * 2;
+      out[i] = (buf[pos >> 3] >> (pos & 7)) & 3;
+    }
+    return out;
+  }
+  function b64(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    try { return btoa(s); } catch (e) { return ''; }
+  }
+  function unb64(str) {
+    try {
+      var s = atob(str), out = new Uint8Array(s.length);
+      for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+      return out;
+    } catch (e) { return null; }
+  }
+
+  A.roundNo = function () { return (S.round && S.round.n) || 1; };
+  A.roundHistory = function () { return S.rounds || []; };
+  /* 能不能开新一轮：本轮要测完（覆盖 ≥95%，与报告口径一致）才值得归档 */
+  A.canRetest = function () { return A.levelReport().ready; };
+
+  function roundSnapshot() {
+    var R = A.levelReport();
+    return {
+      n: A.roundNo(),
+      bank: R.bank.key, bankName: R.bank.name,
+      startedAt: (S.round && S.round.startedAt) || Date.now(),
+      finishedAt: Date.now(),
+      bankSize: R.total, tested: R.tested, coverage: +R.coverage.toFixed(4),
+      k: R.k, f: R.f, u: R.u,
+      loose: R.loose, strict: R.strict, ratio: +R.ratio.toFixed(4),
+      rank: R.rank.k, rankName: R.rank.name, rankTone: R.rank.tone,
+      capped: !!(R.cap && R.cap !== R.rankByRatio),
+      bands: R.bands.map(function (b) { return { band: b.band, N: b.N, k: b.k, f: b.f, u: b.u }; }),
+      fp: wordsFingerprint(),
+      snap: b64(packStates())
+    };
+  }
+
+  /* 归档本轮 + 清空作答，开下一轮。
+     清的是"工作状态"（作答、会话、样本、历史），不动已归档的报告。 */
+  A.startNewRound = function () {
+    if (!A.canRetest()) return false;
+    if (!S.rounds) S.rounds = [];
+    S.rounds.push(roundSnapshot());
+    while (S.rounds.length > ROUNDS_MAX) S.rounds.shift();
+
+    var pool = activePool();
+    for (var i = 0; i < pool.length; i++) A.clearSt(pool[i]);
+    S.session = null;
+    S.lastResult = null;
+    S.samples = [];
+    S.history = [];
+    S.round = { n: A.roundNo() + 1, startedAt: Date.now() };
+    A.save();
+    return true;
+  };
+
+  /* 逐词对比：本轮 vs 上一轮归档。
+     返回 null = 还没有上一轮；stale = 词表变了，只能做聚合对比。 */
+  A.roundDiff = function () {
+    var rounds = S.rounds || [];
+    if (!rounds.length) return null;
+    var prev = rounds[rounds.length - 1];
+    if (prev.fp !== wordsFingerprint()) return { stale: true, prev: prev };
+
+    var buf = unb64(prev.snap || '');
+    if (!buf) return { stale: true, prev: prev };
+    var prevSt = unpackStates(buf);
+
+    var res = {
+      prev: prev, stale: false,
+      prevKnown: 0, retained: 0, forgotten: [], forgottenIdx: [],
+      gained: 0, stuck: 0, compared: 0, byBand: {}
+    };
+    for (var i = 0; i < prevSt.length; i++) {
+      var p = prevSt[i];
+      if (p === 0) continue;                     // 上一轮没测过这个位置，不参与比较
+      var cur = A.getSt(i);
+      if (cur === undefined) continue;           // 本轮还没测到
+      var cv = cur + 1;
+      res.compared++;
+      if (p === 3) {                             // 上轮：认识
+        res.prevKnown++;
+        if (cv === 3) res.retained++;
+        else {
+          res.forgottenIdx.push(i);              // 背了又忘 —— 复习第一优先
+          var bd = A.bandOf(i);
+          res.byBand[bd] = (res.byBand[bd] || 0) + 1;
+        }
+      } else if (cv === 3) {
+        res.gained++;                            // 上轮不会 / 模糊 → 这轮认识
+      }
+      if (p === 2 && cv === 2) res.stuck++;      // 两轮都模糊，一直没拿下
+    }
+    res.forgottenCount = res.forgottenIdx.length;
+    res.forgotten = res.forgottenIdx.slice(0, 24);   // 卡片上只摆前 24 个
+    res.keepRate = res.prevKnown ? res.retained / res.prevKnown : null;
+    return res;
+  };
+
+  /* ================= 词汇等级评估（完整检测报告用） =================
+     口径：等级取决于「当前词库的掌握率」，所以同一套比例在四级（4540 词）和
+     六级（5716 词）上会换算成不同的绝对词数 —— 四级 85% 是 3859 词，六级 85% 是 4859 词。
+     分级线是本工具自定的，依据两点：
+       a) 大纲词汇不是"全认识才及格"，但掌握率过低时阅读会被生词拖住；
+       b) 二语阅读研究里 95% / 98% 文字覆盖率分别是"能理解"与"无障碍"的参考线，
+          所以把 92% / 95% / 98% 标成阶梯上方的参考刻度，而不是硬性及格线。
+     掌握率用「认识 + 模糊×0.5」的折中口径（与全站一致），另给严格口径对照。 */
+  A.RANKS = [
+    { k: 'S', name: '卓越', min: 0.92, tone: 'ok',
+      desc: '大纲词汇几乎全覆盖，阅读基本没有生词障碍，可以直接上真题和写作。',
+      next: '保持复现：每周过一遍「模糊」词，防止回落。' },
+    { k: 'A', name: '优秀', min: 0.85, tone: 'ok',
+      desc: '核心词汇扎实，只剩零散漏洞，属于"能考、能读"的水平。',
+      next: '往 92% 顶：重点是把「模糊」那部分词转成确定认识。' },
+    { k: 'B+', name: '良好', min: 0.75, tone: 'warn',
+      desc: '高频词基本拿下，中低频段还有成片缺口。',
+      next: '按频段补：优先填 3k-5k 段的缺口，同样的时间收益最大。' },
+    { k: 'B', name: '中等', min: 0.65, tone: 'warn',
+      desc: '日常阅读能应付，但写作和长难句会频繁卡词。',
+      next: '每天固定 50 词，用「分组检测」一段一段推进。' },
+    { k: 'C', name: '偏弱', min: 0.50, tone: 'bad',
+      desc: '高频词仍有明显漏洞，阅读速度会被生词拖住。',
+      next: '先只练最高频 2k 词，把地基打牢再往上走。' },
+    { k: 'D', name: '基础薄弱', min: 0, tone: 'bad',
+      desc: '大纲词汇掌握不到一半，直接刷题会一直在查词。',
+      next: '从高中/初中核心词补起，再回来刷四六级大纲。' }
+  ];
+  // 报告里标在阶梯上的参考刻度
+  A.RANK_REFS = [
+    { p: 0.98, label: '98%', note: '无障碍阅读参考线' },
+    { p: 0.95, label: '95%', note: '可理解阅读参考线' }
+  ];
+  function rankAt(ratio) {
+    for (var i = 0; i < A.RANKS.length; i++) if (ratio >= A.RANKS[i].min) return A.RANKS[i];
+    return A.RANKS[A.RANKS.length - 1];
+  }
+  A.rankAt = rankAt;
+  function rankByKey(k) {
+    for (var i = 0; i < A.RANKS.length; i++) if (A.RANKS[i].k === k) return A.RANKS[i];
+    return null;
+  }
+  /* 地基约束：只看总掌握率会得出荒谬结论——
+     把最高频 1k 段整段丢掉，总掌握率还有 85%，按比例照样能评"优秀"，
+     可这样的词汇结构读任何一段真实文本都会卡。所以高频段没打好时给等级封顶。 */
+  A.RANK_CAPS = [
+    { below: 0.60, cap: 'C' },
+    { below: 0.75, cap: 'B+' },
+    { below: 0.85, cap: 'A' }
+  ];
+
+  /* 频段序号 → 频次高低（0 号段是「20k 以外」，最冷门，要排到最后） */
+  function freqRank(b) { return b === 0 ? 99 : b; }
+  A.freqRank = freqRank;
+
+  /* 一次完整检测的精准统计：不走抽样估计，直接数每个词的作答状态。
+     这是"全部测完"才有意义的做法，也是这份报告敢叫"专业"的底气。 */
+  function censusBands(pool) {
+    var map = {};
+    for (var n = 0; n < pool.length; n++) {
+      var i = pool[n], s = A.getSt(i), b = A.bandOf(i);
+      if (!map[b]) map[b] = { band: b, N: 0, tested: 0, k: 0, f: 0, u: 0 };
+      var d = map[b];
+      d.N++;
+      if (s === 2) { d.k++; d.tested++; } else if (s === 1) { d.f++; d.tested++; } else if (s === 0) { d.u++; d.tested++; }
+    }
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    rows.sort(function (a, b) { return freqRank(a.band) - freqRank(b.band); });
+    rows.forEach(function (r) {
+      r.score = r.k + 0.5 * r.f;
+      r.ratio = r.N ? r.score / r.N : 0;
+      r.deficit = Math.max(0, Math.round(r.N - r.score));      // 还差多少"词"才算这段全掌握
+      r.name = A.BAND_NAMES[r.band] || ('频段 ' + r.band);
+    });
+    return rows;
+  }
+  A.censusBands = censusBands;
+
+  /* 完整检测报告的完整数据模型。一处算完，视图只负责排版，
+     这样以后要接 AI 或导出 PDF 都不用重算。 */
+  A.levelReport = function () {
+    var pool = activePool();
+    var t = tally(pool);
+    var total = t.total || 1;
+    var loose = t.k + 0.5 * t.f;
+    var strict = t.k;
+    var ratio = loose / total;
+    var byRatio = rankAt(ratio);
+
+    var bands = censusBands(pool);
+    /* 地基约束：最高频 1k 段掌握率太低就封顶（见 A.RANK_CAPS） */
+    var topBand = null;
+    for (var bi = 0; bi < bands.length; bi++) if (bands[bi].band === 1) { topBand = bands[bi]; break; }
+    var cap = null;
+    if (topBand && topBand.N > 0) {
+      for (var ci = 0; ci < A.RANK_CAPS.length; ci++) {
+        if (topBand.ratio < A.RANK_CAPS[ci].below) { cap = rankByKey(A.RANK_CAPS[ci].cap); break; }
+      }
+    }
+    var rank = byRatio;
+    if (cap && A.RANKS.indexOf(cap) > A.RANKS.indexOf(byRatio)) rank = cap;
+
+    var ri = A.RANKS.indexOf(rank);
+    var nextRank = ri > 0 ? A.RANKS[ri - 1] : null;
+    var toNext = nextRank ? Math.max(0, Math.ceil(nextRank.min * total - loose)) : 0;
+    var coverage = t.tested / total;
+
+    /* 提升优先级不能只看"哪段缺得多"。一个词的价值大致和它出现的频率成正比，
+       10k-20k 段缺 423 词，但那些词你可能一年也遇不到几次；
+       最高频段缺 13 词，却每次阅读都会撞上。所以按「缺口 × 词频权重」排序，
+       权重大致取该段词频中位数的倒数（以最高频 1k 段 = 1 归一化）。 */
+    var BAND_W = { 1: 1, 2: 0.33, 3: 0.20, 4: 0.125, 5: 0.067, 6: 0.033, 0: 0.02 };
+    var gainTop = bands.filter(function (r) { return r.deficit > 0; })
+      .map(function (r) {
+        r.w = BAND_W[r.band] === undefined ? 0.1 : BAND_W[r.band];
+        r.gain = r.deficit * r.w;
+        return r;
+      })
+      .sort(function (a, b) { return b.gain - a.gain; })
+      .slice(0, 3);
+    // 缺口绝对值最大的三段，作为"想快速涨数字"的另一视角
+    var deficitTop = bands.filter(function (r) { return r.deficit > 0; })
+      .slice().sort(function (a, b) { return b.deficit - a.deficit; }).slice(0, 3);
+    // 地基漏洞：最高频 2k 段里还不认识/模糊的词，最影响阅读速度
+    var baseRows = bands.filter(function (r) { return freqRank(r.band) <= 2; });
+    var baseGap = baseRows.reduce(function (s, r) { return s + Math.round(r.deficit); }, 0);
+
+    var knownish = t.k + t.f;
+    return {
+      bank: { key: bankKey(), name: A.bankName(), size: total },
+      ready: coverage >= 0.95,                 // 与全站估算口径一致：覆盖 95% 以上按实测
+      coverage: coverage,
+      tested: t.tested, total: total, remaining: total - t.tested,
+      k: t.k, f: t.f, u: t.u,
+      loose: Math.round(loose), strict: strict,
+      ratio: ratio,
+      rank: rank, rankByRatio: byRatio, cap: cap, capBandRatio: topBand ? topBand.ratio : null,
+      nextRank: nextRank, toNext: toNext,
+      bands: bands, gainTop: gainTop, deficitTop: deficitTop, baseGap: baseGap,
+      fuzzyShare: knownish ? t.f / knownish : 0,   // 「有印象」里有多少是不确定的
+      refs: A.RANK_REFS,
+      perDay: 50
+    };
+  };
+
 
   /* ---------- 例句（来自 Tatoeba 英中对照语料，构建期内联） ---------- */
   function examplesOf(word) {
@@ -539,6 +867,7 @@
     else if (route === 'test') html = A.viewTest();
     else if (route === 'result') html = A.viewResult();
     else if (route === 'stats') html = A.viewStats();
+    else if (route === 'report') html = A.viewReport ? A.viewReport() : '';
     else if (route === 'settings') html = A.viewSettings();
     var banner = A.storageBroken
       ? '<div class="card" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-size:13px;line-height:1.7">' +
@@ -548,16 +877,22 @@
     v.innerHTML = banner + html;
     if (A.afterRender) A.afterRender();
     if (A.renderPet) { try { A.renderPet(); } catch (e) { /* 助手只是锦上添花，不能影响主流程 */ } }
+    if (A.renderMail) { try { A.renderMail(); } catch (e) { /* 信封同理，出错也不能挡住页面 */ } }
+    if (A.renderRail) { try { A.renderRail(); } catch (e) { /* 两侧信息栏，出错了页面照常 */ } }
     if (motionArmed) { motionArmed = false; playMotion(v); }
     // 顶栏与底部导航
     var t = tally(activePool());
     el('tbStat').textContent = A.bankName() + ' · ' + (t.tested ? ('已测 ' + t.tested + ' / ' + t.total) : (t.total + ' 词'));
-    var navKey = route === 'groups' ? 'test' : route;
+    // 高亮跟着当前路由走。这里曾经把 groups 映射成 test，
+    // 于是停在「分组」页时底部亮的却是「检测」——导航明明有独立的分组按钮，就该亮它。
+    var navKey = route;
     var btns = document.querySelectorAll('.nav button');
     for (var i = 0; i < btns.length; i++) {
       var on = btns[i].getAttribute('data-nav') === navKey;
       btns[i].className = on ? 'on' : '';
     }
+    // 视效层跟着渲染更新（导航滑块 / 报告徽章高光）；失败也不能影响主流程
+    if (A.fxUpdate) { try { A.fxUpdate(); } catch (e) {} }
   };
 
   /* ---------- 词库切换器 ---------- */
@@ -612,7 +947,15 @@
     }
 
     var h = '';
-    h += A.bankSwitch();
+    h += '<div class="home-toprow">' + A.bankSwitch();
+    if (A.roundNo() > 1) {
+      h += '<span class="round-badge" title="当前是第 ' + A.roundNo() + ' 轮检测">第 ' + A.roundNo() + ' 轮</span>';
+    }
+    // 完成整库检测后才出现：多轮对比要两轮都测完才有意义
+    if (A.canRetest()) {
+      h += '<button class="btn retest-btn" data-act="new-round">重新测试 · 开始第 ' + (A.roundNo() + 1) + ' 轮</button>';
+    }
+    h += '</div>';
     if (es.kind === 'none') {
       /* 第一次打开时，屏幕上应该是"点哪里"，而不是术语。
          主路径只留一条（快速摸底），第二条是"想更准"的可选项。 */
@@ -622,7 +965,7 @@
       h += '<p>按词频分层随机抽题，测完给你一个<b>带误差范围</b>的数字，以及各频段的强弱分布。</p>';
       if (t.tested) h += '<p class="hero-note">你已测过 ' + t.tested + ' 词（来自分组检测）——那不是随机抽样，算不出词汇量，补一次摸底就行。</p>';
       h += '<div class="hero-cta">' +
-        '<button class="btn primary lg" data-act="start" data-kind="probe" data-target="400">快速摸底 · 约 ' + nFast + ' 题 · ' + minsText(nFast) + '</button>' +
+        '<button class="btn primary lg fx-shine fx-magnet" data-act="start" data-kind="probe" data-target="400">快速摸底 · 约 ' + nFast + ' 题 · ' + minsText(nFast) + '</button>' +
         '<button class="btn lg outline-light" data-act="start" data-kind="probe" data-target="250">更准一点 · 约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>' +
         '</div>';
       h += '<p class="hero-note">中途随时可以停，做题记录会保留；下次打开接着测。</p>';

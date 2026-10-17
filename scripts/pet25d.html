@@ -1,44 +1,430 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>2.5D 原型</title>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2.5D 形象原型 v2 · 全身立绘</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#EDF0F6;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
-#stage{position:absolute;inset:0;display:grid;place-items:end center;perspective:900px;perspective-origin:50% 45%}
-#glow{position:absolute;left:50%;top:46%;width:420px;height:420px;margin:-210px 0 0 -210px;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(42,91,224,.16),rgba(42,91,224,0) 70%);pointer-events:none}
-#shadow{position:absolute;left:50%;bottom:86px;width:250px;height:34px;margin-left:-125px;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(16,19,25,.26),rgba(16,19,25,0));pointer-events:none;
-  transform:translateX(var(--shx,0)) scale(var(--shs,1))}
-#hero{position:relative;width:340px;height:340px;margin-bottom:70px;
+:root{
+  --art: 300px;              /* 立绘显示边长 */
+  --ground: #E7EBF3;
+  --ink: #101319;
+  --trim: 0px;               /* 立绘底部空白补偿，运行时按 alpha 包围盒算出 */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:
+  radial-gradient(120% 90% at 50% 8%, #FFFFFF 0%, #F2F5FA 42%, #E4E9F2 100%);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--ink)}
+body.dark{background:radial-gradient(120% 90% at 50% 8%, #232A3A 0%, #171C28 45%, #10131A 100%);
+  --ground:#0C0F15;color:#E8EDF6}
+
+#stage{position:absolute;inset:0;overflow:hidden}
+
+/* ---------- 地面：一层柔光 + 两层投影 + 倒影 ---------- */
+#groundGlow{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+#groundGlow::after{content:"";position:absolute;left:50%;top:50%;width:520px;height:180px;
+  transform:translate(-50%,-30%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(42,91,224,.13),rgba(42,91,224,0) 72%);
+  filter:blur(6px)}
+body.dark #groundGlow::after{background:radial-gradient(closest-side,rgba(110,160,255,.16),rgba(42,91,224,0) 72%)}
+
+/* ---------- 宠物本体 ---------- */
+#pet{position:absolute;left:0;top:0;width:var(--art);height:var(--art);
+  transform:translate3d(var(--px,0px),var(--py,0px),0);will-change:transform}
+#pet.hide-tilt #figure{--tx:0deg;--ty:0deg}
+
+/* 倒影：从脚底那条线往下镜像，越远越淡 */
+#reflect{position:absolute;left:0;top:100%;width:100%;height:96px;overflow:hidden;
+  pointer-events:none;opacity:.20;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.9) 0%,rgba(0,0,0,.34) 38%,rgba(0,0,0,0) 76%);
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.9) 0%,rgba(0,0,0,.34) 38%,rgba(0,0,0,0) 76%);
+  filter:blur(1.2px) saturate(.8);
+  transition:opacity .3s}
+/* 镜像轴 = 脚底那条地面线：整体上移 art+trim，再绕自身底边翻下来，
+   翻完脚底正好落在地面线上（误差已被 trim 抵消） */
+#reflect img{position:absolute;left:0;top:calc(-1 * var(--art) - var(--trim));
+  width:100%;height:var(--art);object-fit:contain;
+  transform:scaleY(-1);transform-origin:50% 100%}
+#pet.hide-reflect #reflect{opacity:0}
+body.dark #reflect{opacity:.24;filter:blur(1.8px) saturate(.7) brightness(.8)}
+
+/* 接触阴影：紧贴脚底的一小片，最暗 */
+#contact{position:absolute;left:50%;top:100%;width:132px;height:18px;
+  margin-left:-66px;margin-top:-9px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(16,19,25,.46),rgba(16,19,25,0) 78%);
+  transform:translateX(var(--sx,0px)) scale(var(--cs,1));
+  transition:opacity .3s;filter:blur(1px)}
+/* 环境阴影：更大更淡的一圈 */
+#ambient{position:absolute;left:50%;top:100%;width:238px;height:44px;
+  margin-left:-119px;margin-top:-20px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(16,19,25,.22),rgba(16,19,25,0) 76%);
+  transform:translateX(var(--ax,0px)) scale(var(--as,1));
+  transition:opacity .3s;filter:blur(4px)}
+body.dark #contact{background:radial-gradient(closest-side,rgba(0,0,0,.62),rgba(0,0,0,0) 78%)}
+body.dark #ambient{background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,0) 76%)}
+#pet.hide-shadow #contact,#pet.hide-shadow #ambient{opacity:0}
+
+/* 立绘：3D 透视倾斜，轴心在脚底 */
+#figure{position:absolute;left:0;top:0;width:100%;height:100%;
   transform-style:preserve-3d;
-  transform:rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));
-  transform-origin:50% 96%;transition:transform .25s cubic-bezier(.2,.7,.3,1)}
-#hero img{width:100%;height:100%;object-fit:contain;display:block;
-  filter:drop-shadow(0 18px 26px rgba(16,19,25,.18));animation:bob 4.2s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-#tag{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font:12px/1 ui-monospace,Consolas,monospace;color:#6B7280}
-</style></head><body>
+  transform:perspective(620px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg))
+    scale(var(--zoom,1)) translateY(var(--lift,0px));
+  transform-origin:50% 100%;will-change:transform}
+/* 落地挤压单独一层，免得和外层的透视变换抢同一个 transform */
+#squash{position:absolute;left:0;top:0;width:100%;height:100%;
+  transform-origin:50% 100%;will-change:transform}
+#figure img{position:absolute;left:0;top:var(--trim);width:100%;height:var(--art);
+  object-fit:contain;display:block;pointer-events:none;
+  filter:drop-shadow(0 10px 18px rgba(16,19,25,.16));
+  transition:opacity .26s ease}
+body.dark #figure img{filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
+/* 交叉淡入时的新图叠在上面 */
+#figure img.enter{opacity:0}
+
+/* 高光膜：跟着倾斜走的斜向反光，让平面立绘有"受光"的体积感 */
+#sheen{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;opacity:.55;
+  background:linear-gradient(var(--sang,118deg),rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 42%,
+    rgba(0,0,0,0) 62%,rgba(12,20,40,.35) 100%);
+  -webkit-mask-image:radial-gradient(60% 60% at 50% 45%,#000 40%,transparent 78%);
+  mask-image:radial-gradient(60% 60% at 50% 45%,#000 40%,transparent 78%)}
+#pet.hide-sheen #sheen{opacity:0}
+
+/* ---------- 控制面板 ---------- */
+#panel{position:absolute;left:16px;bottom:16px;z-index:20;display:flex;flex-wrap:wrap;
+  gap:6px;max-width:min(560px,calc(100vw - 32px));align-items:center;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(10px);
+  border:1px solid rgba(16,19,25,.08);border-radius:14px;padding:10px;
+  box-shadow:0 8px 26px rgba(16,19,25,.08)}
+body.dark #panel{background:rgba(24,29,40,.72);border-color:rgba(255,255,255,.1);
+  box-shadow:0 8px 26px rgba(0,0,0,.4)}
+#panel b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.5;
+  margin:0 4px 0 2px;font-weight:600}
+.chip{font:12px/1 inherit;padding:7px 11px;border-radius:9px;cursor:pointer;
+  border:1px solid rgba(16,19,25,.12);background:#fff;color:inherit;transition:.16s}
+.chip:hover{border-color:#2A5BE0;color:#2A5BE0}
+.chip.on{background:#2A5BE0;border-color:#2A5BE0;color:#fff}
+body.dark .chip{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+body.dark .chip:hover{border-color:#6EA0FF;color:#9DC0FF}
+body.dark .chip.on{background:#2A5BE0;border-color:#2A5BE0;color:#fff}
+#hint{position:absolute;right:16px;bottom:18px;z-index:20;font:11px/1.7 ui-monospace,Consolas,monospace;
+  color:rgba(16,19,25,.42);text-align:right}
+body.dark #hint{color:rgba(255,255,255,.38)}
+</style></head>
+<body>
 <div id="stage">
-  <div id="glow"></div>
-  <div id="shadow"></div>
-  <div id="hero"><img src="/assets/whale-art/dsh-whale-state-greet.webp" alt=""></div>
-  <div id="tag">鼠标移动看倾斜 · 全身立绘 512×512 透明底</div>
+  <div id="groundGlow"></div>
+  <div id="pet">
+    <div id="reflect"><img id="reflectArt" src="/assets/whale-art/dsh-whale-state-idle-cute.webp" alt=""></div>
+    <div id="ambient"></div>
+    <div id="contact"></div>
+    <div id="figure"><div id="squash">
+      <img id="art" src="/assets/whale-art/dsh-whale-state-idle-cute.webp" alt="">
+      <div id="sheen"></div>
+    </div></div>
+  </div>
 </div>
+
+<div id="panel">
+  <b>状态</b>
+  <button class="chip on" data-state="idle">待机</button>
+  <button class="chip" data-state="greet">打招呼</button>
+  <button class="chip" data-state="think">思考</button>
+  <button class="chip" data-state="happy">庆祝</button>
+  <button class="chip" data-state="praise">升级</button>
+  <button class="chip" data-state="warn">疑惑</button>
+  <button class="chip" data-state="sad">难过</button>
+  <button class="chip" data-state="angry">生气</button>
+  <button class="chip" data-state="sleep">挂机</button>
+  <b>层次</b>
+  <button class="chip on" data-toggle="tilt">透视</button>
+  <button class="chip on" data-toggle="shadow">投影</button>
+  <button class="chip on" data-toggle="reflect">倒影</button>
+  <button class="chip on" data-toggle="sheen">受光</button>
+  <button class="chip" data-toggle="dark">暗色</button>
+</div>
+<div id="hint">鼠标移动看透视倾斜 · 拖拽可搬走并落地<br>全身立绘 512×512 透明底 · MIT</div>
+
 <script>
-(function(){
-  var hero=document.getElementById('hero'), sh=document.getElementById('shadow');
-  var qx=0,qy=0,tx=0,ty=0;
-  document.addEventListener('pointermove',function(e){
-    qx=(e.clientX/window.innerWidth-0.5)*2;
-    qy=(e.clientY/window.innerHeight-0.5)*2;
-    qx=Math.max(-1,Math.min(1,qx)); qy=Math.max(-1,Math.min(1,qy));
-  });
-  (function loop(){
-    tx+=(-qy*9-tx)*0.10; ty+=(qx*13-ty)*0.10;
-    hero.style.setProperty('--tx',tx.toFixed(2)+'deg');
-    hero.style.setProperty('--ty',ty.toFixed(2)+'deg');
-    sh.style.setProperty('--shx',(qx*-22).toFixed(0)+'px');
-    sh.style.setProperty('--shs',(1-Math.abs(qy)*0.15).toFixed(3));
-    requestAnimationFrame(loop);
+(function () {
+  'use strict';
+  var A = '/assets/whale-art/dsh-whale-state-';
+  var STATE = {
+    idle: 'idle-cute', greet: 'greet', think: 'curious', happy: 'celebrate',
+    praise: 'levelup', warn: 'meme-doubt', sad: 'meme-cry', angry: 'angry',
+    sleep: 'afk', earn: 'achievement', fail: 'failure'
+  };
+  // 状态缺失时的回退链（拉不全素材也不会留空）
+  var FALLBACK = ['idle-cute', 'greet', 'curious'];
+
+  var pet = document.getElementById('pet');
+  var fig = document.getElementById('figure');
+  var squashEl = document.getElementById('squash');
+  var art = document.getElementById('art');
+  var refArt = document.getElementById('reflectArt');
+  var sheen = document.getElementById('sheen');
+  var stage = document.getElementById('stage');
+
+  /* ---------- 用 alpha 包围盒对齐脚底 ---------- */
+  function measureBottom(src) {
+    return new Promise(function (res) {
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = im.naturalWidth; c.height = im.naturalHeight;
+          var x = c.getContext('2d');
+          x.drawImage(im, 0, 0);
+          var d = x.getImageData(0, 0, c.width, c.height).data;
+          var last = 0;
+          for (var y = c.height - 1; y >= 0; y--) {
+            for (var i = 0; i < c.width; i++) {
+              if (d[(y * c.width + i) * 4 + 3] > 10) { last = y; y = -1; break; }
+            }
+          }
+          res(1 - (last + 1) / c.height);       // 底部空白占比
+        } catch (e) { res(0); }
+      };
+      im.onerror = function () { res(0); };
+      im.src = src;
+    });
+  }
+
+  /* ---------- 交互状态 ---------- */
+  var P = { x: 0, y: 0, vx: 0, vy: 0, air: false, dragging: false };
+  var look = { x: 0, y: 0 };          // -1..1，鼠标归一化
+  var cur = { tx: 0, ty: 0, zoom: 1, lift: 0, cs: 1, as: 1, sx: 0, ax: 0, ang: 118 };
+  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0 };
+
+  var ART = 300;
+  (function initFromQuery() {
+    var q = new URLSearchParams(location.search);
+    if (q.get('art')) {
+      ART = parseFloat(q.get('art')) || ART;
+      document.documentElement.style.setProperty('--art', ART + 'px');
+    }
+    window.__wantDark = q.get('dark') === '1';
+    // 无头截图用：?look=x,y 直接给定视线，?state=key 直接切状态
+    if (q.get('look')) {
+      var lp = q.get('look').split(',');
+      look.x = +lp[0] || 0; look.y = +lp[1] || 0;
+    }
+    window.__wantState = q.get('state') || '';
   })();
+  function floorY() { return Math.round(stage.clientHeight * 0.70 - ART); }
+  function place() {
+    // 初始站在舞台中下方
+    P.x = Math.round(stage.clientWidth / 2 - ART / 2);
+    P.y = floorY();
+    applyPos();
+  }
+  function applyPos() {
+    pet.style.setProperty('--px', Math.round(P.x) + 'px');
+    pet.style.setProperty('--py', Math.round(P.y) + 'px');
+  }
+
+  /* ---------- 主循环：透视 / 阴影 / 呼吸 ---------- */
+  var lastT = 0, t0 = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    var dt = Math.min(48, now - (lastT || now)); lastT = now;
+    var t = (now - t0) / 1000;
+
+    // 拖拽/重力
+    if (P.dragging) {
+      /* 位置由 pointermove 直接给 */
+    } else if (P.air) {
+      P.vy += 0.0026 * dt * dt * 0.5;
+      P.y += P.vy * dt * 0.06;
+      var fy = floorY();
+      if (P.y >= fy) { P.y = fy; P.vy = 0; P.air = false; squash(0.14); }
+      applyPos();
+    }
+
+    // 呼吸：整只上下浮 3px，阴影反向补偿
+    var breath = Math.sin(t * 1.55) * 3.2;
+    // 走路时的左右小摆
+    var sway = Math.sin(t * 0.8) * 0.6;
+
+    var lift = Math.max(0, floorY() - P.y);
+    var kLift = Math.min(1, lift / 300);
+
+    // 目标值：转向幅度给足才有立体感，透视会把画面压小，顺手补一点缩放回来
+    var ttx = -look.y * 10;
+    var tty = look.x * 16;
+    var tzoom = 1 + Math.abs(tty) / 260;
+    var tcs = (1 - kLift * 0.55) * (1 + Math.abs(look.y) * 0.06);
+    var tas = (1 - kLift * 0.42) * (1 + Math.abs(look.y) * 0.05);
+
+    // 缓动
+    cur.tx += (ttx - cur.tx) * 0.10;
+    cur.ty += (tty - cur.ty) * 0.10;
+    cur.zoom += (tzoom - cur.zoom) * 0.10;
+    cur.cs += (tcs - cur.cs) * 0.12;
+    cur.as += (tas - cur.as) * 0.12;
+
+    fig.style.setProperty('--tx', cur.tx.toFixed(2) + 'deg');
+    fig.style.setProperty('--ty', cur.ty.toFixed(2) + 'deg');
+    fig.style.setProperty('--zoom', cur.zoom.toFixed(4));
+    fig.style.setProperty('--lift', (breath - lift).toFixed(2) + 'px');
+
+    // 阴影跟着倾斜反向横移，跟着离地缩一圈
+    var sx = -cur.ty * 1.5;
+    var ax = -cur.ty * 2.4;
+    pet.style.setProperty('--sx', sx.toFixed(1) + 'px');
+    pet.style.setProperty('--ax', ax.toFixed(1) + 'px');
+    pet.style.setProperty('--cs', cur.cs.toFixed(3));
+    pet.style.setProperty('--as', cur.as.toFixed(3));
+    // 呼吸时影子轻微呼吸，二者反相才有"贴着地"的感觉
+    var contact = document.getElementById('contact');
+    var ambient = document.getElementById('ambient');
+    contact.style.opacity = (0.92 - kLift * 0.6).toFixed(2);
+    ambient.style.opacity = (0.9 - kLift * 0.5).toFixed(2);
+    contact.style.marginTop = (-9 - breath * 0.35).toFixed(1) + 'px';
+    ambient.style.marginTop = (-20 - breath * 0.25).toFixed(1) + 'px';
+    // 投影的横向位置也要跟着呼吸微动，避免"影子和人脱钩"
+    pet.style.setProperty('--sx', (sx + breath * 0.25).toFixed(1) + 'px');
+
+    // 受光角度：光从左上来，人往右转时亮面跟着走
+    var ang = 118 + cur.ty * 2.2 - cur.tx * 1.4;
+    sheen.style.setProperty('--sang', ang.toFixed(1) + 'deg');
+
+    // 倒影跟着倾斜偏移一点，增强立体
+    refArt.style.transform = 'scaleY(-1) translateX(' + (-cur.ty * 0.9).toFixed(2) + '%)';
+  }
+
+  var squashTimer = null;
+  function squash(v) {
+    // 落地挤压：整体压扁一下再弹回
+    squashEl.animate(
+      [{ transform: 'scale(1,1)' }, { transform: 'scale(1.07,' + (1 - v) + ')' }, { transform: 'scale(1,1)' }],
+      { duration: 430, easing: 'cubic-bezier(.3,1.5,.5,1)' }
+    );
+  }
+
+  /* ---------- 鼠标看视角 ---------- */
+  document.addEventListener('pointermove', function (e) {
+    if (drag.on) return;
+    look.x = Math.max(-1, Math.min(1, (e.clientX / window.innerWidth - 0.5) * 2));
+    look.y = Math.max(-1, Math.min(1, (e.clientY / window.innerHeight - 0.5) * 2));
+  }, { passive: true });
+
+  /* ---------- 拖拽 + 落地 ---------- */
+  fig.style.pointerEvents = 'none';
+  pet.style.touchAction = 'none';
+  art.style.pointerEvents = 'none';
+  // 用整只 pet 接事件（立绘是透明的，靠容器命中就行）
+  pet.style.pointerEvents = 'auto';
+  pet.style.cursor = 'grab';
+
+  pet.addEventListener('pointerdown', function (e) {
+    drag.on = true; P.dragging = true; P.air = false;
+    drag.sx = e.clientX; drag.sy = e.clientY;
+    drag.ox = P.x; drag.oy = P.y;
+    pet.style.cursor = 'grabbing';
+    try { pet.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  pet.addEventListener('pointermove', function (e) {
+    if (!drag.on) return;
+    P.x = drag.ox + (e.clientX - drag.sx);
+    P.y = drag.oy + (e.clientY - drag.sy);
+    applyPos();
+  });
+  function endDrag() {
+    if (!drag.on) return;
+    drag.on = false; P.dragging = false;
+    pet.style.cursor = 'grab';
+    if (P.y < floorY() - 2) { P.vy = 0; P.air = true; } else { P.y = floorY(); applyPos(); }
+    // 松手后回到待机视角
+    look.x *= 0.35; look.y *= 0.35;
+  }
+  pet.addEventListener('pointerup', endDrag);
+  pet.addEventListener('pointercancel', endDrag);
+
+  /* ---------- 状态切换：交叉淡入 ---------- */
+  var stateName = 'idle';
+  function setState(key) {
+    stateName = key;
+    var name = STATE[key] || STATE.idle;
+    loadArt(name, 0).then(function (ok) {
+      if (!ok) return tryFallback(name, 0);
+    });
+  }
+  function tryFallback(name, i) {
+    if (i >= FALLBACK.length) return;
+    if (FALLBACK[i] === name) return tryFallback(name, i + 1);
+    loadArt(FALLBACK[i], 0).then(function (ok) { if (!ok) tryFallback(name, i + 1); });
+  }
+  function loadArt(name, attempt) {
+    var url = A + name + '.webp';
+    return new Promise(function (res) {
+      var probe = new Image();
+      probe.onload = function () {
+        var next = document.createElement('img');
+        next.className = 'enter';
+        next.src = url;
+        next.alt = '';
+        squashEl.insertBefore(next, sheen);
+        // 双 rAF 保证初始 opacity:0 生效后再过渡
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            next.style.opacity = '1';
+            art.style.opacity = '0';
+            refArt.src = url;
+          });
+        });
+        setTimeout(function () {
+          // 旧图退场，新图转正
+          var old = art;
+          old.remove();
+          next.id = 'art'; next.className = '';
+          art = next;
+        }, 300);
+        res(true);
+      };
+      probe.onerror = function () { res(false); };
+      probe.src = url;
+    });
+  }
+
+  /* ---------- 面板 ---------- */
+  document.getElementById('panel').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    if (b.dataset.state) {
+      Array.prototype.forEach.call(this.querySelectorAll('[data-state]'), function (x) {
+        x.classList.toggle('on', x === b);
+      });
+      setState(b.dataset.state);
+    } else if (b.dataset.toggle) {
+      var k = b.dataset.toggle;
+      b.classList.toggle('on');
+      if (k === 'dark') { document.body.classList.toggle('dark'); return; }
+      pet.classList.toggle('hide-' + k, !b.classList.contains('on'));
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    P.x = Math.min(P.x, stage.clientWidth - ART);
+    P.y = Math.min(P.y, floorY());
+    applyPos();
+  });
+
+  /* ---------- 启动 ---------- */
+  measureBottom(A + STATE.idle + '.webp').then(function (pad) {
+    // 底部空白占比 → 换算成像素补偿，让脚底踩在地面线上
+    document.documentElement.style.setProperty('--trim', Math.round(pad * ART) + 'px');
+    place();
+    requestAnimationFrame(loop);
+    if (window.__wantDark) {
+      var dbtn = document.querySelector('[data-toggle="dark"]');
+      if (dbtn) dbtn.click();
+    }
+    // 初始 img 已经是待机立绘，不用再走一次交叉淡入
+    if (window.__wantState && window.__wantState !== 'idle') {
+      var btn = document.querySelector('[data-state="' + window.__wantState + '"]');
+      if (btn) btn.click();
+      // 等交叉淡入 + 传参过渡收敛再放行，否则无头截图会拍到半截
+      setTimeout(function () { window.__ready = true; }, 900);
+    } else {
+      window.__ready = true;
+    }
+  });
 })();
 </script></body></html>
