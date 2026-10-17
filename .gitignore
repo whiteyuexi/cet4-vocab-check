@@ -16,6 +16,10 @@ shots/*.pdf
 data/*
 !data/README.md
 
+# 第三方立绘：授权为 MIT，但体积大，用 npm run art:fetch 重新拉取
+assets/whale-art/
+assets/whale-sprite/
+
 # 杂项
 *.log
 .DS_Store

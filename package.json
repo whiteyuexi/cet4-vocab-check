@@ -10,6 +10,8 @@
     "server": "node server/index.mjs",
     "data": "node scripts/fetch-data.mjs && node build-data.js",
     "pet:fetch": "node scripts/fetch-live2d.mjs",
+    "art:fetch": "node scripts/fetch-whale-art.mjs",
+    "art:sprite": "node scripts/make-whale-sprites.mjs",
     "build": "node build.js",
     "test": "node smoke-test.js",
     "test:browser": "node btest.js",
