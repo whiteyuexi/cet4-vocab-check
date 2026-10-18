@@ -647,6 +647,40 @@ html[data-theme="dark"] .nav-pill{border-color:rgba(127,164,255,.3);
 
 
 /* ==========================================================================
+   词汇地图
+   纵轴词频段 × 横轴首字母。颜色＝掌握率，浓淡＝这一格测过多少。
+   「一片浅色」= 整块没测、「深红」= 都测过且都不会。格子可点，直接复测那一块。
+   ========================================================================== */
+.vmap{display:flex;flex-direction:column;gap:3px;overflow-x:auto;padding:2px 0 6px}
+.vmap-row{display:grid;grid-template-columns:82px repeat(26,1fr);gap:3px;align-items:center;min-width:560px}
+.vmap-head .vmap-lt{font:10px/1 var(--mono);color:var(--ink3);text-align:center;letter-spacing:0}
+.vmap-lbl{font:10.5px/1.2 var(--mono);color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmap-c{position:relative;aspect-ratio:1/1;width:100%;padding:0;border-radius:4px;
+  border:1px solid var(--line);background:transparent;cursor:pointer;
+  transition:transform .14s cubic-bezier(.2,.7,.3,1),box-shadow .14s}
+.vmap-c.ok{background:rgba(10,107,74,var(--fa,.5));border-color:rgba(10,107,74,.34)}
+.vmap-c.warn{background:rgba(138,90,16,var(--fa,.5));border-color:rgba(138,90,16,.34)}
+.vmap-c.bad{background:rgba(176,46,34,var(--fa,.5));border-color:rgba(176,46,34,.34)}
+.vmap-c.none{background:transparent;border-style:dashed;border-color:var(--line2)}
+.vmap-c.empty{background:transparent;border-color:transparent;cursor:default}
+.vmap-c:hover{transform:scale(1.4);box-shadow:0 8px 16px -8px rgba(16,19,25,.55);z-index:3}
+.vmap-c:focus-visible{transform:scale(1.4);z-index:3;outline:2px solid var(--accent);outline-offset:1px}
+html[data-theme="dark"] .vmap-c.ok{background:rgba(95,207,155,var(--fa,.5));border-color:rgba(95,207,155,.3)}
+html[data-theme="dark"] .vmap-c.warn{background:rgba(224,177,92,var(--fa,.5));border-color:rgba(224,177,92,.3)}
+html[data-theme="dark"] .vmap-c.bad{background:rgba(240,138,124,var(--fa,.5));border-color:rgba(240,138,124,.3)}
+
+.vmap-legend{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:14px;font-size:11.5px;color:var(--ink3)}
+.vmap-legend span{display:flex;align-items:center;gap:6px}
+.vmap-legend i{display:block;width:11px;height:11px;border-radius:3px}
+.vmap-legend i.ok{background:var(--ok)}
+.vmap-legend i.warn{background:var(--warn)}
+.vmap-legend i.bad{background:var(--bad)}
+.vmap-legend i.none{background:transparent;border:1px dashed var(--line2)}
+.vmap-hint{margin-left:auto;font-family:var(--mono);font-size:10.5px;opacity:.85}
+.vmap-sum{margin-top:12px;line-height:1.85}
+.vmap-sum b{color:var(--ink)}
+
+/* ==========================================================================
    词汇等级评估报告
    ========================================================================== */
 /* 一个 --rk 变量驱动整套色调，三级等级各自覆盖 */
@@ -1369,6 +1403,88 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
     }
     rows.sort(function (x, y) { return x.band - y.band; });
     return { rows: rows, source: 'tested', n: pool.filter(function (i) { return A.getSt(i) !== undefined; }).length };
+  };
+
+  /* ================= 词汇地图 =================
+     把「我到底哪儿是空的」变成一眼能看见的东西：
+     纵轴是词频段（越靠上越常用），横轴是首字母，每格是这个交叉点上的掌握率。
+       颜色 = 掌握程度（绿 / 黄 / 红）
+       颜色的浓淡 = 这一格被测过多少
+     所以「一片浅色」= 整块没测过，「深红」= 都测过且都不会。
+     点任意一格可以直接复测那一块 —— 地图不只是张图，是入口。 */
+  A.MAP_BANDS = [1, 2, 3, 4, 5, 6, 0];        // 展示顺序：最高频压顶，20k 以外垫底
+  A.MAP_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  A.vocabMap = function () {
+    var pool = activePool();
+    var cell = {};
+    A.MAP_BANDS.forEach(function (b) {
+      A.MAP_LETTERS.forEach(function (L) {
+        cell[b + '|' + L] = { band: b, letter: L, N: 0, tested: 0, k: 0, f: 0, u: 0 };
+      });
+    });
+    for (var n = 0; n < pool.length; n++) {
+      var i = pool[n], w = WORDS[i];
+      var L = String(w.w).charAt(0).toUpperCase();
+      if (L < 'A' || L > 'Z') continue;        // 非字母开头的不进网格，避免撑破 26 列
+      var c = cell[A.bandOf(i) + '|' + L];
+      if (!c) continue;
+      c.N++;
+      var s = A.getSt(i);
+      if (s === 2) { c.k++; c.tested++; }
+      else if (s === 1) { c.f++; c.tested++; }
+      else if (s === 0) { c.u++; c.tested++; }
+    }
+
+    var rows = [], hot = [], untestedCells = 0, testedCells = 0, cellsWithWords = 0;
+    A.MAP_BANDS.forEach(function (b) {
+      var bandName = A.BAND_NAMES[b] || ('频段 ' + b);
+      var cells = A.MAP_LETTERS.map(function (L) {
+        var c = cell[b + '|' + L];
+        c.name = bandName;                      // 格子自己要带段名，否则「洞口最大的三块」会只显示字母
+        c.score = c.k + 0.5 * c.f;              // 与全站口径一致：模糊算一半
+        c.ratio = c.N ? c.score / c.N : 0;
+        /* 「缺口」和「没测过」是两件事，必须分开：
+             gap      = 测过但没掌握的词（这是真正的洞，值得优先补）
+             untested = 压根没测过的词（这是"未知"，不构成结论）
+           混在一起会把"整块没测"说成"缺口最大"，那是误导。 */
+        c.gap = Math.max(0, Math.round(c.tested - c.score));
+        c.untested = Math.max(0, c.N - c.tested);
+        c.deficit = Math.max(0, Math.round(c.N - c.score));
+        if (c.N) cellsWithWords++;
+        if (c.N && !c.tested) untestedCells++;
+        if (c.tested) testedCells++;
+        if (c.tested > 0 && c.gap > 0) hot.push(c);
+        return c;
+      });
+      rows.push({ band: b, name: bandName, cells: cells });
+    });
+    hot.sort(function (a, b) { return b.gap - a.gap; });
+
+    return {
+      rows: rows, letters: A.MAP_LETTERS,
+      testedCells: testedCells, untestedCells: untestedCells, cellsWithWords: cellsWithWords,
+      hot: hot.slice(0, 3)
+    };
+  };
+
+  /* 某格里的「缺口词」（未测 + 模糊 + 不认识），给地图的「点一下复测」用 */
+  A.mapCellWords = function (band, letter) {
+    var out = [], pool = activePool();
+    for (var n = 0; n < pool.length; n++) {
+      var i = pool[n];
+      if (A.bandOf(i) !== band) continue;
+      if (String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
+      var s = A.getSt(i);
+      if (s === undefined || s === 0 || s === 1) out.push(i);
+    }
+    return out;
+  };
+
+  /* 整库范围内「还没测过」的词 —— 地图上那片浅色区域的合计 */
+  A.untestedWords = function () {
+    var out = [], pool = activePool();
+    for (var n = 0; n < pool.length; n++) if (A.getSt(pool[n]) === undefined) out.push(pool[n]);
+    return out;
   };
 
   /* 用当前会话的作答实时算出分层估计（探测模式边测边用） */
@@ -2694,6 +2810,77 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
     return h;
   };
 
+  /* ---------- 词汇地图 ----------
+     纵轴词频段 × 横轴首字母，颜色＝掌握率、浓淡＝测过多少。
+     一眼看出「整块没测」和「整块不会」，点格子直接复测那一块。 */
+  A.vocabMapHTML = function () {
+    var M = A.vocabMap();
+    var t = A.tally(A.activePool());
+    var h = '';
+    h += '<div class="sec-title">词汇地图<span class="line"></span><span class="tiny">' +
+      '纵轴越靠上越常用 · 点格子可复测那一块</span></div>';
+    h += '<div class="card vmap-card">';
+
+    if (!t.tested) {
+      h += '<div class="tiny">还没有已测词。做一次摸底，这张地图就会亮起来——' +
+        '哪块是空的、哪块测过还不会，一眼就能看见。</div></div>';
+      return h;
+    }
+
+    // 表头：A–Z
+    h += '<div class="vmap">';
+    h += '<div class="vmap-row vmap-head"><span class="vmap-lbl"></span>';
+    M.letters.forEach(function (L) { h += '<span class="vmap-lt">' + L + '</span>'; });
+    h += '</div>';
+
+    M.rows.forEach(function (row) {
+      h += '<div class="vmap-row"><span class="vmap-lbl" title="' + esc(row.name) + '">' + esc(row.name) + '</span>';
+      row.cells.forEach(function (c) {
+        if (!c.N) { h += '<span class="vmap-c empty"></span>'; return; }
+        var p = Math.round(c.ratio * 100);
+        var tone = p >= 80 ? 'ok' : p >= 50 ? 'warn' : 'bad';
+        // 浓度跟着"测过多少"走：没测过几乎是空的描边，测满了才是实色
+        var a = 0.14 + 0.78 * (c.tested / c.N);
+        h += '<button class="vmap-c ' + tone + (c.tested ? '' : ' none') + '"' +
+          ' style="--fa:' + a.toFixed(3) + '"' +
+          ' data-act="map-review" data-band="' + c.band + '" data-letter="' + c.letter + '"' +
+          ' title="' + esc(row.name + ' · ' + c.letter + '：共 ' + c.N + ' 词，已测 ' + c.tested +
+            '，认识 ' + c.k + '，模糊 ' + c.f + '，不认识 ' + c.u +
+            '，掌握率 ' + p + '%' + (c.untested ? '，未测 ' + c.untested + ' 词' : '')) + '">' +
+          '</button>';
+      });
+      h += '</div>';
+    });
+    h += '</div>';
+
+    h += '<div class="vmap-legend">' +
+      '<span><i class="ok"></i>掌握好</span>' +
+      '<span><i class="warn"></i>一般</span>' +
+      '<span><i class="bad"></i>有洞</span>' +
+      '<span><i class="none"></i>没测过</span>' +
+      '<span class="vmap-hint">颜色越浓 = 这一格测得越多</span>' +
+      '</div>';
+
+    // 结论：一眼看完还得有一句话总结。「没测过」和「测过还不会」分开说，别混成一句
+    var facts = [];
+    if (M.untestedCells) facts.push('还有 <b>' + M.untestedCells + '</b> 块一个词都没测过（虚线格）');
+    if (M.hot.length) {
+      facts.push('测过的里面洞口最大的三块是 ' + M.hot.map(function (c) {
+        return '<b>' + esc(c.name) + ' · ' + c.letter + '</b>（测过还缺 ' + c.gap + ' 词）';
+      }).join('、') + '，点一下就能复测');
+    } else if (M.testedCells) {
+      facts.push('已经测过的块里没有明显的洞');
+    }
+    if (facts.length) h += '<div class="tiny vmap-sum">' + facts.join('；') + '。</div>';
+
+    h += '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">' +
+      '<button class="btn sm primary" data-act="map-review" data-band="all" data-letter="all">复测全部没测过的词</button>' +
+      '</div>';
+
+    h += '</div>';
+    return h;
+  };
+
   /* ---------- 总览统计 ---------- */
   A.viewStats = function () {
     var pool = A.activePool();
@@ -2741,44 +2928,8 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
     h += '</div>';
 
     h += A.bandProfileHTML();
+    h += A.vocabMapHTML();
 
-    // 按首字母
-    var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    var data = {}, max = 1;
-    letters.forEach(function (L) { data[L] = { k: 0, f: 0, u: 0, t: 0 }; });
-    pool.forEach(function (i) {
-      var s = A.getSt(i);
-      if (s === undefined) return;
-      var L = A.WORDS[i].w[0].toUpperCase();
-      if (!data[L]) return;
-      data[L].t++;
-      if (s === 2) data[L].k++; else if (s === 1) data[L].f++; else data[L].u++;
-    });
-    letters.forEach(function (L) { if (data[L].t > max) max = data[L].t; });
-    var anyTested = t.tested > 0;
-    h += '<div class="sec-title">按首字母的掌握分布<span class="line"></span></div>';
-    h += '<div class="card">';
-    if (!anyTested) h += '<div class="tiny">还没有已测词，先去做一次检测。</div>';
-    else {
-      h += '<div class="bars">';
-      letters.forEach(function (L) {
-        var d = data[L];
-        h += '<div class="barcol" title="' + L + '：认识 ' + d.k + ' / 模糊 ' + d.f + ' / 不认识 ' + d.u + '">' +
-          '<div class="stack">' +
-          '<i style="height:' + (d.u / max * 100) + '%;background:var(--bad)"></i>' +
-          '<i style="height:' + (d.f / max * 100) + '%;background:var(--warn)"></i>' +
-          '<i style="height:' + (d.k / max * 100) + '%;background:var(--ok)"></i>' +
-          '</div><span>' + L + '</span></div>';
-      });
-      h += '</div>';
-      h += '<div class="legend"><span><i style="background:var(--ok)"></i>认识</span><span><i style="background:var(--warn)"></i>模糊</span><span><i style="background:var(--bad)"></i>不认识</span></div>';
-      var worst = letters.filter(function (L) { return data[L].t >= 10; })
-        .sort(function (a, b) { return (data[a].k / data[a].t) - (data[b].k / data[b].t); }).slice(0, 4);
-      if (worst.length) h += '<div class="tiny" style="margin-top:10px">掌握率最低的字母段：<b>' + worst.join('、') +
-        '</b>。这一项按首字母统计，<b>和你测到第几组无关</b>；如果低的全挤在开头几个字母，' +
-        '通常说明当初是照着字母表背的、没走到底——那部分要回头补。</div>';
-    }
-    h += '</div>';
 
     // 历史
     if (A.aiCardHTML) h += A.aiCardHTML();
@@ -3006,6 +3157,20 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
           var lg = S.lastResult ? S.lastResult.log : [];
           for (var i = 0; i < lg.length; i++) if (lg[i].v !== 2) weak.push(lg[i].i);
           A.startSession('list', { list: weak, label: '复测本次未掌握词 · ' + weak.length + ' 词' });
+          break;
+        case 'map-review':
+          var mb = t.getAttribute('data-band'), ml = t.getAttribute('data-letter');
+          var mlist = (mb === 'all' && ml === 'all')
+            ? (A.untestedWords ? A.untestedWords() : [])
+            : A.mapCellWords(+mb, ml);
+          if (!mlist.length) { A.toast('这块没有需要复测的词'); break; }
+          var mcap = 400;
+          var mtake = mlist.slice(0, mcap);
+          A.startSession('list', {
+            list: mtake,
+            label: (mb === 'all' ? '复测全部未测词' : ('复测 ' + (A.BAND_NAMES[+mb] || '') + ' · ' + ml + ' 块')) +
+              ' · ' + mtake.length + ' 词' + (mlist.length > mcap ? '（共 ' + mlist.length + '，先测前 ' + mcap + '）' : '')
+          });
           break;
         case 'export-csv': A.exportCSV(); break;
         case 'new-round':

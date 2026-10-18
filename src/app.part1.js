@@ -367,6 +367,88 @@
     return { rows: rows, source: 'tested', n: pool.filter(function (i) { return A.getSt(i) !== undefined; }).length };
   };
 
+  /* ================= 词汇地图 =================
+     把「我到底哪儿是空的」变成一眼能看见的东西：
+     纵轴是词频段（越靠上越常用），横轴是首字母，每格是这个交叉点上的掌握率。
+       颜色 = 掌握程度（绿 / 黄 / 红）
+       颜色的浓淡 = 这一格被测过多少
+     所以「一片浅色」= 整块没测过，「深红」= 都测过且都不会。
+     点任意一格可以直接复测那一块 —— 地图不只是张图，是入口。 */
+  A.MAP_BANDS = [1, 2, 3, 4, 5, 6, 0];        // 展示顺序：最高频压顶，20k 以外垫底
+  A.MAP_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  A.vocabMap = function () {
+    var pool = activePool();
+    var cell = {};
+    A.MAP_BANDS.forEach(function (b) {
+      A.MAP_LETTERS.forEach(function (L) {
+        cell[b + '|' + L] = { band: b, letter: L, N: 0, tested: 0, k: 0, f: 0, u: 0 };
+      });
+    });
+    for (var n = 0; n < pool.length; n++) {
+      var i = pool[n], w = WORDS[i];
+      var L = String(w.w).charAt(0).toUpperCase();
+      if (L < 'A' || L > 'Z') continue;        // 非字母开头的不进网格，避免撑破 26 列
+      var c = cell[A.bandOf(i) + '|' + L];
+      if (!c) continue;
+      c.N++;
+      var s = A.getSt(i);
+      if (s === 2) { c.k++; c.tested++; }
+      else if (s === 1) { c.f++; c.tested++; }
+      else if (s === 0) { c.u++; c.tested++; }
+    }
+
+    var rows = [], hot = [], untestedCells = 0, testedCells = 0, cellsWithWords = 0;
+    A.MAP_BANDS.forEach(function (b) {
+      var bandName = A.BAND_NAMES[b] || ('频段 ' + b);
+      var cells = A.MAP_LETTERS.map(function (L) {
+        var c = cell[b + '|' + L];
+        c.name = bandName;                      // 格子自己要带段名，否则「洞口最大的三块」会只显示字母
+        c.score = c.k + 0.5 * c.f;              // 与全站口径一致：模糊算一半
+        c.ratio = c.N ? c.score / c.N : 0;
+        /* 「缺口」和「没测过」是两件事，必须分开：
+             gap      = 测过但没掌握的词（这是真正的洞，值得优先补）
+             untested = 压根没测过的词（这是"未知"，不构成结论）
+           混在一起会把"整块没测"说成"缺口最大"，那是误导。 */
+        c.gap = Math.max(0, Math.round(c.tested - c.score));
+        c.untested = Math.max(0, c.N - c.tested);
+        c.deficit = Math.max(0, Math.round(c.N - c.score));
+        if (c.N) cellsWithWords++;
+        if (c.N && !c.tested) untestedCells++;
+        if (c.tested) testedCells++;
+        if (c.tested > 0 && c.gap > 0) hot.push(c);
+        return c;
+      });
+      rows.push({ band: b, name: bandName, cells: cells });
+    });
+    hot.sort(function (a, b) { return b.gap - a.gap; });
+
+    return {
+      rows: rows, letters: A.MAP_LETTERS,
+      testedCells: testedCells, untestedCells: untestedCells, cellsWithWords: cellsWithWords,
+      hot: hot.slice(0, 3)
+    };
+  };
+
+  /* 某格里的「缺口词」（未测 + 模糊 + 不认识），给地图的「点一下复测」用 */
+  A.mapCellWords = function (band, letter) {
+    var out = [], pool = activePool();
+    for (var n = 0; n < pool.length; n++) {
+      var i = pool[n];
+      if (A.bandOf(i) !== band) continue;
+      if (String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
+      var s = A.getSt(i);
+      if (s === undefined || s === 0 || s === 1) out.push(i);
+    }
+    return out;
+  };
+
+  /* 整库范围内「还没测过」的词 —— 地图上那片浅色区域的合计 */
+  A.untestedWords = function () {
+    var out = [], pool = activePool();
+    for (var n = 0; n < pool.length; n++) if (A.getSt(pool[n]) === undefined) out.push(pool[n]);
+    return out;
+  };
+
   /* 用当前会话的作答实时算出分层估计（探测模式边测边用） */
   A.probeStats = function (sess) {
     var sizes = A.bandSizes(), universe = 0, data = {};

@@ -96,6 +96,17 @@ const script = [
   ' ok("信息栏容器不吃鼠标事件",!!railEl&&getComputedStyle(railEl).pointerEvents==="none",railEl?getComputedStyle(railEl).pointerEvents:"-");',
   ' var sb=sealEl?sealEl.getBoundingClientRect():null,tbb=document.querySelector(".topbar").getBoundingClientRect();',
   ' ok("等级印章不压顶栏",!!sb&&sb.top>=tbb.bottom-1,"seal.top="+(sb?Math.round(sb.top):"-")+" topbar.bottom="+Math.round(tbb.bottom));',
+  ' /* 词汇地图：26 列渲染、不横向溢出、每格是可点的按钮且带说明 */',
+  ' A.go("stats");',
+  ' var vmap=document.querySelector(".vmap");',
+  ' ok("词汇地图渲染出 26 列",!!vmap&&document.querySelectorAll(".vmap-lt").length===26,'
+    + 'document.querySelectorAll(".vmap-lt").length+" 列");',
+  ' var vmb=vmap?vmap.getBoundingClientRect():null;',
+  ' ok("词汇地图不横向溢出",!!vmb&&vmb.right<=W+1,"right="+(vmb?Math.round(vmb.right):"-"));',
+  ' var vcell=document.querySelector(".vmap-c[data-act=map-review]");',
+  ' ok("地图格子是可点按钮且带悬浮说明",!!vcell&&!!vcell.getAttribute("title")&&vcell.tagName==="BUTTON",'
+    + 'vcell?vcell.tagName:"-");',
+  ' A.go("home");',
   '}catch(e){out.push("FAIL  运行时异常   ["+e.message+"]");}',
   'document.body.innerHTML="<pre style=\\"font:17px/1.6 Consolas,monospace;padding:18px;margin:0;white-space:pre-wrap\\">"+out.join("\\n").replace(/</g,"&lt;")+"</pre>";',
   '},120);});'

@@ -85,7 +85,12 @@ win.addEventListener('load', () => {
     step('统计页', () => {
       click('.nav button[data-nav="stats"]');
       check('统计页渲染', /总体掌握情况/.test(doc.getElementById('view').textContent));
-      check('首字母柱状图 26 列', qa('.barcol').length === 26, String(qa('.barcol').length));
+      check('词汇地图渲染出 7 段 × 26 字母',
+        qa('.vmap-row').length === 8 && qa('.vmap-lt').length === 26,
+        qa('.vmap-row').length + ' 行（含表头）/ ' + qa('.vmap-lt').length + ' 列');
+      check('词汇地图的格子可点击复测',
+        qa('.vmap-c[data-act="map-review"]').length > 0,
+        qa('.vmap-c[data-act="map-review"]').length + ' 个可点格子');
       check('无随机样本时不给词汇量', /数据不足/.test(doc.getElementById('view').textContent));
       A.addSample({ n: 100, k: 62, f: 18 }); A.save(); A.go('stats');
       check('有随机样本时给出估算', /3,2\d\d/.test(doc.getElementById('view').textContent), (/≈ [\d,]+ 词/.exec(doc.getElementById('view').textContent) || ['无'])[0]);
@@ -439,6 +444,24 @@ win.addEventListener('load', () => {
           /seal ready/.test((A2.el('seal') || {}).className || '') &&
           (A2.el('seal').className || '').indexOf('tone-' + R.rank.tone) > 0,
           (A2.el('seal') || {}).className);
+
+        // 词汇地图：数据层
+        const VM = A2.vocabMap();
+        check('地图是 7 段 × 26 字母', VM.rows.length === 7 && VM.rows.every(r => r.cells.length === 26),
+          VM.rows.length + ' 段 / ' + (VM.rows[0] || { cells: [] }).cells.length + ' 字母');
+        check('每个格子自带词频段名（缺口摘要不会只剩字母）',
+          VM.rows.every(r => r.cells.every(c => !!c.name)), '');
+        const hc = VM.hot[0];
+        check('地图能指出洞口最大的格子', !!hc && hc.gap > 0,
+          hc ? (hc.name + ' · ' + hc.letter + ' 测过还缺 ' + hc.gap + ' 词') : 'n/a');
+        const mw = hc ? A2.mapCellWords(hc.band, hc.letter) : [];
+        check('缺口格子里确实有词可复测', mw.length > 0, mw.length + ' 词');
+        check('地图格子的词只属于该段该字母',
+          mw.every(i => A2.bandOf(i) === hc.band && String(A2.WORDS[i].w).charAt(0).toUpperCase() === hc.letter),
+          mw.length + ' 词');
+        check('地图格子只收缺口词（未测/模糊/不认识）',
+          mw.every(i => { const s = A2.getSt(i); return s === undefined || s < 2; }), '');
+        check('全部认识时地图没有未测词', A2.untestedWords().length === 0, String(A2.untestedWords().length));
       });
 
       // ---------- 多轮检测：轮次归档与逐词对比 ----------
