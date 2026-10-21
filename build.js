@@ -36,15 +36,29 @@ try {
 }
 
 // 桌宠立绘：Sutera-Diffusus 的 MIT 全身立绘（assets/whale-art/*.webp）
-// 单文件离线版只内联「待机」这一张，其余状态在联网（npm run server）时才按需加载。
-// 内联多张会把 index.html 顶到 3 MB 以上，待机帧足够撑住离线版的形象。
+//
+// 这里曾经只内联「待机」一张，理由是"内联多张会把 index.html 顶到 3 MB"。
+// 实测这是个错误权衡：单文件交付时旁边没有 assets/ 目录，其余情绪图一律加载失败，
+// 换表情的代码照常执行、图永远回退成待机——用户看到的就是"脸一点没变"。
+// 正确做法是先把图压小再内联：scripts/make-pet-art-inline.mjs 用 Chrome 把
+// 10 张 320×320 webp 重编码成合计约 272 KB（原图 1.19 MB）的 data URI。
+// 读不到 _inline.json 时退回只内联待机图，不影响构建。
 let petArt = {};
-try {
-  const b = fs.readFileSync(path.join(ROOT, 'assets', 'whale-art', 'dsh-whale-state-idle-cute.webp'));
-  petArt = { 'idle-cute': 'data:image/webp;base64,' + b.toString('base64') };
-} catch (e) {
-  console.log('提示：未找到 assets/whale-art/dsh-whale-state-idle-cute.webp');
-  console.log('      离线版桌宠将只显示气泡（可用 npm run art:fetch 拉取立绘）');
+const inlineJson = path.join(ROOT, 'assets', 'whale-art', '_inline.json');
+ty: {
+  try {
+    petArt = JSON.parse(fs.readFileSync(inlineJson, 'utf8'));
+    if (Object.keys(petArt).length) break ty;
+  } catch (e) { /* 没生成过，走下面的兜底 */ }
+  try {
+    const b = fs.readFileSync(path.join(ROOT, 'assets', 'whale-art', 'dsh-whale-state-idle-cute.webp'));
+    petArt = { 'idle-cute': 'data:image/webp;base64,' + b.toString('base64') };
+    console.log('提示：没有 assets/whale-art/_inline.json，本次只内联待机帧（情绪图将全部不可用）');
+    console.log('      需要完整表情请运行 node scripts/make-pet-art-inline.mjs');
+  } catch (e) {
+    console.log('提示：未找到 assets/whale-art/dsh-whale-state-idle-cute.webp');
+    console.log('      离线版桌宠将只显示气泡（可用 npm run art:fetch 拉取立绘）');
+  }
 }
 
 let html = fs.readFileSync(path.join(ROOT, 'src', 'index.template.html'), 'utf8');
@@ -65,5 +79,5 @@ console.log('词条总数:', words.length, '（核心', pick(true).length, '/ �
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
 console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
-if (petArt['idle-cute']) console.log('桌宠立绘:', (petArt['idle-cute'].length / 1024).toFixed(0) + ' KB（内联待机帧，其余状态联网按需加载）');
+console.log('桌宠立绘:', Object.keys(petArt).length, '张内联（' + (Object.values(petArt).reduce((s, v) => s + v.length, 0) / 1024).toFixed(0) + ' KB，情绪立绘离线可用）');
 console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB（构建于 ' + new Date().toISOString() + '，此时间不写入产物）');

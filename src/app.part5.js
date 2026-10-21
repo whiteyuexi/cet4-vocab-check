@@ -135,10 +135,11 @@
 
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
   var built = false, hostEl = null, figEl = null, sayEl = null, creditEl = null;
-  var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null;
+  var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null, hangEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
-  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0 };
+  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
+               lx: 0, ly: 0, lt: 0, cvx: 0, cvy: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
   // 最后一道保险：按住不动超过这么久才当作松手，正常操作不会碰到
   var DRAG_STALE_MS = 8000;
@@ -147,6 +148,26 @@
   // 视觉缓动量：透视角、两圈投影的缩放、受光角
   var V = { tx: 0, ty: 0, cs: 1, as: 1, ang: 118 };
   var look = { x: 0, y: 0 };
+
+  /* ---------- 悬空摆动：一个跟手走的弹簧 ----------
+     之前用的是 .pet.held + @keyframes petDangle：定时器驱动、摆幅写死 ±6°。
+     问题就在于"写死"——不管你手怎么动，她的摆法完全一样，看起来就是一张图在转。
+     现在改成状态量 + 每帧积分：
+       hx/hxv  身体相对「抓手位置」的横向落后量（手快 → 落后多 → 身体被拖着走）
+       sw/swv  摆动角（由 hx 驱动，带过冲与回摆）
+       sk      下半身跟不上的一点斜切（次级运动，静态图也能看出"沉")
+     三个量都是二阶系统，所以起手会甩、急停会回弹、松手才归零 —— 这才是"被拎着"的物理感。 */
+  var HANG = { hx: 0, hy: 0, hxv: 0, hyv: 0, sw: 0, swv: 0, sk: 0, skx: 1, sky: 1 };
+  var reduceMo = false;
+  try {
+    var mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mq) {
+      reduceMo = mq.matches;
+      if (mq.addEventListener) mq.addEventListener('change', function (e) { reduceMo = e.matches; });
+    }
+  } catch (e) {}
+
+  function clampN(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   var artState = { name: '', loading: false, want: '', revertTimer: null };
 
   function wide() {
@@ -208,7 +229,7 @@
 
   function lift() { return Math.max(0, floorY() - P.y); }
 
-  // 主循环：重力 + 透视倾斜 + 两圈投影 + 受光角
+  // 主循环：重力 + 悬空弹簧 + 透视倾斜 + 两圈投影 + 受光角
   function tick(now) {
     rafId = requestAnimationFrame(tick);
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
@@ -229,6 +250,7 @@
       apply();
     }
 
+    stepHang(now, dt);
     applyDepth();
   }
 
@@ -238,6 +260,70 @@
   }
   function stopLoop() {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  /* ---------- 悬空弹簧：每帧推进一步 ----------
+     不拖拽时目标全为 0，靠阻尼自然归位，所以松手后她还会余摆两下才停。 */
+  function stepHang(now, dt) {
+    var f = Math.min(3, dt / 16.7);                 // 换算成"多少个 60fps 帧"
+    var held = P.dragging;
+
+    // 手停住（没有新的 pointermove）就把手的速度读带回零，
+    // 否则她会一直歪着——弹簧的输入是"手的速度"，手不动速度就该归零。
+    if (held && now - drag.lastMove > 60) {
+      drag.cvx *= Math.pow(0.86, f);
+      drag.cvy *= Math.pow(0.86, f);
+    }
+
+    // 身体落后于抓手的横向位移：手往右快速拖 → 身体被甩在左边
+    // 用平方根响应：慢拖也有明显反应、快拖又不会一路顶到上限。
+    // 线性比例试过，750px/s 只有 5°（几乎看不出来），而一味放大就会让"每一下都摆到最大"，
+    // 那和写死摆幅是一回事。sqrt 让 300px/s 也能甩到 14°，1500px/s 才到 30° 的顶。
+    var avx = Math.abs(drag.cvx), avy = Math.abs(drag.cvy);
+    var targX = (held && avx > 2) ? (drag.cvx > 0 ? -1 : 1) * Math.min(30, 30 * Math.sqrt(avx / 1500)) : 0;
+    var targY = (held && avy > 2) ? (drag.cvy > 0 ? -1 : 1) * Math.min(12, 12 * Math.sqrt(avy / 1500)) : 0;
+    if (held && !reduceMo) targY += Math.sin(now / 380) * 1.8;   // 静止被拎着也在轻轻沉浮，不是雕像
+
+    HANG.hxv += (targX - HANG.hx) * 0.16 * f;
+    HANG.hxv *= Math.pow(0.80, f);
+    HANG.hx = clampN(HANG.hx + HANG.hxv * f, -34, 34);
+
+    HANG.hyv += (targY - HANG.hy) * 0.18 * f;
+    HANG.hyv *= Math.pow(0.78, f);
+    HANG.hy = clampN(HANG.hy + HANG.hyv * f, -22, 22);
+
+    // 摆角：主体由横向落后量决定；再叠一层低频的自然晃，静止被拎着也有生气
+    var idleAmp = (held && !reduceMo) ? 1.9 : 0;
+    var targA = (held ? clampN(HANG.hx * 0.60, -18, 18) : 0) + Math.sin(now / 205) * idleAmp;
+    HANG.swv += (targA - HANG.sw) * 0.10 * f;
+    HANG.swv *= Math.pow(0.84, f);
+    HANG.sw = clampN(HANG.sw + HANG.swv * f, -22, 22);
+
+    // 次级运动：下半身跟不上上半身，给一点反相斜切（静态立绘也能看出"沉"）
+    var targSk = held ? clampN(-HANG.sw * 0.20 - HANG.hxv * 0.06, -7, 7) : 0;
+    HANG.sk += (targSk - HANG.sk) * 0.22 * f;
+
+    // 拉伸/挤压：动画里的老办法，动作一快就顺着运动方向抻一下，急停再弹回来。
+    // 一张静态图只有靠这个才不像"刚性贴图"，幅度必须很小，过了就成橡皮人。
+    var spd = Math.sqrt(drag.cvx * drag.cvx + drag.cvy * drag.cvy);
+    var sp = (held && !reduceMo) ? Math.min(1, spd / 1600) : 0;
+    var horiz = Math.abs(drag.cvx) >= Math.abs(drag.cvy);
+    var tsx = 1 + sp * (horiz ? 0.055 : 0.02);
+    var tsy = 1 - sp * (horiz ? 0.035 : 0.05);
+    HANG.skx += (tsx - HANG.skx) * 0.25 * f;
+    HANG.sky += (tsy - HANG.sky) * 0.25 * f;
+
+    writeHang();
+  }
+
+  function writeHang() {
+    if (!hangEl) return;
+    hangEl.style.setProperty('--hx', HANG.hx.toFixed(1) + 'px');
+    hangEl.style.setProperty('--hy', HANG.hy.toFixed(1) + 'px');
+    hangEl.style.setProperty('--sw', HANG.sw.toFixed(2) + 'deg');
+    hangEl.style.setProperty('--sk', HANG.sk.toFixed(2) + 'deg');
+    hangEl.style.setProperty('--skx', HANG.skx.toFixed(3));
+    hangEl.style.setProperty('--sky', HANG.sky.toFixed(3));
   }
 
   // 把她送回右下角的老位置（双击桌宠、或 A.petReset() 都能用）
@@ -265,6 +351,9 @@
     if (!hostEl) return;
     hostEl.classList.add('held');
     showArt(STRUGGLE_ART[Math.floor(Math.random() * STRUGGLE_ART.length)]);
+    // 突然被拎起来：给弹簧一个初始角速度，会先甩一下再开始晃，比从 0 匀速开始自然
+    HANG.swv += (Math.random() * 2 - 1) * 2.6;
+    HANG.hyv -= 1.2;
     if (sayEl && !heldBackup) {
       // 记住原气泡，松手时还原；这里直接改写，避免和 compose() 抢
       heldBackup = true;
@@ -277,6 +366,10 @@
   function exitHeld() {
     if (!hostEl) return;
     hostEl.classList.remove('held');
+    // 转轴一会儿要挪回脚底，别让残留的摆角突然放大——收一下，剩下的交给阻尼
+    HANG.sw = clampN(HANG.sw, -6, 6);
+    HANG.swv *= 0.5;
+    HANG.hx *= 0.4; HANG.hxv *= 0.4;
     if (artState.revertTimer) { clearTimeout(artState.revertTimer); artState.revertTimer = null; }
     showArt(MOOD_ART[lastMood] || MOOD_ART.idle);      // 恢复情绪立绘
     if (heldBackup) {
@@ -292,6 +385,8 @@
     drag.sx = e.clientX; drag.sy = e.clientY;
     drag.ox = P.x; drag.oy = P.y;
     drag.lastMove = performance.now();
+    drag.lx = e.clientX; drag.ly = e.clientY; drag.lt = drag.lastMove;
+    drag.cvx = 0; drag.cvy = 0;
     P.dragging = true; stopWalk(); setAir(false);
     figEl.classList.add('grabbing');
     enterHeld();
@@ -302,7 +397,16 @@
     if (!drag.on) return;
     // 左键已经松开了：说明 pointerup 丢了，就地收尾
     if (e.buttons === 0) { endDrag(); return; }
-    drag.lastMove = performance.now();
+    var now = performance.now();
+    drag.lastMove = now;
+    // 手的速度（px/s），做指数平滑：弹簧的输入就是它，不是位移
+    var dtm = Math.max(8, now - drag.lt);
+    var ivx = (e.clientX - drag.lx) / dtm * 1000;
+    var ivy = (e.clientY - drag.ly) / dtm * 1000;
+    drag.cvx = drag.cvx * 0.55 + ivx * 0.45;
+    drag.cvy = drag.cvy * 0.55 + ivy * 0.45;
+    drag.lx = e.clientX; drag.ly = e.clientY; drag.lt = now;
+
     var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
     P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
@@ -364,12 +468,16 @@
       figEl.style.setProperty('--ty', V.ty.toFixed(2) + 'deg');
     }
     if (sheenEl) sheenEl.style.setProperty('--sang', V.ang.toFixed(1) + 'deg');
+    // 离地多少，影子就往下补多少 —— 这样她被拎在半空时，影子还老老实实躺在地面上
+    var shy = Math.round(lift()) + 'px';
     if (shadowEl) {
+      shadowEl.style.setProperty('--shy', shy);
       shadowEl.style.setProperty('--shs', V.cs.toFixed(3));
       shadowEl.style.setProperty('--shx', (-V.ty * 1.5).toFixed(1) + 'px');
       shadowEl.style.opacity = (0.92 - k * 0.6).toFixed(2);
     }
     if (shadowSoftEl) {
+      shadowSoftEl.style.setProperty('--shy', shy);
       shadowSoftEl.style.setProperty('--shs', V.as.toFixed(3));
       shadowSoftEl.style.setProperty('--shx', (-V.ty * 2.4).toFixed(1) + 'px');
       shadowSoftEl.style.opacity = (0.85 - k * 0.5).toFixed(2);
@@ -470,8 +578,10 @@
     host.innerHTML =
       '<div class="pet-bubble empty" id="petSay"></div>' +
       '<div class="pet-fig" id="petFig">' +
-        '<div class="pet-anim" id="petAnim">' +
-          '<img class="pet-art pet-art-fallback" id="petArt" alt="" draggable="false">' +
+        '<div class="pet-hang" id="petHang">' +
+          '<div class="pet-anim" id="petAnim">' +
+            '<img class="pet-art pet-art-fallback" id="petArt" alt="" draggable="false">' +
+          '</div>' +
         '</div>' +
         '<div class="pet-sheen" id="petSheen"></div>' +
       '</div>' +
@@ -484,6 +594,7 @@
     shadowEl = document.getElementById('petShadow');
     shadowSoftEl = document.getElementById('petShadowSoft');
     animEl = document.getElementById('petAnim');
+    hangEl = document.getElementById('petHang');
     sheenEl = document.getElementById('petSheen');
     artEl = document.getElementById('petArt');
     artEl.style.opacity = '0';
@@ -591,7 +702,8 @@
       sprite: artState.name || '', form: document.documentElement.getAttribute('data-pet') || '',
       x: Math.round(P.x), y: Math.round(P.y), air: P.air, dragging: P.dragging,
       loop: !!rafId, walking: P.walking, floor: floorY(), ground: groundLine(),
-      tiltX: +V.tx.toFixed(1), tiltY: +V.ty.toFixed(1)
+      tiltX: +V.tx.toFixed(1), tiltY: +V.ty.toFixed(1),
+      swing: +HANG.sw.toFixed(1), hangX: +HANG.hx.toFixed(1), skew: +HANG.sk.toFixed(1)
     };
   };
   A.petReset = function () { resetPos(); return A.petInfo(); };

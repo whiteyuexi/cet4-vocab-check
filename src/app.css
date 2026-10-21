@@ -467,6 +467,17 @@ html[data-theme="dark"] .pet-bubble::after{
   transform-origin:50% 100%;animation:petBob 4.4s ease-in-out infinite;will-change:transform}
 @keyframes petBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 
+/* 悬空层：被拎起来时，身体绕「被抓住的那一点」（耳根）转，而不是绕脚底。
+   角度 --sw / --sk / 位移 --hx,--hy 全部由 JS 的弹簧积分算出来（见 part5 的 tick），
+   所以它是被你的手甩起来的：手快它就甩、手停它就回摆、松手它才停。
+   刻意不用定时器 @keyframes —— 那玩意不管你手怎么动，摆幅和节奏永远一样，看着就是"整张图在转"。 */
+.pet-hang{position:absolute;left:0;top:0;width:100%;height:100%;
+  transform-origin:50% 100%;
+  transform:translate3d(var(--hx,0px),var(--hy,0px),0) rotate(var(--sw,0deg)) skewX(var(--sk,0deg))
+            scale(var(--skx,1),var(--sky,1));
+  will-change:transform}
+.pet.held .pet-hang{transform-origin:50% 8%}
+
 .pet-art{position:absolute;left:0;top:var(--art-trim);width:232px;height:232px;object-fit:contain;
   display:block;pointer-events:none;opacity:1;transition:opacity .26s ease;
   filter:drop-shadow(0 7px 13px rgba(16,19,25,.17))}
@@ -491,14 +502,7 @@ html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
 
 /* 被拎起来：转轴从脚底挪到头顶（真被拎着的时候就是头顶那个点不动），
    整个身子改成悬空摆动 —— 这一步是"悬空"读起来成立的关键，只平移不转轴就像贴纸在飘 */
-.pet.held .pet-fig{transform-origin:50% 8%}
-.pet.held .pet-anim{animation:petDangle 1.15s ease-in-out infinite}
-@keyframes petDangle{
-  0%,100%{transform:rotate(-6deg) translateY(0)}
-  22%{transform:rotate(-1.5deg) translateY(-3px)}
-  50%{transform:rotate(6deg) translateY(0)}
-  72%{transform:rotate(1.5deg) translateY(-3px)}
-}
+/* 旧的 petDangle 定时器动画已删除：摆幅和节奏与手的动作无关，正是"僵硬"的来源 */
 /* 落地：先压一下再抖两下，像把身上的灰抖掉 */
 .pet.shake .pet-anim{animation:petShake .54s cubic-bezier(.2,.7,.3,1)}
 @keyframes petShake{
@@ -515,7 +519,9 @@ html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
   width:126px;height:16px;margin-left:-63px;border-radius:50%;pointer-events:none;
   background:radial-gradient(closest-side,rgba(16,19,25,.44),rgba(16,19,25,0) 78%);
   filter:blur(1px);transition:opacity .18s;
-  transform:translateX(var(--shx,0px)) scale(var(--shs,1))}
+  /* --shy：被人拎起来后，影子要留在原地（地面上），不能跟着脚一起飞。
+     少了这一条，她悬在半空时脚下还贴着一团影子，立刻就露馅成"贴纸"。 */
+  transform:translateX(var(--shx,0px)) translateY(var(--shy,0px)) scale(var(--shs,1))}
 .pet-shadow.soft{bottom:calc(var(--ground) - 21px);width:226px;height:44px;margin-left:-113px;
   background:radial-gradient(closest-side,rgba(16,19,25,.2),rgba(16,19,25,0) 76%);filter:blur(5px)}
 html[data-theme="dark"] .pet-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
@@ -529,7 +535,7 @@ html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side
 
 @media (prefers-reduced-motion:reduce){
   .pet-anim,.pet.poked .pet-anim,.pet.walk .pet-anim,
-  .pet.held .pet-anim,.pet.shake .pet-anim{animation:none!important}
+  .pet.shake .pet-anim{animation:none!important}
   .pet-art{transition:none}
 }
 /* 窄屏不出现桌宠，避免遮挡内容 */

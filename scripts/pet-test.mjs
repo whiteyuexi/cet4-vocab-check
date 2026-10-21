@@ -76,32 +76,55 @@ try {
   const stuck = JSON.parse(await evalJs(dragUpLeft));
   ok('能拖到左上角（拖拽态）', stuck.dragging === true && stuck.y < 200, 'x=' + stuck.x + ' y=' + stuck.y);
 
-  /* 被拎起来时的「悬空挣扎」：三样必须同时到位，缺一样就露馅
-       1) .held → 转轴挪到头顶 + 悬空摆动
-       2) 换成挣扎的立绘
-       3) 气泡喊一句 */
+  /* 被拎起来时的「悬空挣扎」：四样必须同时到位，缺一样就露馅
+       1) .held → 转轴从脚底挪到耳根（在 .pet-hang 上，不是 .pet-fig）
+       2) 身体被手甩开、摆动角跟着手的速度走（不是定时器写死的摆幅）
+       3) 换成挣扎立绘，且这张图必须是内联数据（离线单文件也得有脸）
+       4) 气泡喊一句
+     上一段把她在 6 个 pointermove 里向左上快速拖走，所以此刻横向速度读是负的，
+     身体应该被甩到右边（hangX > 0）、并且明显摆起来。 */
+  await sleep(280);
   const heldState = JSON.parse(await evalJs(`
     (function(){
       var pet = document.getElementById('pet');
-      var anim = document.getElementById('petAnim');
-      var fig = document.getElementById('petFig');
+      var hang = document.getElementById('petHang');
       var imgs = document.querySelectorAll('#petAnim img');
-      var struggle = false;
-      for (var i = 0; i < imgs.length; i++) if (/angry|meme-doubt/.test(imgs[i].src)) struggle = true;
+      var inline = 0;
+      for (var i = 0; i < imgs.length; i++) if (imgs[i].src.indexOf('data:image/webp') === 0) inline++;
+      var A = window.__APP__;
       return JSON.stringify({
         held: pet.className.indexOf('held') >= 0,
-        anim: getComputedStyle(anim).animationName,
-        origin: getComputedStyle(fig).transformOrigin,
-        struggle: struggle,
+        origin: getComputedStyle(hang).transformOrigin,
+        sprite: A.petInfo().sprite,
+        swing: A.petInfo().swing,
+        hangX: A.petInfo().hangX,
+        skew: A.petInfo().skew,
+        imgs: imgs.length,
+        inline: inline,
         say: (document.getElementById('petSay') || {}).textContent || ''
       });
     })()`));
-  ok('抓起后进入悬空状态（.held + 摆动动画）', heldState.held && heldState.anim === 'petDangle',
-    heldState.anim);
-  ok('悬空时转轴从脚底挪到头顶', /\d+(\.\d+)?px [0-4]\d(\.\d+)?px/.test(heldState.origin),
+  ok('抓起后进入悬空状态（.held）', heldState.held === true, heldState.held);
+  ok('悬空时转轴从脚底挪到耳根', /\d+(\.\d+)?px [0-4]\d(\.\d+)?px/.test(heldState.origin),
     heldState.origin);
-  ok('悬空时换成挣扎的表情', heldState.struggle === true, '');
+  ok('身体被手甩在抓点后面（不是刚性跟手）', Math.abs(heldState.hangX) > 3,
+    'hangX=' + heldState.hangX);
+  ok('摆动角跟着手的速度走', Math.abs(heldState.swing) > 3, heldState.swing + 'deg');
+  ok('下半身有次级斜切', Math.abs(heldState.skew) > 1, heldState.skew + 'deg');
+  ok('悬空时换成挣扎的表情', /^(angry|meme-doubt)$/.test(heldState.sprite), heldState.sprite);
+  ok('挣扎立绘是内联数据（离线单文件也有脸）',
+    heldState.imgs > 0 && heldState.inline === heldState.imgs,
+    heldState.inline + '/' + heldState.imgs + ' 张内联');
   ok('悬空时气泡会喊一句', /放我下来|别拎|还没测完|自己会走/.test(heldState.say), heldState.say);
+
+  // 手停住不动 → 弹簧必须自己回摆归位，而不是一直歪着
+  await sleep(1100);
+  const settled = JSON.parse(await evalJs(`
+    (function(){ var i = window.__APP__.petInfo();
+      return JSON.stringify({ swing: i.swing, hangX: i.hangX, dragging: i.dragging }); })()`));
+  ok('手停下来会回摆归位', settled.dragging === true && Math.abs(settled.swing) < 4.5 &&
+    Math.abs(settled.hangX) < 8,
+    'swing=' + settled.swing + ' hangX=' + settled.hangX);
 
   // 只来一个 buttons=0 的 pointermove —— 等价于 pointerup 丢了
   await evalJs(`(function(){window.dispatchEvent(new PointerEvent('pointermove',
