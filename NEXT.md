@@ -380,9 +380,21 @@ node scripts/check-online-ai.mjs  # 联网 AI 主路径（5 项，需后端在�
   默认按 GBK 读写，会把 UTF-8 里多字节字符的最后一个字节替换成 `?`，
   一次就能把整份文件毁掉（2026-10-17 把 NEXT.md 毁了 196 处）。
   改 md / js / css 一律用文件编辑工具，或者 `[System.IO.File]::WriteAllText($p,$s,(New-Object System.Text.UTF8Encoding($false)))`
+- **`git push` 连不上 github.com（2026-10-21 反复出现）**：这台机器上
+  `github.com` 被 DNS 解析到 `20.205.243.166`，该 IP 的 443 不通；
+  但 `api.github.com`、`codeload.github.com`、`github.io`、`ssh.github.com` 都通，
+  真实 IP `140.82.112.4 / 140.82.113.4 / 140.82.121.4` 的 443 也都通。
+  本机没有任何代理在监听（`ProxyEnable=0`），`git --version` = 2.53。
+  **可行绕法**：起一个只监听 `127.0.0.1:7899` 的 CONNECT 隧道，把 `github.com:443` 拨到可达 IP，
+  然后 `git -c http.proxy=http://127.0.0.1:7899 push`。TLS 仍端到端（SNI=github.com），
+  证书照常校验，不改 hosts、不改全局配置。实测 `curl` 走隧道 HTTP 200、`ls-remote` 与 `push` 均成功。
+  注意两点：① 推送会卡在凭据交互上，必须 `GIT_TERMINAL_PROMPT=0`；
+  ② PowerShell 会把 git 的 stderr 当错误，`[exit code: 1]` 不代表失败，要看有没有 `main -> main`。
+  隧道脚本是一次性的（在 `%TEMP%\gh-tunnel.mjs`），用完记得杀掉端口上的进程。
+- **不要为了"改文件"去写系统 hosts**：上面那条绕法不需要管理员权限，改 hosts 反而会留下后患。
 
 ## 八、还缺的交付物
 
 - [ ] 演示视频（5–8 分钟 1080P）—— 只能用户自己录，用 `http://127.0.0.1:8787`
 - [ ] README 团队成员信息 —— **只有用户能提供，一直空着**
-- [ ] 未推送提交
+- [x] 未推送提交 —— 2026-10-21 已全部推送（见 §七 的 github.com 绕行办法）
