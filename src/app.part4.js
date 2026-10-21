@@ -163,8 +163,166 @@
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
     A.resetAIHistory();
-    if (question) A.runAI(question);
+    // 先探一下后端在不在。单文件交付时它一定不在，那就别让用户看着"连接中…"干等，
+    // 直接标成离线模式，问题照样答（见 A.localDiagnosis）。
+    probeBackend(function (online) {
+      setModePill(online);
+      if (question) A.runAI(question);
+    });
   };
+
+  /* ---------- 后端可用性探测 ----------
+     单文件是主要交付形态：评委在自己电脑上打开，旁边没有 server/index.mjs。
+     以前这里只回一句"请先执行 node server/index.mjs"——那是写给开发者的，
+     对只想看结论的人是死胡同。现在断网也能给出基于本机数据的诊断。 */
+  var AI_STATE = 'unknown';                    // unknown | online | offline
+  var AI_PROBE_MS = 900;
+
+  function setModePill(online) {
+    var pill = el('aiMode');
+    if (!pill) return;
+    pill.textContent = online ? '在线 · 大模型' : '离线 · 本地规则';
+    pill.className = 'pill ' + (online ? 'brand' : 'warn');
+  }
+
+  function probeBackend(cb) {
+    if (AI_STATE !== 'unknown') { cb(AI_STATE === 'online'); return; }
+    var settled = false;
+    var finish = function (online) {
+      if (settled) return;
+      settled = true;
+      AI_STATE = online ? 'online' : 'offline';
+      cb(online);
+    };
+    var timer = setTimeout(function () { finish(false); }, AI_PROBE_MS);
+    try {
+      fetch(apiBase() + '/api/health', { method: 'GET' }).then(function (r) {
+        clearTimeout(timer);
+        finish(!!r && r.ok);
+      }).catch(function () {
+        clearTimeout(timer);
+        finish(false);
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      finish(false);
+    }
+  }
+
+  /* ---------- 离线诊断：用本机数据生成结论 ----------
+     不是占位文本：频段短板、缺口最大的一段、具体该背哪些词、下一轮怎么测，全部从真实数据算。
+     问题类型不同，回答的侧重也不同（计划 / 结果解读 / 方法原理 / 泛问）。 */
+  A.localDiagnosis = function (question) {
+    var q = String(question || '');
+    var t, est, prof, untested;
+    try { t = A.tally(A.activePool()); } catch (e) { t = { tested: 0, total: 0, k: 0, f: 0, u: 0 }; }
+    try { est = A.estimateNow(); } catch (e) { est = null; }
+    try { prof = A.bandProfile(); } catch (e) { prof = null; }
+    try { untested = A.untestedWords(); } catch (e) { untested = []; }
+
+    var pc = function (x) { return Math.round((x || 0) * 100) + '%'; };
+    var bankName = A.bankName();
+    var out = [];
+
+    if (!t.tested) {
+      out.push('### 还没开始测，先给你一条最短路径');
+      out.push('点首页的「快速摸底 · 约 80 题 · 3 分钟」。它按词频分层随机抽词，' +
+        '不是从 A 背到你认识的第一个词就停——所以三五分钟就能给出一个**带误差范围**的数字，' +
+        '而不是"大概几百几千"的猜测。');
+      out.push('测完再回来问我，我会直接指出是哪几段拖了后腿、下一步背哪些词最划算。');
+      return out.join('\n\n');
+    }
+
+    // 依据块：所有结论都必须能追溯到这些数字
+    var rows = (prof && prof.rows) ? prof.rows.filter(function (r) { return r.n > 0 && r.p !== null; }) : [];
+    var weak = rows.slice().sort(function (a, b) { return a.p - b.p; }).slice(0, 2);
+    var strong = rows.slice().sort(function (a, b) { return b.p - a.p; })[0];
+    var nameOf = function (b) { return A.BAND_NAMES[b] || ('频段 ' + b); };
+
+    var head = '**依据（全部来自你本机数据，没有上传任何东西）**\n' +
+      '- 词库：' + bankName + '，已测 ' + t.tested + ' / ' + t.total + ' 词（覆盖 ' + pc(t.tested / (t.total || 1)) + '）\n' +
+      '- 掌握率（折中口径：认识 + 模糊×0.5）：' + pc((t.k + 0.5 * t.f) / (t.tested || 1)) +
+      '；严格口径：' + pc(t.k / (t.tested || 1)) +
+      (est && est.kind === 'sample' && est.vocab
+        ? '\n- 词汇量估计：**≈ ' + est.vocab.toLocaleString('en-US') + ' 词**（±' +
+          Math.round((est.hi - est.lo) / 2) + ' 词，95% 置信区间）'
+        : (est && est.vocab ? '\n- 整库实测：' + est.vocab.toLocaleString('en-US') + ' 词' : ''));
+    if (weak.length) {
+      head += '\n- 最弱的两段：' + weak.map(function (r) {
+        return nameOf(r.band) + '（' + pc(r.p) + '，抽了 ' + r.n + ' 词）';
+      }).join('、');
+    }
+    out.push(head);
+
+    var wantPlan = /计划|两周|一个月|每天|怎么提升|补哪|复习|背什么/.test(q);
+    var wantWhy = /怎么算|原理|可信|误差|准不准|为什么/.test(q);
+    var wantResult = /结果|报告|分析|怎么样|多少/.test(q);
+
+    if (wantWhy) {
+      out.push('**这个方法凭什么可信**\n' +
+        '1. **分层抽样**：词库按词频分 7 段，抽词按各段真实占比分层，不是随便抓——所以低频段不会被高频段淹没。\n' +
+        '2. **自适应停测**：边测边算区间宽度，达到你设定的精度（默认 ±250 词）就提示可以收工，没到就继续。\n' +
+        '3. **三层修正**：Agresti-Coull 处理小样本、有限总体修正（不放回抽样）、四选一时还扣掉蒙对率。\n' +
+        '4. **两个口径**：严格只算"认识"，折中把"模糊"按一半计入，两边都摆出来让你自己判断。');
+    }
+
+    if (weak.length) {
+      var w0 = weak[0];
+      out.push('**最该先动的地方**\n' +
+        nameOf(w0.band) + ' 是你最薄的一段（' + pc(w0.p) + '）。' +
+        (strong && strong.band !== w0.band
+          ? '对比之下 ' + nameOf(strong.band) + ' 有 ' + pc(strong.p) + '，说明不是"整体不行"，而是**结构上有洞**——' +
+            '补洞比从头背一遍划算得多。'
+          : '') +
+        '这一段是高频词，读真题时出现得最密，先补它的收益最大。');
+    }
+
+    if (wantPlan) {
+      var perDay = 50;
+      var days = 14;
+      var need = Math.min(untested.length + Math.round(t.f * 0.5), perDay * days);
+      out.push('**两周计划（按你的数据算的）**\n' +
+        '1. **第 1–4 天：补最弱段**。每天 ' + perDay + ' 词，只取 ' + (weak[0] ? nameOf(weak[0].band) : '最弱段') +
+        ' 里你还没测过或不认识的词——那部分现在有 ' + untested.length + ' 个没测过。\n' +
+        '2. **第 5–9 天：模糊词转正**。你有 ' + t.f + ' 个词标了"模糊"，这些是**最容易变现**的：' +
+        '半个词已经记住了，复习成本最低。\n' +
+        '3. **第 10–14 天：复测窄区间**。回到首页再测一轮、目标精度设 ±150，' +
+        '然后用「多轮对比」看哪些词是**背了又忘**的，那些才需要换方法（词根 / 例句语境）。\n' +
+        '按每天 ' + perDay + ' 词算，两周能覆盖约 ' + need + ' 词。');
+    } else if (wantResult) {
+      out.push('**这次结果怎么读**\n' +
+        '先看**误差范围**再看数字：' + (est && est.kind === 'sample'
+          ? '±' + Math.round((est.hi - est.lo) / 2) + ' 词以内的差别不用当真，那是抽样噪声。'
+          : '你已经测到整库实测，这个数字不再有抽样误差。') +
+        '\n再看**结构**：总掌握率会把高低频段平均掉，真正决定你读文章卡不卡的是最高频那几段。');
+    }
+
+    if (untested.length) {
+      var samples = untested.slice(0, 6);
+      out.push('**没测过、可以立刻开始的词**\n' + samples.map(function (w) {
+        return '- ' + w;
+      }).join('\n') + '\n（共 ' + untested.length + ' 个没测过，去「总览」页的词汇地图能按频段和首字母查。）');
+    }
+
+    out.push('——\n以上是**离线规则诊断**：结论全部由本机数据算出，不联网、不上传。' +
+      '接上大模型（仓库里的 `server/index.mjs`）后，同一个入口会换成自由追问的诊断 Agent，' +
+      '能用工具查数据、能顺着你的追问继续分析。');
+    return out.join('\n\n');
+  };
+
+  function localAnswer(box, question) {
+    var md;
+    try { md = A.localDiagnosis(question); }
+    catch (e) { md = '离线诊断生成失败：' + e.message + '\n\n可以先去「总览」页看频段剖面。'; }
+    box.innerHTML = '<div class="ai-a">' + renderMD(md) + '</div>';
+    try {
+      AI_HISTORY.push({ role: 'user', content: question });
+      AI_HISTORY.push({ role: 'assistant', content: md });
+      if (AI_HISTORY.length > 12) AI_HISTORY = AI_HISTORY.slice(-12);
+    } catch (e) {}
+    var log = el('aiLog');
+    if (log) log.scrollTop = log.scrollHeight;
+  }
 
   function logHTML(inner, cls) {
     var log = el('aiLog');
@@ -186,6 +344,12 @@
     var box = logHTML('<div class="ai-a"><span class="ai-dots">正在分析你的数据</span></div>', 'bot');
     var toolBox = null;
     var evidence = [];
+
+    // 已知离线：不发起那个注定失败的请求，直接走本地规则诊断
+    if (AI_STATE === 'offline') {
+      setTimeout(function () { localAnswer(box, question); }, 320);
+      return;
+    }
 
     var ctx;
     try { ctx = A.buildAIContext(); }
@@ -257,9 +421,19 @@
       }
       return pump();
     }).catch(function (e) {
-      box.innerHTML = '<div class="ai-err">无法连接后端服务。<br>' +
-        '请先在项目目录执行 <code>node server/index.mjs</code> 启动后端，再回来点「开始诊断」。<br>' +
-        '<span class="tiny">错误信息：' + esc(e.message) + '</span></div>';
+      // 后端不在（单文件交付的常态）：不是报错，而是降级到本地规则诊断。
+      // 之前这里吐的是"请先执行 node server/index.mjs"，那是给开发者看的，
+      // 对收到文件的同学/评委就是一条死胡同。
+      AI_STATE = 'offline';
+      setModePill(false);
+      localAnswer(box, question);
+      if (e && e.message) {
+        var tip = document.createElement('div');
+        tip.className = 'tiny';
+        tip.style.marginTop = '8px';
+        tip.textContent = '（未连接本地后端，以上为离线诊断。原始信息：' + e.message + '）';
+        box.appendChild(tip);
+      }
     });
   };
 

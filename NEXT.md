@@ -288,6 +288,26 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 `scripts/check-offline.mjs` 直接打开**桌面上那份孤立 HTML**（旁边无 assets）做 7 项断言：
 立绘来自 `data:` URI、抓起后换表情、弹簧在跑、身体落后于抓点、影子留在地面、松手落回地面、摆角归零。
 `scripts/pet-test.mjs` 同时从 21 项加到 **26 项**，全是"行为对不对"而不是"有没有跑"。
+### 交付形态：把文件发给别人能不能用（2026-10-21 复核）
+
+用户直接问了这个。答案是**能**，但「能」必须靠脚本证明，不能靠感觉。
+`scripts/check-recipient.mjs` 构造对方的真实条件再断言 18 项：
+只拷 index.html 进空目录（无 assets/data/server）、全新 --user-data-dir、
+`Network.setBlockedURLs(['http://*','https://*'])`、桌面 1440×900 与手机 390×844 各跑一遍。
+
+**查出并修掉的产品问题**：AI 面板断网时回的是
+「无法连接后端服务。请先在项目目录执行 node server/index.mjs」——给开发者看的话，
+发给评委就是点一下撞墙。现在改成本地规则诊断 `A.localDiagnosis(question)`：
+开场摆依据块（覆盖率、两口径掌握率、估计值 ± 区间、最弱两段）、按问题类型给侧重
+（计划 / 结果 / 方法 / 泛问）、结尾如实标注「离线规则诊断」、支持继续追问；
+对话框打开时先 900ms 探一次 `/api/health`，模式标记直接显示「离线 · 本地规则」而不是一直「连接中…」。
+
+**别把联网主路径改坏**：`scripts/check-online-ai.mjs` 专门守这条路（要后端在跑），
+断言模式标记为在线、回答是模型生成、带工具调用与依据面板。
+另注意服务端自己的降级会推一个 `evt.mode === 'mock'`，那时标签显示「本地规则诊断」。
+
+已知限制（README 里如实写了）：进度只在对方浏览器 localStorage、不跨设备同步、
+微信/QQ 内置浏览器可能不保留存储、发音依赖系统语音引擎。
 ## 四、绝对不要再试的路（都试过并失败了）
 
 1. **手绘 SVG 形象** —— 画了四版，用户评价"怎么长这样"，放弃
@@ -345,6 +365,8 @@ npm run build      # 打包 index.html
 npm test           # 冒烟测试 100 项
 npm run test:browser   # 真实浏览器 26 项
 npm run test:pet       # 桌宠行为 26 项（需要 Chrome）`r`nnode scripts/check-offline.mjs  # 孤立单文件的离线交付检查（7 项）
+node scripts/check-recipient.mjs  # 模拟「别人收到文件」的环境（18 项）
+node scripts/check-online-ai.mjs  # 联网 AI 主路径（5 项，需后端在跑）
 ```
 
 ## 七、几个环境坑
