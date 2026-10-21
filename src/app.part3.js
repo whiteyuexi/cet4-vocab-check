@@ -270,6 +270,34 @@
     return h;
   };
 
+  /* ---------- 使用者档案 ----------
+     作答数据存在这台浏览器里。同一台电脑换人用就会串，所以按档案隔离。
+     这个面板既是切换器，也是「数据到底存在哪」的说明。 */
+  A.profilesModal = function () {
+    var all = A.profileList();
+    var rows = A.profileSummaries().map(function (p) {
+      return '<div class="who-row' + (p.active ? ' on' : '') + '">' +
+        '<span class="who-nm">' + esc(p.name) + (p.active ? '<em>当前</em>' : '') + '</span>' +
+        '<span class="who-meta">' + (p.tested ? ('已测 ' + p.tested + ' 词 · 认识 ' + p.known) : '还没有作答') + '</span>' +
+        '<span class="who-acts">' +
+          (p.active ? '' : '<button class="btn sm" data-act="switch-profile" data-id="' + p.id + '">切换</button>') +
+          '<button class="btn sm ghost" data-act="rename-profile" data-id="' + p.id + '">改名</button>' +
+          (all.length > 1 ? '<button class="btn sm ghost" data-act="del-profile" data-id="' + p.id + '">删除</button>' : '') +
+        '</span></div>';
+    }).join('');
+
+    A.modal('<b>使用者</b>' +
+      '<div class="tiny" style="margin:6px 0 14px;line-height:1.8">每个使用者的作答、抽样与轮次报告都<b>分开存放</b>。' +
+      '同一台电脑上换人用，新建一个使用者即可，互不可见。</div>' +
+      '<div class="who-list">' + rows + '</div>' +
+      '<div class="who-new"><input id="newWho" maxlength="12" placeholder="新使用者的名字" aria-label="新使用者名字">' +
+      '<button class="btn primary" data-act="create-profile">新建并切过去</button></div>' +
+      '<div class="tiny" style="margin-top:14px;line-height:1.85;border-top:1px dashed var(--line2);padding-top:12px">' +
+      '<b>把文件发给别人会怎样：</b>作答数据存在浏览器里，<b>不跟着 index.html 走</b>。' +
+      '对方在自己电脑上打开，看到的是一份干净的空档案。</div>' +
+      '<div class="row" style="margin-top:14px"><button class="btn grow" data-act="modal-close">关闭</button></div>');
+  };
+
   /* ---------- 总览统计 ---------- */
   A.viewStats = function () {
     var pool = A.activePool();
@@ -371,13 +399,17 @@
 
     h += '<div class="sec-title">数据管理<span class="line"></span></div>';
     h += '<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px">' +
+      '<button class="btn" data-act="profiles">切换 / 新建使用者</button>' +
       '<button class="btn" data-act="export-json">导出作答备份（JSON）</button>' +
       '<button class="btn" data-act="export-csv">导出未掌握词表（CSV）</button>' +
       '<button class="btn" data-act="import-json">导入备份</button>' +
       '<button class="btn" data-act="clear-answers">清空作答记录</button>' +
       '<button class="btn ghost" data-act="reset-all">恢复出厂设置</button>' +
       '</div>';
-    h += '<div class="tiny" style="margin-top:12px">已记录 ' + Object.keys(S.status).length + ' 个词的作答，' + S.history.length + ' 条检测记录。数据保存在本机浏览器中，换浏览器或清理缓存会丢失，建议定期导出备份。</div>';
+    h += '<div class="tiny" style="margin-top:12px">当前使用者：<b>' + esc(A.myName()) + '</b>，已记录 ' +
+      Object.keys(S.status).length + ' 个词的作答，' + S.history.length +
+      ' 条检测记录。数据保存在本机浏览器中，<b>按使用者分开存放</b>；同一台电脑上换人用请新建使用者。' +
+      '换浏览器或清理缓存会丢失，建议定期导出备份。</div>';
     h += '</div>';
 
     h += '<div class="sec-title">使用说明<span class="line"></span></div>';
@@ -560,6 +592,54 @@
             label: (mb === 'all' ? '复测全部未测词' : ('复测 ' + (A.BAND_NAMES[+mb] || '') + ' · ' + ml + ' 块')) +
               ' · ' + mtake.length + ' 词' + (mlist.length > mcap ? '（共 ' + mlist.length + '，先测前 ' + mcap + '）' : '')
           });
+          break;
+        case 'profiles': A.profilesModal(); break;
+        case 'switch-profile':
+          A.switchProfile(t.getAttribute('data-id'));
+          A.closeModal(); A.go('home');
+          A.toast('已切换到 ' + A.myName());
+          break;
+        case 'create-profile':
+          var newNm = (document.getElementById('newWho') || {}).value || '';
+          var rec = A.createProfile(newNm);
+          A.closeModal(); A.go('home');
+          A.toast('已新建使用者「' + rec.name + '」，数据从零开始');
+          break;
+        case 'rename-profile':
+          var rid = t.getAttribute('data-id');
+          var cur = '';
+          A.profileList().forEach(function (p) { if (p.id === rid) cur = p.name; });
+          A.modal('<b>改名</b><div class="tiny" style="margin:8px 0 12px">只改显示的名字，不会动任何作答数据。</div>' +
+            '<input id="renWho" maxlength="12" value="' + A.esc(cur) + '" aria-label="新的名字" ' +
+            'style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--glass-2);color:var(--ink);font:inherit">' +
+            '<div class="row" style="margin-top:14px"><button class="btn primary grow" data-act="do-rename" data-id="' + rid + '">保存</button>' +
+            '<button class="btn ghost grow" data-act="modal-close">取消</button></div>');
+          break;
+        case 'do-rename':
+          var nv = (document.getElementById('renWho') || {}).value || '';
+          A.renameProfile(t.getAttribute('data-id'), nv);
+          A.closeModal(); A.toast('已改名');
+          break;
+        case 'del-profile':
+          var did = t.getAttribute('data-id'), dnm = '';
+          A.profileList().forEach(function (p) { if (p.id === did) dnm = p.name; });
+          A.modal('<b>删除使用者「' + A.esc(dnm) + '」？</b>' +
+            '<div class="tiny" style="margin:8px 0 16px">这个使用者的作答、抽样与轮次报告会一并删除，' +
+            '<b>不可恢复</b>。想留个底可以先导出备份。</div>' +
+            '<div class="row"><button class="btn primary grow" data-act="do-del-profile" data-id="' + did + '">确认删除</button>' +
+            '<button class="btn ghost grow" data-act="modal-close">取消</button></div>');
+          break;
+        case 'do-del-profile':
+          if (A.removeProfile(t.getAttribute('data-id'))) { A.closeModal(); A.toast('已删除'); }
+          else { A.closeModal(); A.toast('至少要留一个使用者'); }
+          break;
+        case 'save-welcome':
+          var wn = ((document.getElementById('welName') || {}).value || '').trim();
+          if (wn) A.renameProfile(A.activeProfile().id, wn);
+          A.markWelcomed(); A.render(); A.toast('好，' + A.myName() + '，开始吧');
+          break;
+        case 'skip-welcome':
+          A.markWelcomed(); A.render();
           break;
         case 'export-csv': A.exportCSV(); break;
         case 'new-round':

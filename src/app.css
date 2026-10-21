@@ -639,6 +639,47 @@ html[data-theme="dark"] .nav-pill{border-color:rgba(127,164,255,.3);
 
 
 /* ==========================================================================
+   使用者档案
+   ========================================================================== */
+.who-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--line2);color:var(--ink2);
+  font-size:12.5px;font-weight:600;max-width:150px;transition:border-color .18s,color .18s}
+.who-btn:hover{border-color:var(--accent);color:var(--accent)}
+.who-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.who-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 首次打开的称呼条：轻量、可跳过，绝不打断第一次检测 */
+.welcome{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding:14px 16px;
+  border-radius:16px;background:linear-gradient(150deg,var(--accent-soft),var(--glass) 62%);
+  border:1px solid rgba(42,91,224,.18);box-shadow:var(--lift-sm)}
+.welcome-txt{flex:1;min-width:200px}
+.welcome-txt b{font-size:14px;color:var(--ink)}
+.welcome-txt .tiny{margin-top:3px;line-height:1.6}
+.welcome-in{padding:8px 12px;border-radius:11px;border:1px solid var(--line2);
+  background:#fff;color:var(--ink);font:inherit;font-size:13px;width:150px}
+.welcome-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+html[data-theme="dark"] .welcome{background:linear-gradient(150deg,rgba(127,164,255,.10),var(--glass) 62%);
+  border-color:rgba(127,164,255,.2)}
+html[data-theme="dark"] .welcome-in{background:rgba(255,255,255,.06)}
+
+/* 档案面板 */
+.who-list{display:flex;flex-direction:column;gap:8px}
+.who-row{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;
+  padding:12px 14px;border-radius:13px;border:1px solid var(--line);background:var(--glass-2)}
+.who-row.on{border-color:rgba(42,91,224,.3);background:var(--accent-soft)}
+.who-nm{font-size:13.5px;font-weight:650;color:var(--ink);display:flex;align-items:center;gap:8px;min-width:0}
+.who-nm em{font-style:normal;font-size:10px;font-weight:700;color:var(--accent);
+  background:#fff;border-radius:999px;padding:1px 7px}
+html[data-theme="dark"] .who-nm em{background:rgba(255,255,255,.12)}
+.who-meta{grid-column:1;font-size:11.5px;color:var(--ink3);font-family:var(--mono)}
+.who-acts{grid-row:1/3;grid-column:2;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.who-new{display:flex;gap:8px;margin-top:12px}
+.who-new input{flex:1;padding:9px 12px;border-radius:12px;border:1px solid var(--line2);
+  background:var(--glass-2);color:var(--ink);font:inherit;font-size:13px}
+.who-new input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* ==========================================================================
    词汇地图
    纵轴词频段 × 横轴首字母。颜色＝掌握率，浓淡＝这一格测过多少。
    「一片浅色」= 整块没测、「深红」= 都测过且都不会。格子可点，直接复测那一块。

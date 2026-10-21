@@ -505,6 +505,53 @@ win.addEventListener('load', () => {
           A3.roundHistory().map(r => r.n).join(','));
       });
 
+      // ---------- 使用者档案：同机多人，数据必须完全隔离 ----------
+      step('profiles', () => {
+        const A3 = dom2.window.__APP__;
+        const doc3 = dom2.window.document;
+        const list0 = A3.profileList();
+        check('默认就有一个使用者档案', list0.length === 1 && !!list0[0].name,
+          JSON.stringify(list0.map(p => p.name)));
+        check('顶栏名字跟当前档案一致', A3.myName() === list0[0].name, A3.myName());
+
+        // 前面的步骤把作答清空了，这里先造两条，才能验证"档案机制不会弄丢数据"
+        const pool3 = A3.activePool();
+        A3.setSt(pool3[0], 2); A3.setSt(pool3[1], 1); A3.save();
+        const before = Object.keys(A3.S.status).length;
+        check('档案机制没有弄丢老数据', before === 2, before + ' 条');
+
+        const rec = A3.createProfile('李四');
+        check('新建使用者成功', !!rec && rec.name === '李四', rec && rec.name);
+        check('新使用者从零开始', Object.keys(A3.S.status).length === 0,
+          Object.keys(A3.S.status).length + ' 条');
+        check('新使用者需要走一次称呼引导', A3.needsWelcome() === true, String(A3.needsWelcome()));
+        check('档案数 +1', A3.profileList().length === 2, String(A3.profileList().length));
+        A3.go('home');
+        check('新使用者首页出现称呼引导条', !!doc3.querySelector('.welcome'), '');
+
+        A3.setSt(A3.activePool()[0], 2); A3.save();
+        check('新使用者的作答存在自己的档案里', Object.keys(A3.S.status).length === 1,
+          Object.keys(A3.S.status).length + ' 条');
+
+        A3.switchProfile(list0[0].id);
+        check('切回原使用者后数据原样还原', Object.keys(A3.S.status).length === before,
+          Object.keys(A3.S.status).length + ' vs ' + before);
+
+        const sums = A3.profileSummaries();
+        check('档案列表能显示各自进度', sums.length === 2 && sums.every(s => typeof s.tested === 'number'),
+          sums.map(s => s.name + ':' + s.tested).join(' | '));
+
+        A3.renameProfile(list0[0].id, '张三');
+        check('改名生效且不动数据', A3.myName() === '张三' && Object.keys(A3.S.status).length === before,
+          A3.myName());
+
+        A3.removeProfile(list0[0].id);
+        check('删除使用者后仍保留其余档案', A3.profileList().length === 1, String(A3.profileList().length));
+        check('不能把最后一个使用者删掉',
+          A3.removeProfile(A3.activeProfile().id) === false && A3.profileList().length === 1,
+          String(A3.profileList().length));
+      });
+
       report();
     }, 250);
   } catch (e) {

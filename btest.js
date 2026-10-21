@@ -107,6 +107,14 @@ const script = [
   ' ok("地图格子是可点按钮且带悬浮说明",!!vcell&&!!vcell.getAttribute("title")&&vcell.tagName==="BUTTON",'
     + 'vcell?vcell.tagName:"-");',
   ' A.go("home");',
+  ' /* 使用者档案：顶栏入口可点、面板能打开 */',
+  ' var whoBtn=document.getElementById("whoBtn");',
+  ' ok("顶栏有使用者入口",!!whoBtn&&!!document.getElementById("whoName")&&whoBtn.getBoundingClientRect().width>0,'
+    + 'whoBtn?document.getElementById("whoName").textContent:"-");',
+  ' if(whoBtn){whoBtn.click();}',
+  ' ok("使用者面板能打开并列出档案",!!document.querySelector(".who-list")&&document.querySelectorAll(".who-row").length>=1,'
+    + 'document.querySelectorAll(".who-row").length+" 个档案");',
+  ' var whoCloser=document.querySelector("[data-act=modal-close]"); if(whoCloser){whoCloser.click();}',
   '}catch(e){out.push("FAIL  运行时异常   ["+e.message+"]");}',
   'document.body.innerHTML="<pre style=\\"font:17px/1.6 Consolas,monospace;padding:18px;margin:0;white-space:pre-wrap\\">"+out.join("\\n").replace(/</g,"&lt;")+"</pre>";',
   '},120);});'

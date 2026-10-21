@@ -62,6 +62,42 @@
   function closeModal() { el('modal').innerHTML = ''; }
   A.modal = modal; A.closeModal = closeModal;
 
+  /* ---------- 使用者档案 ----------
+     为什么要有这个：作答数据存在浏览器 localStorage 里，同一台电脑上换个人用就会互相串
+     （实验室机器、宿舍共用一台电脑）。换一台电脑本来就不串，所以只需解决"同机多人"。
+     做法：每个档案一份独立数据；第一个档案沿用老的存储键，老数据和老测试都不受影响。 */
+  var PROFILES_KEY = 'cet4vocab_profiles';
+
+  function readMeta() {
+    try {
+      var raw = localStorage.getItem(PROFILES_KEY);
+      var o = raw ? JSON.parse(raw) : null;
+      if (o && Array.isArray(o.list) && o.list.length && o.active) return o;
+    } catch (e) {}
+    return null;
+  }
+  function writeMeta(o) {
+    try { localStorage.setItem(PROFILES_KEY, JSON.stringify(o)); A.storageBroken = false; }
+    catch (e) { A.storageBroken = true; }
+  }
+  function mkPid() { return 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36); }
+
+  var META = readMeta();
+  function meta() {
+    if (META) return META;
+    // 老用户：把现有的 cet4vocab_v1 认作第一个档案，数据一条不动
+    META = { active: 'p1', list: [{ id: 'p1', name: '本机用户', createdAt: Date.now(), legacy: true }] };
+    writeMeta(META);
+    return META;
+  }
+  function activeRec() {
+    var m = meta();
+    for (var i = 0; i < m.list.length; i++) if (m.list[i].id === m.active) { m.list[i]._idx = i; return m.list[i]; }
+    m.active = m.list[0].id;
+    return m.list[0];
+  }
+  function dataKey(rec) { return (rec && rec.legacy) ? KEY : KEY + '::' + (rec ? rec.id : 'x'); }
+
   /* ---------- 状态 ---------- */
   function defaultState() {
     return {
@@ -72,15 +108,17 @@
       samples: [],
       round: { n: 1, startedAt: Date.now() },   // 当前轮次
       rounds: [],                               // 已完成并归档的历史轮次（报告快照）
+      welcomed: false,                          // 是否已过了"怎么称呼"那一步
       settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
       theme: 'light',
       tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };
   }
-  function loadState() {
+  function loadState(rawOverride) {
     var d = defaultState();
     try {
-      var raw = localStorage.getItem(KEY);
+      var raw = rawOverride;
+      if (raw === undefined) raw = localStorage.getItem(dataKey(activeRec()));
       if (!raw) return d;
       var o = JSON.parse(raw);
       if (o && typeof o === 'object') {
@@ -91,6 +129,7 @@
         d.samples = o.samples || [];
         d.round = o.round || d.round;
         d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
+        d.welcomed = !!o.welcomed;
         d.theme = o.theme || 'light';
         d.tokens = o.tokens || 0;
         if (o.settings) for (var k in o.settings) if (o.settings.hasOwnProperty(k)) d.settings[k] = o.settings[k];
@@ -101,7 +140,7 @@
   var S = A.S = loadState();
   function save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify(S));
+      localStorage.setItem(dataKey(activeRec()), JSON.stringify(S));
       A.storageBroken = false;
     } catch (e) {
       // 存储被禁用/写满：标记一次并让界面常驻提示，而不是悄悄丢数据
@@ -109,6 +148,85 @@
     }
   }
   A.save = save;
+
+  /* ---------- 档案对外接口 ---------- */
+  A.profileList = function () {
+    return meta().list.map(function (r) { return { id: r.id, name: r.name, createdAt: r.createdAt, active: r.id === meta().active }; });
+  };
+  A.activeProfile = function () {
+    var r = activeRec();
+    return { id: r.id, name: r.name, createdAt: r.createdAt };
+  };
+  A.myName = function () { return activeRec().name || '本机用户'; };
+
+  /* 就地换装：保持 A.S 这个对象引用不变，所有已有代码不用改 */
+  function swapStateInto(next) {
+    Object.keys(S).forEach(function (k) { delete S[k]; });
+    Object.keys(next).forEach(function (k) { S[k] = next[k]; });
+  }
+  A.switchProfile = function (id) {
+    var m = meta();
+    if (id === m.active) return true;
+    var found = false;
+    for (var i = 0; i < m.list.length; i++) if (m.list[i].id === id) found = true;
+    if (!found) return false;
+    save();                        // 先把当前档案落盘
+    m.active = id;
+    writeMeta(m);
+    swapStateInto(loadState());
+    if (A.render) A.render();
+    return true;
+  };
+  A.createProfile = function (name) {
+    var m = meta();
+    save();                        // 先保存当前档案
+    var rec = { id: mkPid(), name: (name || '').trim() || ('使用者 ' + (m.list.length + 1)), createdAt: Date.now() };
+    m.list.push(rec);
+    m.active = rec.id;
+    writeMeta(m);
+    swapStateInto(loadState());    // 新档案是空的
+    if (A.render) A.render();
+    return rec;
+  };
+  A.renameProfile = function (id, name) {
+    var m = meta(), n = (name || '').trim();
+    if (!n) return false;
+    for (var i = 0; i < m.list.length; i++) if (m.list[i].id === id) { m.list[i].name = n; break; }
+    writeMeta(m);
+    if (A.render) A.render();
+    return true;
+  };
+  A.removeProfile = function (id) {
+    var m = meta();
+    if (m.list.length <= 1) return false;         // 至少留一个，否则数据无处安放
+    var keep = null, removed = null;
+    m.list = m.list.filter(function (r) { if (r.id === id) { removed = r; return false; } return true; });
+    if (!removed) return false;
+    try { localStorage.removeItem(dataKey(removed)); } catch (e) {}
+    if (m.active === id) { m.active = m.list[0].id; swapStateInto(loadState()); }
+    writeMeta(m);
+    if (A.render) A.render();
+    return true;
+  };
+  A.markWelcomed = function () { S.welcomed = true; save(); };
+  A.needsWelcome = function () { return !S.welcomed; };
+
+  /* 每个档案的进度摘要：直接读各自的存储，不切换、不影响当前状态 */
+  A.profileSummaries = function () {
+    var m = meta();
+    return m.list.map(function (r) {
+      var tested = 0, known = 0;
+      try {
+        var raw = localStorage.getItem(dataKey(r));
+        if (raw) {
+          var o = JSON.parse(raw);
+          var st = (o && o.status) || {};
+          for (var k in st) if (st.hasOwnProperty(k)) { tested++; if (st[k] === 2) known++; }
+        }
+      } catch (e) {}
+      return { id: r.id, name: r.name, tested: tested, known: known, active: r.id === m.active };
+    });
+  };
 
   /* ---------- 词库：四级 / 六级 ---------- */
   // b 位掩码：1 = 四级大纲词，2 = 六级大纲新增词，3 = 四六级都有
@@ -965,6 +1083,10 @@
     // 顶栏与底部导航
     var t = tally(activePool());
     el('tbStat').textContent = A.bankName() + ' · ' + (t.tested ? ('已测 ' + t.tested + ' / ' + t.total) : (t.total + ' 词'));
+    var whoEl = document.getElementById('whoName');
+    if (whoEl) whoEl.textContent = A.myName();
+    var whoBtn = document.getElementById('whoBtn');
+    if (whoBtn) whoBtn.setAttribute('aria-label', '当前使用者 ' + A.myName() + '，点击切换或新建');
     // 高亮跟着当前路由走。这里曾经把 groups 映射成 test，
     // 于是停在「分组」页时底部亮的却是「检测」——导航明明有独立的分组按钮，就该亮它。
     var navKey = route;
@@ -1029,6 +1151,17 @@
     }
 
     var h = '';
+    // 第一次打开时的「怎么称呼」：做成一条可跳过的轻量条，绝不打断第一次检测
+    if (A.needsWelcome()) {
+      h += '<div class="welcome" id="welcomeBar">' +
+        '<div class="welcome-txt"><b>你好，怎么称呼？</b>' +
+          '<div class="tiny">留个名字，报告和桌宠会按你的名字说话。名字和作答都只存在这台浏览器里。</div></div>' +
+        '<input id="welName" class="welcome-in" maxlength="12" placeholder="例如：李四" ' +
+          'aria-label="你的名字">' +
+        '<button class="btn sm primary" data-act="save-welcome">保存</button>' +
+        '<button class="btn sm ghost" data-act="skip-welcome">先用着</button>' +
+        '</div>';
+    }
     h += '<div class="home-toprow">' + A.bankSwitch();
     if (A.roundNo() > 1) {
       h += '<span class="round-badge" title="当前是第 ' + A.roundNo() + ' 轮检测">第 ' + A.roundNo() + ' 轮</span>';

@@ -127,7 +127,7 @@
       return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词了，不过那是分组检测——不能外推。补一次随机摸底才能算出词汇量。',
         acts: [{ label: '补一次摸底', act: 'start', kind: 'probe', target: 250 }] };
     }
-    return { mood: 'happy', text: '第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
+    return { mood: 'happy', text: A.myName() + '，第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
       acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 },
              { label: '这是什么？', act: 'ai-ask', q: '这个工具是怎么算出我的词汇量的？' }] };
   }
