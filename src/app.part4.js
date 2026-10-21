@@ -157,19 +157,190 @@
   A.openAIDialog = function (question) {
     A.modal('<div class="ai-head"><b>AI 诊断教练</b>' +
       '<span class="pill brand" id="aiMode">连接中…</span></div>' +
+      '<div id="aiLockBar"></div>' +
       '<div class="ai-log" id="aiLog"></div>' +
       '<div class="row" style="margin-top:12px;gap:8px">' +
       '<input class="search" id="aiInput2" placeholder="继续追问，例如：那 2k-3k 段要管吗？">' +
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
     A.resetAIHistory();
-    // 先探一下后端在不在。单文件交付时它一定不在，那就别让用户看着"连接中…"干等，
-    // 直接标成离线模式，问题照样答（见 A.localDiagnosis）。
+    renderLockBar();
+    // 有授权锁时不要先去探后端：这个文件本来就是给别人用的离线形态，
+    // 探了也白探，还会让用户以为"在连什么"。只有无锁版本才走健康检查。
+    if (AI_LOCK) {
+      // 有锁就不要停在"连接中…"：如实告诉用户现在是离线规则诊断，大模型需要授权
+      if (!AI_LIVE) setModePillText('离线 · 本地规则（大模型需授权）', 'warn');
+      if (question) A.runAI(question);
+      return;
+    }
     probeBackend(function (online) {
       setModePill(online);
       if (question) A.runAI(question);
     });
   };
+
+  /* ---------- AI 授权锁 ----------
+     作者把 API Key 用「自己设的密码」加密后嵌进产物（scripts/make-ai-lock.mjs），
+     HTML 里只有密文。对方输入密码 → PBKDF2 派生密钥 → AES-GCM 解密 → 拿到 Key 调模型。
+     要点：解出来的 Key 只放内存（AI_LIVE），刷新即失效，授权是"这一次打开"。
+     离线规则诊断不受锁影响，谁都能用、不花钱。 */
+  var AI_LOCK = (typeof window !== 'undefined' && window.AI_LOCK) || null;
+  var AI_LIVE = null;                    // { key, model, base } —— 只存在内存里
+  var UNLOCKING = false;
+  var PBKDF2_MIN_IT = 100000;            // 密文里写了迭代次数，但不接受低到可爆的值
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function renderLockBar() {
+    var bar = el('aiLockBar');
+    if (!bar) return;
+    if (!AI_LOCK) { bar.innerHTML = ''; return; }
+    if (AI_LIVE) {
+      bar.innerHTML = '<div class="ai-lock ok">已授权：本次打开可用大模型（' +
+        esc(AI_LIVE.model) + '）。刷新页面后需要重新输入密码。</div>';
+      return;
+    }
+    bar.innerHTML = '<div class="ai-lock">' +
+      '<b>大模型诊断已锁定</b>' +
+      '<span class="tiny">离线诊断随时可用、不消耗任何额度。要用大模型，请输入作者提供的访问密码。</span>' +
+      '<div class="row" style="gap:8px;margin-top:8px">' +
+      '<input class="search" id="aiLockPass" type="password" placeholder="访问密码" autocomplete="off">' +
+      '<button class="btn primary" data-act="ai-unlock" id="aiUnlockBtn">解锁</button>' +
+      '</div><div class="tiny" id="aiLockMsg"></div></div>';
+  }
+
+  function lockMsg(text, bad) {
+    var m = el('aiLockMsg');
+    if (!m) return;
+    m.textContent = text || '';
+    m.style.color = bad ? '#c0392b' : '';
+  }
+
+  A.unlockAI = function (password) {
+    if (!AI_LOCK) return Promise.resolve(false);
+    if (AI_LIVE) return Promise.resolve(true);
+    if (!window.crypto || !crypto.subtle) {
+      lockMsg('这个浏览器不支持 WebCrypto，无法解锁。换 Chrome / Edge / Firefox 再试。', true);
+      return Promise.resolve(false);
+    }
+    var it = AI_LOCK.it | 0;
+    if (it < PBKDF2_MIN_IT) { lockMsg('密文迭代次数异常，已拒绝解锁。', true); return Promise.resolve(false); }
+    lockMsg('校验中…');
+    UNLOCKING = true;
+    var enc = new TextEncoder(), dec = new TextDecoder();
+    return crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey'])
+      .then(function (base) {
+        return crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt: b64ToBytes(AI_LOCK.salt), iterations: it, hash: 'SHA-256' },
+          base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+      })
+      .then(function (aesKey) {
+        // GCM 的 tag 附在密文尾部
+        return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(AI_LOCK.iv), tagLength: 128 },
+          aesKey, b64ToBytes(AI_LOCK.ct));
+      })
+      .then(function (buf) {
+        var obj = JSON.parse(dec.decode(buf));
+        if (!obj || !obj.k) throw new Error('解开的内容不完整');
+        AI_LIVE = { key: obj.k, model: obj.m || 'deepseek-chat', base: (obj.b || 'https://api.deepseek.com').replace(/\/$/, '') };
+        UNLOCKING = false;
+        renderLockBar();
+        setModePillText('在线 · 大模型（已授权）', 'brand');
+        return true;
+      })
+      .catch(function () {
+        UNLOCKING = false;
+        // AES-GCM 认证失败 = 密码不对（不需要额外的校验值）
+        lockMsg('密码不正确。可以再试一次，或直接看下面的离线诊断。', true);
+        return false;
+      });
+  };
+
+  function setModePillText(text, cls) {
+    var pill = el('aiMode');
+    if (!pill) return;
+    pill.textContent = text;
+    pill.className = 'pill ' + (cls || 'brand');
+  }
+
+  /* 直连模型厂商（DeepSeek 允许跨域，实测 file:// 也能调）：流式渲染复用同一套逻辑 */
+  function runDirect(box, question) {
+    var ctx = '';
+    try { ctx = JSON.stringify(A.buildAIContext()); } catch (e) { ctx = '{}'; }
+    var sys = '你是「四六级词汇量检测」工具里的诊断教练。规则：\n' +
+      '1. 只依据下面这份用户数据说话，禁止编造数字；数据不足就直说"样本太少，现在还不能判断"，并说明缺什么。\n' +
+      '2. 回答用中文，结构清晰，先给结论再给依据；能给具体动作就给具体动作（背哪一段、每天多少词、下一轮怎么测）。\n' +
+      '3. 这是抽样估计：总掌握率会被高低频段平均掉，判断强弱要看频段剖面；有置信区间时要提醒误差范围。\n' +
+      '4. 不要输出代码块以外的表格，篇幅控制在 400 字以内。\n\n用户数据：' + ctx;
+
+    fetch(AI_LIVE.base + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AI_LIVE.key },
+      body: JSON.stringify({
+        model: AI_LIVE.model,
+        stream: true,
+        temperature: 0.3,
+        max_tokens: 900,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: question }],
+      }),
+    }).then(function (res) {
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) throw new Error('授权失效（' + res.status + '）：Key 可能已被轮换');
+        throw new Error('模型接口返回 ' + res.status);
+      }
+      if (!res.body) throw new Error('浏览器不支持流式读取');
+      var reader = res.body.getReader(), dec2 = new TextDecoder(), buf = '', text = '';
+      setModePillText('在线 · 大模型（已授权）', 'brand');
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            box.innerHTML = '<div class="ai-a">' + renderMD(text || '（模型没有返回内容）') +
+              sentDataHTML(question) + '</div>';
+            AI_HISTORY.push({ role: 'user', content: question });
+            AI_HISTORY.push({ role: 'assistant', content: text });
+            if (AI_HISTORY.length > 12) AI_HISTORY = AI_HISTORY.slice(-12);
+            var lg = el('aiLog'); if (lg) lg.scrollTop = lg.scrollHeight;
+            return;
+          }
+          buf += dec2.decode(r.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          lines.forEach(function (line) {
+            line = line.trim();
+            if (line.indexOf('data:') !== 0) return;
+            var payload = line.slice(5).trim();
+            if (payload === '[DONE]') return;
+            try {
+              var j = JSON.parse(payload);
+              var ch = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+              if (ch) {
+                text += ch;
+                box.innerHTML = '<div class="ai-a">' + renderMD(text) + '</div>';
+                var lg2 = el('aiLog'); if (lg2) lg2.scrollTop = lg2.scrollHeight;
+              }
+            } catch (e) { /* 半行 JSON，等下一块 */ }
+          });
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function (e) {
+      box.innerHTML = '<div class="ai-err">大模型调用失败：' + esc(e.message) + '</div>' +
+        '<div class="ai-a" style="margin-top:8px">' + renderMD(A.localDiagnosis(question)) + '</div>';
+    });
+  }
+
+  // 透明说明：把哪些数据发给了模型（隐私承诺要能核对）
+  function sentDataHTML(question) {
+    var ctx = '';
+    try { ctx = JSON.stringify(A.buildAIContext(), null, 1); } catch (e) { ctx = '{}'; }
+    return '<details class="ai-sent"><summary>本次发送给模型的数据（仅汇总，不含逐题作答）</summary>' +
+      '<pre>' + esc(ctx) + '</pre></details>';
+  }
 
   /* ---------- 后端可用性探测 ----------
      单文件是主要交付形态：评委在自己电脑上打开，旁边没有 server/index.mjs。
@@ -344,6 +515,19 @@
     var box = logHTML('<div class="ai-a"><span class="ai-dots">正在分析你的数据</span></div>', 'bot');
     var toolBox = null;
     var evidence = [];
+
+    // 有授权锁：解锁了就走直连大模型；没解锁就提示先输密码，离线诊断照答（不花钱）
+    if (AI_LOCK) {
+      if (AI_LIVE) { runDirect(box, question); return; }
+      localAnswer(box, question);
+      var hint = document.createElement('div');
+      hint.className = 'tiny';
+      hint.style.marginTop = '8px';
+      hint.textContent = '（以上为离线规则诊断，不消耗任何额度。要用大模型，请在上方输入访问密码后重发这个问题。）';
+      box.appendChild(hint);
+      lockMsg('要用大模型请先输入访问密码。', false);
+      return;
+    }
 
     // 已知离线：不发起那个注定失败的请求，直接走本地规则诊断
     if (AI_STATE === 'offline') {

@@ -569,6 +569,19 @@
           if (v2) { aiq2.value = ''; A.runAI(v2, true); }
           break;
         }
+        case 'ai-unlock': {
+          var pass = el('aiLockPass');
+          var pv = pass ? pass.value : '';
+          if (!pv) break;
+          var ub = el('aiUnlockBtn');
+          if (ub) { ub.disabled = true; ub.textContent = '校验中…'; }
+          A.unlockAI(pv).then(function (ok) {
+            var b2 = el('aiUnlockBtn');
+            if (b2) { b2.disabled = false; b2.textContent = '解锁'; }
+            if (ok && pass) pass.value = '';
+          });
+          break;
+        }
         case 'copy-report': A.copyText(A.reportText()); break;
         case 'print-report':
           try { window.print(); } catch (e) { A.toast('当前环境不支持打印'); }

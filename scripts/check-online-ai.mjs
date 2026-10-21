@@ -13,14 +13,22 @@ import path from 'node:path';
 
 const CH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const ROOT = path.resolve(import.meta.dirname, '..');
-const BASE = (process.argv[2] || 'http://127.0.0.1:8787').replace(/\/$/, '');
+// 第二个参数可以是页面地址（也可直接给 .html 文件，用来验「单文件 + 本机后端」）
+const arg = process.argv[2] || 'http://127.0.0.1:8787';
+const IS_FILE = /\.html$/i.test(arg) || /^file:/i.test(arg);
+const TARGET = IS_FILE
+  ? 'file:///' + path.resolve(arg).replace(/\\/g, '/')
+  : arg.replace(/\/$/, '') + '/';
+// 后端地址：file:// 打开时前端固定连 127.0.0.1:8787（见 part4 的 apiBase）
+const API = IS_FILE ? 'http://127.0.0.1:8787' : arg.replace(/\/$/, '');
 const OUT = path.join(ROOT, 'shots');
 
-const health = await (await fetch(BASE + '/api/health').catch(() => null))?.json?.().catch(() => null);
+const health = await (await fetch(API + '/api/health').catch(() => null))?.json?.().catch(() => null);
 if (!health || !health.ok) {
-  console.error('后端没在跑或不可用：' + BASE + '（先执行 node server/index.mjs）');
+  console.error('后端没在跑或不可用：' + API + '（先执行 node server/index.mjs）');
   process.exit(1);
 }
+console.log('页面:', TARGET, IS_FILE ? '(单文件 file://)' : '(本地服务)');
 console.log('后端:', health.provider + '/' + health.model, '语料', health.corpus.words, '词 /', health.corpus.sentences, '句');
 
 const PORT = 9633 + Math.floor(Math.random() * 200);
@@ -69,7 +77,7 @@ try {
   };
   await send('Page.enable');
   await send('Runtime.enable');
-  await send('Page.navigate', { url: BASE + '/' });
+  await send('Page.navigate', { url: TARGET });
   await evalJs('new Promise(function(r){ if(document.readyState==="complete") r(1); else addEventListener("load",function(){r(1)}); })');
   await sleep(1200);
 

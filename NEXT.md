@@ -308,6 +308,37 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 
 已知限制（README 里如实写了）：进度只在对方浏览器 localStorage、不跨设备同步、
 微信/QQ 内置浏览器可能不保留存储、发音依赖系统语音引擎。
+### AI 授权锁：别人要用我的额度，就得输入我设的密码（2026-10-21 新做）
+
+需求原话：「再需要动用我的 api 时，你加一个机制：他要让 ai 给他诊断，需要输入密码，
+这个密码我来设置；密码对了就等于我给了对方这个权限。」
+
+实现分两层，**面板标签会如实显示用户处在哪一层**：
+
+- **离线规则诊断**：任何人打开就有，不花钱（`A.localDiagnosis`，见上一节）。
+- **大模型**：需要访问密码。作者跑 `node scripts/make-ai-lock.mjs "密码"`，
+  脚本用 PBKDF2-SHA256（60 万次）+ AES-GCM 把 API Key 加密，密文由 build.js 内联成 `window.AI_LOCK`；
+  浏览器端 `A.unlockAI(password)` 用 WebCrypto 派生密钥解密，成功才拿到 Key，**只放内存（AI_LIVE），刷新即失效**。
+  撤销：`node scripts/make-ai-lock.mjs --off`。
+
+关键前提（都实测过）：`file://` 在 Chrome 里是安全上下文，`crypto.subtle` 可用（PBKDF2 解密约 100ms）；
+DeepSeek 允许跨域（从 origin=null 的 file:// 页面直调返回 401 可读），OpenAI / 智谱**不允许**，
+所以直连方案目前只对 DeepSeek 成立；解码后的 Key 直接调 `chat/completions`（stream:true），
+流式渲染复用原来的 SSE 解析。
+
+**安全边界必须记住**：密文公开在 HTML 里，没有速率限制 → **密码强度就是唯一防线**。
+`make-ai-lock.mjs` 会拒绝 <12 位密码并印出爆破估算（6 位纯数字单卡约 55 秒）；
+确实要用短密码需显式加 `--force-weak`，此时脚本会打印风险提示。
+**密码绝不能写进仓库**：测试脚本通过环境变量取 `AI_LOCK_PASS`。
+
+踩过的两个坑（都值得记）：
+1. 模板占位符写成 `window.AI_LOCK = /*__AILOCK__*/null;`，替换后变成 `{...}null;` → **语法错误，
+   锁根本没加载**，但静态检查（正则看字节在不在）照样通过。教训：静态检查证明不了"能执行"，
+   所以 `scripts/check-ai-lock.mjs` 必须在真实浏览器里验解锁、验调用。
+2. 等流式回答时盯"整段日志是否稳定"，而日志里还有解锁前那条离线回答（已 >200 字），
+   于是在模型还在"正在分析…"时就提前收工 → 断言误判。必须盯**最后一条**机器人消息。
+
+回归：`scripts/check-ai-lock.mjs` 14 项（含"产物里搜不到明文 Key""错误密码解不开""刷新后重新上锁"）。
 ## 四、绝对不要再试的路（都试过并失败了）
 
 1. **手绘 SVG 形象** —— 画了四版，用户评价"怎么长这样"，放弃
@@ -367,6 +398,8 @@ npm run test:browser   # 真实浏览器 26 项
 npm run test:pet       # 桌宠行为 26 项（需要 Chrome）`r`nnode scripts/check-offline.mjs  # 孤立单文件的离线交付检查（7 项）
 node scripts/check-recipient.mjs  # 模拟「别人收到文件」的环境（18 项）
 node scripts/check-online-ai.mjs  # 联网 AI 主路径（5 项，需后端在跑）
+node scripts/make-ai-lock.mjs "密码"   # 生成 AI 授权锁（把密码加密后的 Key 内联进产物）
+node scripts/check-ai-lock.mjs         # 密码授权链路（14 项，密码从 AI_LOCK_PASS 读）
 ```
 
 ## 七、几个环境坑

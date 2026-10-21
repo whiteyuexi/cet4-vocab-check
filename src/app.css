@@ -329,6 +329,19 @@ details.tips[open] summary::before{content:"− "}
 .ai-a li{margin:4px 0}
 .ai-tools{display:flex;flex-wrap:wrap;gap:6px}
 .ai-tool{font-family:var(--mono);font-size:10.5px;background:var(--ok-soft);color:var(--ok);padding:3px 9px;border-radius:20px}
+/* AI 授权锁：作者把 API Key 加密后内联进产物，密码对了才解开。
+   这条提示必须显得"是我不想花你的额度"，而不是"这里坏了" */
+.ai-lock{border:1px solid rgba(42,91,224,.22);background:linear-gradient(180deg,rgba(42,91,224,.06),rgba(42,91,224,.02));
+  border-radius:12px;padding:11px 13px;margin-bottom:10px;font-size:12.8px;color:var(--ink2)}
+.ai-lock b{display:block;color:var(--ink);font-size:13.2px;margin-bottom:3px}
+.ai-lock .tiny{display:block;font-size:11.6px;color:var(--ink3);line-height:1.6}
+.ai-lock.ok{border-color:rgba(34,150,90,.28);background:linear-gradient(180deg,rgba(34,150,90,.08),rgba(34,150,90,.02));color:#1f7a4d}
+.ai-lock input{min-width:150px;flex:1}
+.ai-sent{margin-top:10px;font-size:11.8px;color:var(--ink3)}
+.ai-sent summary{cursor:pointer;user-select:none}
+.ai-sent pre{margin:6px 0 0;padding:8px 10px;background:rgba(20,30,60,.04);border-radius:8px;
+  max-height:150px;overflow:auto;font:11px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+html[data-theme="dark"] .ai-sent pre{background:rgba(255,255,255,.06)}
 .ai-err{color:var(--bad);font-size:13px;line-height:1.8;background:var(--bad-soft);border-radius:13px;padding:13px 15px}
 .ai-ev{margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
 .ai-ev summary{cursor:pointer;font-size:12px;color:var(--ink2);list-style:none;font-weight:600}

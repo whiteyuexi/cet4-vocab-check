@@ -26,3 +26,6 @@ assets/whale-sprite/
 Thumbs.db
 .idea/
 .vscode/
+
+# AI 授权密文（含加密后的 API Key 密文，不进仓库；用 scripts/make-ai-lock.mjs 生成）
+private/
