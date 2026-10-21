@@ -222,8 +222,9 @@
       var fy = floorY();
       if (P.y >= fy) {
         P.y = fy; P.vy = 0; setAir(false);
-        hostEl.classList.add('poked');                     // 落地小弹一下
-        setTimeout(function () { hostEl.classList.remove('poked'); }, 500);
+        // 落地：先压一下再抖两下，像把身上的灰抖掉
+        hostEl.classList.add('shake');
+        setTimeout(function () { hostEl.classList.remove('shake'); }, 560);
       }
       apply();
     }
@@ -250,6 +251,41 @@
     scheduleWalk();
   }
 
+  /* ---------- 被拎起来时的「悬空挣扎」 ----------
+     静态立绘要显得活着，得同时给三样东西，缺一样就露馅：
+       1) 物理感：转轴从脚底挪到头顶，改成被拎着的摆动（纯 CSS，见 .pet.held）
+       2) 表情：换成挣扎的立绘
+       3) 台词：气泡里喊一句
+     松手后三样一起还原，不能只还原其中一部分。 */
+  var HELD_SAY = ['喂——放我下来！', '别拎我耳朵…', '我还没测完呢！', '放开啦，我自己会走。'];
+  var STRUGGLE_ART = ['angry', 'meme-doubt'];
+  var heldBackup = null;
+
+  function enterHeld() {
+    if (!hostEl) return;
+    hostEl.classList.add('held');
+    showArt(STRUGGLE_ART[Math.floor(Math.random() * STRUGGLE_ART.length)]);
+    if (sayEl && !heldBackup) {
+      // 记住原气泡，松手时还原；这里直接改写，避免和 compose() 抢
+      heldBackup = true;
+      var acts = sayEl.querySelector('.pet-acts');
+      if (acts) acts.style.display = 'none';
+      sayEl.textContent = HELD_SAY[Math.floor(Math.random() * HELD_SAY.length)];
+      sayEl.classList.remove('empty');
+    }
+  }
+  function exitHeld() {
+    if (!hostEl) return;
+    hostEl.classList.remove('held');
+    if (artState.revertTimer) { clearTimeout(artState.revertTimer); artState.revertTimer = null; }
+    showArt(MOOD_ART[lastMood] || MOOD_ART.idle);      // 恢复情绪立绘
+    if (heldBackup) {
+      heldBackup = null;
+      lastText = ''; lastSig = '';                      // 逼下一帧把气泡和按钮重画出来
+      try { if (A.renderPet) A.renderPet(); } catch (e) {}
+    }
+  }
+
   function onDown(e) {
     if (!hostEl) return;
     drag.on = true; drag.moved = 0;
@@ -258,6 +294,7 @@
     drag.lastMove = performance.now();
     P.dragging = true; stopWalk(); setAir(false);
     figEl.classList.add('grabbing');
+    enterHeld();
     try { figEl.setPointerCapture(e.pointerId); } catch (err) {}
     e.preventDefault();
   }
@@ -281,6 +318,7 @@
     var moved = drag.moved;
     drag.on = false; P.dragging = false;
     if (figEl) figEl.classList.remove('grabbing');
+    exitHeld();                                          // 先退出挣扎态，再决定是戳还是落下
     if (moved < 6) {
       // 没怎么动 = 戳一下；顺手把她放回地面，别留在半空
       poke();
@@ -311,8 +349,9 @@
      倾斜角由鼠标位置缓动逼近；投影跟着反向横移、随离地高度缩小变淡。 */
   function applyDepth() {
     var k = Math.min(1, lift() / 260);
-    var ttx = -look.y * 9;
-    var tty = look.x * 15;
+    // 被拎着的时候不要再跟着鼠标转头：摆动交给 .pet.held 的动画，两套一起转会打架
+    var ttx = P.dragging ? 0 : -look.y * 9;
+    var tty = P.dragging ? 0 : look.x * 15;
 
     V.tx += (ttx - V.tx) * 0.10;
     V.ty += (tty - V.ty) * 0.10;

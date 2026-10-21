@@ -489,6 +489,26 @@ html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
 .pet.poked .pet-anim{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
 @keyframes petPoke{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-9px) scale(1.05)}}
 
+/* 被拎起来：转轴从脚底挪到头顶（真被拎着的时候就是头顶那个点不动），
+   整个身子改成悬空摆动 —— 这一步是"悬空"读起来成立的关键，只平移不转轴就像贴纸在飘 */
+.pet.held .pet-fig{transform-origin:50% 8%}
+.pet.held .pet-anim{animation:petDangle 1.15s ease-in-out infinite}
+@keyframes petDangle{
+  0%,100%{transform:rotate(-6deg) translateY(0)}
+  22%{transform:rotate(-1.5deg) translateY(-3px)}
+  50%{transform:rotate(6deg) translateY(0)}
+  72%{transform:rotate(1.5deg) translateY(-3px)}
+}
+/* 落地：先压一下再抖两下，像把身上的灰抖掉 */
+.pet.shake .pet-anim{animation:petShake .54s cubic-bezier(.2,.7,.3,1)}
+@keyframes petShake{
+  0%{transform:translateY(-6px) scale(1.04,.96)}
+  28%{transform:translateY(0) scale(1.07,.93)}
+  52%{transform:rotate(-3.2deg) scale(1,1)}
+  74%{transform:rotate(3.2deg) scale(1,1)}
+  100%{transform:rotate(0) scale(1,1)}
+}
+
 /* 接触投影：两层。紧贴脚底的一小片最暗，外围一大圈更淡；离地越高越小越淡，
    并朝倾斜反方向偏移，影子和人对不上就立刻「假」了 */
 .pet-shadow{position:absolute;left:50%;bottom:calc(var(--ground) - 8px);
@@ -508,7 +528,8 @@ html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side
 .pet-credit .fed{display:block;color:var(--accent);font-weight:600}
 
 @media (prefers-reduced-motion:reduce){
-  .pet-anim,.pet.poked .pet-anim,.pet.walk .pet-anim{animation:none!important}
+  .pet-anim,.pet.poked .pet-anim,.pet.walk .pet-anim,
+  .pet.held .pet-anim,.pet.shake .pet-anim{animation:none!important}
   .pet-art{transition:none}
 }
 /* 窄屏不出现桌宠，避免遮挡内容 */

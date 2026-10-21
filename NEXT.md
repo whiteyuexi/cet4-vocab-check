@@ -23,7 +23,7 @@
 - RAG 例句检索（Tatoeba 语料）
 - token 计量（「已投喂 N token」，对应角色"白米饭首席品鉴官"设定）
 - 桌宠：可拖动、重力落地、自动溜达、视线跟踪、透视倾斜、动态投影（2026-10-17 换成 2.5D 全身立绘，见 §三）
-- 测试：冒烟 164/164、浏览器 44/44、桌宠行为 15/15
+- 测试：冒烟 164/164、浏览器 44/44、桌宠行为 21/21
 
 ## 三、已经做完的事（2026-10-17）
 
@@ -239,6 +239,30 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 
 回归用例已进 `scripts/pet-test.mjs`（"pointerup 丢失也能自己落地"）。
 
+### 抓起后悬空挣扎（2026-10-21 新做）
+
+用户原话：「就比如抓起来的时候她会悬空假装挣扎这种。」——之前抓住只是位置跟着光标走，
+读起来像拖一张贴图。现在做成一条完整的反应链（`src/app.part5.js` + `src/app.css`）：
+
+1. **转轴换位置**：`.pet.held .pet-fig{transform-origin:50% 8%}`，从脚底挪到耳根。
+   同样一个 `rotate`，转轴在脚底是"踮脚"，在头顶就是"甩腿"——**悬空感全靠这一条**，没加任何物理。
+2. **摆动**：`@keyframes petDangle` 1.15s、±6°，中途两次 `translateY(-3px)` 上顶。
+   纯旋转像钟摆，加这 3px 才是蹬腿；幅度不能再大，大了像抽搐。
+3. **表情 + 台词**：`enterHeld()` 把原表情存进 `heldBackup` 再换 `STRUGGLE_ART`，
+   `exitHeld()` 原样还回去（不还就会出现"落地了还在生气"）；台词 `HELD_SAY` 只在抓起那一刻喊一句。
+4. **落地**：`tick()` 里落地反馈从 `.poked` 改成 `.shake`（压扁后左右各 3.2°），语义是"被放下后抖灰"。
+
+**坑（改这块必看）**：2.5D 的 `applyDepth()` 会按光标给立绘加 `ttx/tty` 视差。
+拖拽时若它还在算，整只就追着光标滑，摆动被抹平、挣扎感全无。
+所以 `P.dragging` 为真时**强制 `ttx = tty = 0`**，形变只交给 `petDangle`。
+
+边界：`enterHeld/exitHeld` 幂等（重复抓不会叠两份备份）；`endDrag()` 第一句就调 `exitHeld()`，
+所以"8s 看门狗"和"`buttons===0` 自愈"两条兜底路径也一定退出挣扎态；
+`prefers-reduced-motion` 下摆动整体关掉、保持直立被拎着（有意取舍，别去"修"成不关）。
+
+回归用例 `scripts/pet-test.mjs` 从 15 项加到 21 项：进入 `.held`/动画名/转轴 Y/表情/台词/退出状态/恢复待机，
+**进入和退出都断言**——只测进入等于没测，状态机最容易坏的就是回头那一步。
+
 ## 四、绝对不要再试的路（都试过并失败了）
 
 1. **手绘 SVG 形象** —— 画了四版，用户评价"怎么长这样"，放弃
@@ -282,6 +306,7 @@ scripts/pet25d.html     2.5D 原型（独立页面，调参用：?art= 尺寸 / 
 scripts/lab.html        Live2D 模型检验台：按内容包围盒自动取景，可灭部件（?hide=desk）
 scripts/cdp-shot.mjs    DevTools 协议截图，可等页面条件、可只截一块区域（末位参数 "x,y,w,h[,scale]"）
 scripts/cdp-eval.mjs    在真实 Chrome 里求值一段 JS 打回来（查 DOM / 计算样式 / 内部状态）
+scripts/html2pdf.mjs    技术文档 HTML → PDF，并打印页数（超 30 页时以退出码 2 报警）
 scripts/_theme-dark.html 截图辅助：写好 localStorage 的 theme 再跳回首页，用来拍暗色版
 scripts/_seed-full.html 截图辅助：造一份"整库已测完"的作答，用来拍解锁后的报告页
 LICENSING.md            素材授权核对（重要）
@@ -294,7 +319,7 @@ npm run server     # 启动本地服务 http://127.0.0.1:8787（Live2D 需要）
 npm run build      # 打包 index.html
 npm test           # 冒烟测试 100 项
 npm run test:browser   # 真实浏览器 26 项
-npm run test:pet       # 桌宠行为 15 项
+npm run test:pet       # 桌宠行为 21 项
 ```
 
 ## 七、几个环境坑

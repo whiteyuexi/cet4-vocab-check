@@ -76,6 +76,33 @@ try {
   const stuck = JSON.parse(await evalJs(dragUpLeft));
   ok('能拖到左上角（拖拽态）', stuck.dragging === true && stuck.y < 200, 'x=' + stuck.x + ' y=' + stuck.y);
 
+  /* 被拎起来时的「悬空挣扎」：三样必须同时到位，缺一样就露馅
+       1) .held → 转轴挪到头顶 + 悬空摆动
+       2) 换成挣扎的立绘
+       3) 气泡喊一句 */
+  const heldState = JSON.parse(await evalJs(`
+    (function(){
+      var pet = document.getElementById('pet');
+      var anim = document.getElementById('petAnim');
+      var fig = document.getElementById('petFig');
+      var imgs = document.querySelectorAll('#petAnim img');
+      var struggle = false;
+      for (var i = 0; i < imgs.length; i++) if (/angry|meme-doubt/.test(imgs[i].src)) struggle = true;
+      return JSON.stringify({
+        held: pet.className.indexOf('held') >= 0,
+        anim: getComputedStyle(anim).animationName,
+        origin: getComputedStyle(fig).transformOrigin,
+        struggle: struggle,
+        say: (document.getElementById('petSay') || {}).textContent || ''
+      });
+    })()`));
+  ok('抓起后进入悬空状态（.held + 摆动动画）', heldState.held && heldState.anim === 'petDangle',
+    heldState.anim);
+  ok('悬空时转轴从脚底挪到头顶', /\d+(\.\d+)?px [0-4]\d(\.\d+)?px/.test(heldState.origin),
+    heldState.origin);
+  ok('悬空时换成挣扎的表情', heldState.struggle === true, '');
+  ok('悬空时气泡会喊一句', /放我下来|别拎|还没测完|自己会走/.test(heldState.say), heldState.say);
+
   // 只来一个 buttons=0 的 pointermove —— 等价于 pointerup 丢了
   await evalJs(`(function(){window.dispatchEvent(new PointerEvent('pointermove',
     { clientX: 5, clientY: 5, buttons: 0, pointerId: 1, bubbles: true, pointerType: 'mouse' }));return 1;})()`);
@@ -84,6 +111,11 @@ try {
   ok('pointerup 丢失也能自己落地（不再永久卡住）',
     recovered.dragging === false && Math.abs(recovered.y - a.y) < 4,
     'dragging=' + recovered.dragging + ' y=' + recovered.y + ' 期望 y=' + a.y);
+  ok('落地后退出挣扎态', await evalJs(`document.getElementById('pet').className.indexOf('held') < 0`) === true,
+    await evalJs(`document.getElementById('pet').className`));
+  ok('落地后恢复待机动画',
+    await evalJs(`getComputedStyle(document.getElementById('petAnim')).animationName`) === 'petBob',
+    await evalJs(`getComputedStyle(document.getElementById('petAnim')).animationName`));
   ok('主循环一直在跑', recovered.loop === true, 'loop=' + recovered.loop);
 
   // 双击回原位：卡住了也有救
