@@ -134,7 +134,7 @@
 
 
   /* ---------- 桌宠：位置、拖动、重力、自己溜达 ---------- */
-  var built = false, hostEl = null, figEl = null, sayEl = null, creditEl = null;
+  var built = false, hostEl = null, figEl = null, sayEl = null, textEl = null, creditEl = null;
   var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null, hangEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
@@ -359,7 +359,7 @@
       heldBackup = true;
       var acts = sayEl.querySelector('.pet-acts');
       if (acts) acts.style.display = 'none';
-      sayEl.textContent = HELD_SAY[Math.floor(Math.random() * HELD_SAY.length)];
+      if (textEl) textEl.textContent = HELD_SAY[Math.floor(Math.random() * HELD_SAY.length)];
       sayEl.classList.remove('empty');
     }
   }
@@ -375,6 +375,7 @@
     if (heldBackup) {
       heldBackup = null;
       lastText = ''; lastSig = '';                      // 逼下一帧把气泡和按钮重画出来
+      try { var a0 = sayEl && sayEl.querySelector('.pet-acts'); if (a0) a0.style.display = ''; } catch (e) {}
       try { if (A.renderPet) A.renderPet(); } catch (e) {}
     }
   }
@@ -592,7 +593,11 @@
 
   function build(host) {
     host.innerHTML =
-      '<div class="pet-bubble empty" id="petSay"></div>' +
+      /* 气泡分成两块：.pet-text 只负责文字（内容多时自己滚），.pet-acts 固定在底部。
+         以前两者混在一个滚动容器里，按钮会跟着文字一起滚走，且会出现原生滚动条。 */
+      '<div class="pet-bubble empty" id="petSay">' +
+        '<span class="pet-text" id="petText"></span>' +
+      '</div>' +
       '<div class="pet-fig" id="petFig">' +
         '<div class="pet-hang" id="petHang">' +
           '<div class="pet-anim" id="petAnim">' +
@@ -606,6 +611,7 @@
       '<div class="pet-credit" id="petCredit"></div>';
     figEl = document.getElementById('petFig');
     sayEl = document.getElementById('petSay');
+    textEl = document.getElementById('petText');
     creditEl = document.getElementById('petCredit');
     shadowEl = document.getElementById('petShadow');
     shadowSoftEl = document.getElementById('petShadowSoft');
@@ -684,10 +690,10 @@
 
     var d = compose();
     if (d.text !== lastText) {
-      sayEl.textContent = '';
-      sayEl.appendChild(document.createTextNode(d.text));
+      if (textEl) textEl.textContent = d.text;
       lastText = d.text;
       sayEl.classList.toggle('empty', !d.text);
+      markMore();
     }
     if (d.mood !== lastMood) {
       lastMood = d.mood;
@@ -700,6 +706,7 @@
       lastSig = sig;
       var box = sayEl.querySelector('.pet-acts');
       if (!box) { box = document.createElement('div'); box.className = 'pet-acts'; sayEl.appendChild(box); }
+      box.style.display = '';          // 抓起时被隐藏过，这里必须清掉，否则按钮再也不出现
       box.innerHTML = acts.map(function (x) {
         var attr = 'data-act="' + x.act + '"';
         if (x.kind) attr += ' data-kind="' + x.kind + '"';
@@ -712,6 +719,15 @@
     }
   };
 
+  /* 气泡文字超出可视高度时加 .more：底部做渐隐提示"还有内容"，
+     比让原生滚动条突兀地贴在卡片右边缘好看得多。 */
+  function markMore() {
+    if (!sayEl || !textEl) return;
+    try {
+      var over = textEl.scrollHeight > textEl.clientHeight + 2;
+      sayEl.classList.toggle('more', over);
+    } catch (e) {}
+  }
   /* 供调试：A.petInfo() 看当前形态与位置；A.petReset() 把她送回原位；?pet=none 整只关掉 */
   A.petInfo = function () {
     return {

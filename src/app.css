@@ -422,7 +422,8 @@ html[data-theme="dark"] .ai-sent pre{background:rgba(255,255,255,.06)}
 .pet{
   --pet-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
 }
-.pet-bubble{position:absolute;left:0;right:0;bottom:276px;max-height:146px;overflow:auto;
+.pet-bubble{position:absolute;left:0;right:0;bottom:276px;max-height:172px;overflow:hidden;
+  display:flex;flex-direction:column;
   padding:11px 13px 17px;font-size:12.5px;line-height:1.68;color:var(--ink2);
   pointer-events:auto;isolation:isolate;
   transform:translateX(var(--bx,0px));transform-origin:50% calc(100% - 8px);
@@ -463,10 +464,43 @@ html[data-theme="dark"] .pet-bubble::before{
 html[data-theme="dark"] .pet-bubble::after{
   background-image:var(--pet-grain),linear-gradient(180deg,#1F2632 0%,#1A212C 100%)}
 
-.pet-acts{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
-.pet-chip{font-size:11.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);
-  border:1px solid rgba(42,91,224,.16);border-radius:999px;padding:4px 10px}
-.pet-chip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* 文字区：内容多时在这里滚，并且只在这里滚。
+   滚动条改成 4px 的细条（浅色用墨色半透明、深色用白色半透明），不再是一根突兀的灰条。 */
+.pet-text{display:block;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding-right:2px;scrollbar-width:thin;scrollbar-color:rgba(16,19,25,.2) transparent;
+  overscroll-behavior:contain}
+.pet-text::-webkit-scrollbar{width:4px}
+.pet-text::-webkit-scrollbar-track{background:transparent}
+.pet-text::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:4px}
+.pet-text::-webkit-scrollbar-thumb:hover{background:rgba(16,19,25,.3)}
+html[data-theme="dark"] .pet-text{scrollbar-color:rgba(255,255,255,.18) transparent}
+html[data-theme="dark"] .pet-text::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}
+html[data-theme="dark"] .pet-text::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+/* 还有内容没显示完时，底部渐隐提示，而不是靠滚动条提醒 */
+.pet-bubble.more .pet-text{-webkit-mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.15) 100%);
+  mask-image:linear-gradient(180deg,#000 76%,rgba(0,0,0,.15) 100%)}
+
+/* 动作按钮：固定贴在气泡底部，不参与滚动 */
+.pet-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;flex:none}
+/* 气泡里的动作按钮：原来是 4px 内边距的小胶囊，弱得像注释。
+   现在有高度、有内外双层质感、hover 有抬起与投影，和主站按钮同一套语言。 */
+.pet-chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  height:27px;padding:0 12px;font:650 11.8px/1 var(--sans);letter-spacing:.01em;
+  color:var(--accent);cursor:pointer;border-radius:999px;
+  background:linear-gradient(180deg,rgba(42,91,224,.14),rgba(42,91,224,.07));
+  border:1px solid rgba(42,91,224,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6);
+  transition:transform .16s cubic-bezier(.2,.7,.3,1),background .18s ease,color .18s ease,
+             box-shadow .18s ease,border-color .18s ease}
+.pet-chip:hover{color:#fff;border-color:transparent;transform:translateY(-1px);
+  background:linear-gradient(180deg,#3E7BFF,#2A5BE0);
+  box-shadow:0 7px 16px -7px rgba(42,91,224,.7),inset 0 1px 0 rgba(255,255,255,.34)}
+.pet-chip:active{transform:translateY(0)}
+html[data-theme="dark"] .pet-chip{color:#A8C2FF;
+  background:linear-gradient(180deg,rgba(127,164,255,.2),rgba(127,164,255,.09));
+  border-color:rgba(127,164,255,.32);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+html[data-theme="dark"] .pet-chip:hover{color:#fff;
+  background:linear-gradient(180deg,#5B87FF,#3C6BE8);box-shadow:0 7px 16px -7px rgba(60,107,232,.75)}
 
 /* 立绘盒：盒底就是「地面线」，透视转轴压在 50% 100% 上，倾斜时脚不动 */
 .pet-fig{position:absolute;left:0;bottom:var(--ground);width:232px;height:232px;
@@ -1201,3 +1235,10 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
 .intro-enter.charged::before{content:'';position:absolute;inset:-4px;border-radius:999px;pointer-events:none;
   border:1.5px solid rgba(0,196,180,.6);animation:introRipple .95s cubic-bezier(.2,.8,.3,1) forwards}
 @keyframes introRipple{0%{transform:scale(.94);opacity:.95}100%{transform:scale(1.35);opacity:0}}
+/* AI 对话框日志区：同样换成 4px 细滚动条，和桌宠气泡保持一致 */
+.ai-log{scrollbar-width:thin;scrollbar-color:rgba(16,19,25,.2) transparent}
+.ai-log::-webkit-scrollbar{width:6px}
+.ai-log::-webkit-scrollbar-track{background:transparent}
+.ai-log::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:6px}
+html[data-theme="dark"] .ai-log{scrollbar-color:rgba(255,255,255,.18) transparent}
+html[data-theme="dark"] .ai-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}

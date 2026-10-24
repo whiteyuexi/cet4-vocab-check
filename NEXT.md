@@ -288,7 +288,27 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 `scripts/check-offline.mjs` 直接打开**桌面上那份孤立 HTML**（旁边无 assets）做 7 项断言：
 立绘来自 `data:` URI、抓起后换表情、弹簧在跑、身体落后于抓点、影子留在地面、松手落回地面、摆角归零。
 `scripts/pet-test.mjs` 同时从 21 项加到 **26 项**，全是"行为对不对"而不是"有没有跑"。
-### AI 入口的可发现性（2026-10-24 修）
+### 气泡版式：滚动条、按钮、以及一个"按钮永久消失"的真 bug（2026-10-24 修）
+
+用户截图指出**气泡里出现原生滚动条、气泡内按钮太小太弱**。根因是版式结构：
+文字和动作按钮被塞进**同一个滚动容器** `.pet-bubble{overflow:auto}`，于是内容一多就出滚动条，
+按钮还会跟着文字一起滚走。
+
+改法：
+1. 气泡拆成两块 —— `.pet-text`（只放文字，`overflow-y:auto`）＋ `.pet-acts`（`flex:none` 固定贴底）。
+   文字写到 `#petText` 而不是整个气泡，动作区不会再被覆盖或滚走。
+2. 滚动条换成 4px 细条（浅色墨色半透明 / 深色白色半透明），并给 `.pet-text` 设
+   `scrollbar-width:thin`（Firefox 与新版 Chrome 认这个属性，比 `::-webkit-scrollbar` 可移植）。
+3. 文字溢出时给气泡加 `.more`，底部做渐隐（mask），提示"还有内容"——比露出一根滚动条好看。
+4. `.pet-chip` 重做：高度 27px、双层渐变、hover 抬起 + 投影，深浅两套配色。
+
+**顺手修掉的真 bug**：`enterHeld()` 会把 `.pet-acts` 设成 `inline display:none`，
+而 `exitHeld()` 只重画内容、**没清这个内联样式** —— 结果"抓起再放开"之后，
+气泡里的动作按钮**永久消失**。现在 `renderPet` 重建按钮时会 `box.style.display = ''`，
+`exitHeld` 也立刻恢复一次。
+
+回归：pet-test 26 → **30 项**，新增"文字区独立滚动""按钮不在滚动区且仍在气泡内"
+"滚动条指定为 thin""按钮高度 ≥24px"。
 
 用户问"那个密码的我怎么没见到"。查完发现锁本身完全正常（输错提示"密码不正确"、输对变
 `在线 · 大模型（已授权）`），**问题是入口藏得太深**：只有「总览」页有「AI 诊断教练」区块 +

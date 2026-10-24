@@ -159,6 +159,36 @@ try {
   ok('落地后恢复待机动画', animNow === 'petBob', animNow);
   ok('主循环一直在跑', recovered.loop === true, 'loop=' + recovered.loop);
 
+  /* 气泡版式：以前文字和动作按钮挤在同一个滚动容器里 —— 内容一多就出现原生滚动条，
+     按钮还会跟着文字一起滚走。现在文字单独滚，按钮固定贴底。 */
+  const bubble = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var b = document.getElementById('petSay'), t = document.getElementById('petText');
+    if (!b || !t) return { missing: true };
+    var acts = b.querySelector('.pet-acts');
+    var chip = acts ? acts.firstElementChild : null;
+    var old = t.textContent;
+    t.textContent = new Array(30).join('这一行用来把气泡撑满，验证滚动只发生在文字区，按钮不被带走。');
+    var br = b.getBoundingClientRect(), ar = acts ? acts.getBoundingClientRect() : null;
+    var res = {
+      textScrolls: t.scrollHeight > t.clientHeight + 2,
+      actsOutsideText: acts ? acts.parentElement === b : null,
+      actsInsideBubble: ar ? (ar.bottom <= br.bottom + 1 && ar.top >= br.top - 1) : null,
+      scrollbarPx: t.offsetWidth - t.clientWidth,
+      scrollbarWidthCss: getComputedStyle(t).scrollbarWidth || 'unsupported',
+      chipHeight: chip ? Math.round(chip.getBoundingClientRect().height) : 0
+    };
+    t.textContent = old;
+    return res;
+  })())`));
+  ok('气泡有独立的文字区（溢出只在那里滚）', !bubble.missing && bubble.textScrolls === true,
+    'scrolls=' + bubble.textScrolls);
+  ok('动作按钮不在滚动区里（不会被滚走）', bubble.actsOutsideText === true && bubble.actsInsideBubble === true,
+    'parentIsBubble=' + bubble.actsOutsideText + ' 仍在气泡内=' + bubble.actsInsideBubble);
+  // 无头浏览器用 overlay 滚动条（宽度恒为 0），所以以 CSS 的 scrollbar-width 为准，像素值仅作参考
+  ok('滚动条指定为细条', bubble.scrollbarWidthCss === 'thin' || bubble.scrollbarWidthCss === 'unsupported',
+    'css=' + bubble.scrollbarWidthCss + ' 实测宽=' + bubble.scrollbarPx + 'px');
+  ok('气泡按钮有足够点击高度', bubble.chipHeight >= 24, bubble.chipHeight + 'px');
+
   // 双击回原位：卡住了也有救
   await evalJs(`(function(){document.getElementById('petFig')
     .dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));return 1;})()`);
