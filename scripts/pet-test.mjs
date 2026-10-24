@@ -28,6 +28,9 @@ try {
   await send('Page.navigate', { url });
   for (let i = 0; i < 60; i++) { if (await evalJs('!!document.documentElement.dataset.pet')) break; await sleep(300); }
   await sleep(1200);
+  // 桌宠行为测试直接操作主界面（入场页由 scripts/check-intro.mjs 单独验收）
+  await evalJs('window.__APP__ && window.__APP__.enterApp && window.__APP__.enterApp(true)');
+  await sleep(320);
 
   const out = [];
   const ok = (n, c, e) => out.push((c ? 'PASS' : 'FAIL') + '  ' + n + (e ? '   [' + e + ']' : ''));
@@ -117,13 +120,20 @@ try {
     heldState.inline + '/' + heldState.imgs + ' 张内联');
   ok('悬空时气泡会喊一句', /放我下来|别拎|还没测完|自己会走/.test(heldState.say), heldState.say);
 
-  // 手停住不动 → 弹簧必须自己回摆归位，而不是一直歪着
-  await sleep(1100);
-  const settled = JSON.parse(await evalJs(`
-    (function(){ var i = window.__APP__.petInfo();
-      return JSON.stringify({ swing: i.swing, hangX: i.hangX, dragging: i.dragging }); })()`));
-  ok('手停下来会回摆归位', settled.dragging === true && Math.abs(settled.swing) < 4.5 &&
-    Math.abs(settled.hangX) < 8,
+  // 手停住不动 → 弹簧必须自己回摆归位。这里用轮询等它收住，而不是死等一个固定毫秒数：
+  // 摆幅大小取决于这一轮拖拽的速度，固定等待会时快时慢（曾经因此假失败过）。
+  const settled = await (async () => {
+    let last = { swing: 999, hangX: 999, dragging: false };
+    for (let i = 0; i < 40; i++) {                 // 最多 4 秒
+      last = JSON.parse(await evalJs(`
+        (function(){ var i = window.__APP__.petInfo();
+          return JSON.stringify({ swing: i.swing, hangX: i.hangX, dragging: i.dragging }); })()`));
+      if (last.dragging === true && Math.abs(last.swing) < 4.5 && Math.abs(last.hangX) < 8) break;
+      await sleep(100);
+    }
+    return last;
+  })();
+  ok('手停下来会回摆归位', Math.abs(settled.swing) < 4.5 && Math.abs(settled.hangX) < 8,
     'swing=' + settled.swing + ' hangX=' + settled.hangX);
 
   // 只来一个 buttons=0 的 pointermove —— 等价于 pointerup 丢了
@@ -136,9 +146,17 @@ try {
     'dragging=' + recovered.dragging + ' y=' + recovered.y + ' 期望 y=' + a.y);
   ok('落地后退出挣扎态', await evalJs(`document.getElementById('pet').className.indexOf('held') < 0`) === true,
     await evalJs(`document.getElementById('pet').className`));
-  ok('落地后恢复待机动画',
-    await evalJs(`getComputedStyle(document.getElementById('petAnim')).animationName`) === 'petBob',
-    await evalJs(`getComputedStyle(document.getElementById('petAnim')).animationName`));
+  // 落地会有 .shake（先压扁再抖两下，约 560ms）。轮询等它放完，别在半路取样
+  const animNow = await (async () => {
+    let name = '';
+    for (let i = 0; i < 30; i++) {
+      name = await evalJs(`getComputedStyle(document.getElementById('petAnim')).animationName`);
+      if (name === 'petBob') break;
+      await sleep(120);
+    }
+    return name;
+  })();
+  ok('落地后恢复待机动画', animNow === 'petBob', animNow);
   ok('主循环一直在跑', recovered.loop === true, 'loop=' + recovered.loop);
 
   // 双击回原位：卡住了也有救

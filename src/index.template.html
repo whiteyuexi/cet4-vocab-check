@@ -10,6 +10,33 @@
 </style>
 </head>
 <body>
+<!-- 入场页：每次打开都出现，点「进入」才进主界面。
+     ?intro=0 可跳过（自动化测试用）；prefers-reduced-motion 下保留静态面板，仍然要点击进入 -->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="四六级词汇量检测 · 入场">
+  <div class="intro-bg" aria-hidden="true"><i></i><i></i></div>
+  <div class="intro-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="intro-stage">
+    <p class="intro-kicker"><span>筑视界 · 码绘交互</span><b>/</b><span>Web 前端开发创意技能大赛</span></p>
+    <h1 class="intro-title">
+      <span><i style="--i:0">词</i></span><span><i style="--i:1">汇</i></span><span><i style="--i:2">量</i></span><em><span><i style="--i:3">检</i></span></em><em><span><i style="--i:4">测</i></span></em>
+    </h1>
+    <p class="intro-sub">CET-4 / CET-6 VOCABULARY PROFILER</p>
+    <div class="intro-stats">
+      <span><b data-intro-num="words">0</b>词库</span>
+      <span><b data-intro-num="sent">0</b>例句</span>
+      <span><b>±250</b>词区间</span>
+      <span>纯前端 · 断网可用</span>
+    </div>
+    <button class="intro-enter" id="introEnter" type="button">
+      进入
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+    </button>
+    <p class="intro-hint">点击任意处或按 <kbd>Enter</kbd> 进入</p>
+  </div>
+  <div class="intro-whale" aria-hidden="true"><img id="introWhale" alt=""></div>
+  <div class="intro-seal" aria-hidden="true">V / CET · VOCAB</div>
+</div>
+
 <header class="topbar">
   <div class="topbar-in">
     <div class="logo"><span class="dot">V</span><span>四六级词汇量检测</span></div>

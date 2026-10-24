@@ -1034,4 +1034,140 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
 /* 窗口够宽才挂出来：wrap 只有 1000px，两侧没余量的时候出现会压到正文 */
 /* 可见性由外层 .rail 统一控制（≥1280px 才出现） */
 @media (prefers-reduced-motion:reduce){ .mail-env{animation:none} }
+/* ==========================================================================
+   入场页（.intro）
+   每次打开都出现，点「进入」才进主界面。设计语言与主站同一套：
+   极光、纸颗粒、品牌蓝、鲸鱼娘立绘；区别只是这里所有元素都"逐层浮现"。
+   动效只用 transform / opacity / filter（能在合成层跑），不碰布局属性。
+   ========================================================================== */
+.intro{position:fixed;inset:0;z-index:120;display:grid;place-items:center;
+  background:var(--bg);overflow:hidden;isolation:isolate;
+  transition:opacity .52s ease, visibility .52s}
+html.intro-open{overflow:hidden}
+html.intro-open body{overflow:hidden}
+.intro.gone{opacity:0;visibility:hidden;pointer-events:none}
 
+/* 背景：两团极光缓慢反向漂移 + 顶部一点暖光，避免大色块死板 */
+.intro-bg{position:absolute;inset:-20%;z-index:0;pointer-events:none}
+.intro-bg i{position:absolute;border-radius:50%;filter:blur(60px)}
+.intro-bg i:nth-child(1){left:6%;top:8%;width:58vmax;height:58vmax;
+  background:radial-gradient(circle at 40% 40%,rgba(42,91,224,.34),rgba(42,91,224,0) 62%);
+  animation:introDriftA 26s ease-in-out infinite}
+.intro-bg i:nth-child(2){right:2%;bottom:-6%;width:52vmax;height:52vmax;
+  background:radial-gradient(circle at 60% 60%,rgba(0,196,180,.26),rgba(0,196,180,0) 64%);
+  animation:introDriftB 32s ease-in-out infinite}
+@keyframes introDriftA{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(4%,6%,0) scale(1.08)}}
+@keyframes introDriftB{0%,100%{transform:translate3d(0,0,0) scale(1.05)}50%{transform:translate3d(-5%,-4%,0) scale(1)}}
+/* 颗粒：复用主站那张噪点，去掉纯渐变的塑料感 */
+.intro::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background-image:var(--pet-grain);mix-blend-mode:multiply}
+html[data-theme="dark"] .intro::after{mix-blend-mode:screen;opacity:.28}
+
+/* 展台框：内缩 22px 的细线 + 四角刻度，给整屏一点"展览/制图"的气质 */
+.intro-frame{position:absolute;inset:22px;z-index:2;pointer-events:none;
+  border:1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  clip-path:inset(0 100% 0 0);animation:introFrame 1.1s cubic-bezier(.16,.84,.24,1) .1s forwards}
+@keyframes introFrame{to{clip-path:inset(0 0 0 0)}}
+.intro-frame span{position:absolute;width:14px;height:14px;border:1px solid var(--accent);opacity:.75}
+.intro-frame span:nth-child(1){left:-1px;top:-1px;border-right:0;border-bottom:0}
+.intro-frame span:nth-child(2){right:-1px;top:-1px;border-left:0;border-bottom:0}
+.intro-frame span:nth-child(3){left:-1px;bottom:-1px;border-right:0;border-top:0}
+.intro-frame span:nth-child(4){right:-1px;bottom:-1px;border-left:0;border-top:0}
+
+.intro-stage{position:relative;z-index:3;text-align:center;padding:0 24px;max-width:760px}
+/* 每个元素用 --d 自己排进场时间，比在 JS 里挨个设 delay 好维护 */
+.intro-stage>*{opacity:0;transform:translateY(18px);
+  animation:introRise .9s cubic-bezier(.16,.84,.24,1) var(--d,0s) forwards}
+
+.intro-kicker{margin:0 0 20px;font:600 11.5px/1 var(--mono);letter-spacing:.22em;
+  color:var(--ink3);text-transform:uppercase;--d:.12s;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+.intro-kicker b{color:var(--accent);font-weight:600}
+.intro-kicker span{white-space:nowrap}
+
+/* 标题：逐字从遮罩里升起。前三个字墨色，后两个字品牌渐变 */
+.intro-title{margin:0;font-size:clamp(48px,8.6vw,92px);line-height:1.02;font-weight:800;
+  letter-spacing:.04em;display:flex;justify-content:center;gap:.02em;--d:.2s}
+.intro-title span,.intro-title em{display:inline-block;overflow:hidden;font-style:normal}
+.intro-title span>*{display:inline-block;transform:translateY(108%);
+  animation:introChar .95s cubic-bezier(.16,.84,.24,1) forwards}
+.intro-title span>*{animation-delay:calc(.24s + var(--i,0) * .075s)}
+@keyframes introChar{to{transform:translateY(0)}}
+.intro-title span{color:var(--ink)}
+.intro-title em{background:linear-gradient(115deg,var(--accent) 10%,#00C4B4 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+.intro-sub{margin:22px auto 0;font:500 11.5px/1 var(--mono);letter-spacing:.34em;color:var(--ink3);
+  --d:.62s;display:flex;align-items:center;justify-content:center;gap:14px}
+.intro-sub::before,.intro-sub::after{content:'';height:1px;width:clamp(20px,6vw,64px);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb, var(--ink) 26%, transparent))}
+.intro-sub::after{background:linear-gradient(270deg,transparent,color-mix(in srgb, var(--ink) 26%, transparent))}
+
+.intro-stats{margin:30px 0 0;display:flex;justify-content:center;align-items:center;gap:0;flex-wrap:wrap;--d:.72s;
+  font-size:12.5px;color:var(--ink2)}
+.intro-stats span{display:inline-flex;align-items:baseline;gap:5px;padding:0 16px;position:relative}
+.intro-stats span+span::before{content:'';position:absolute;left:0;top:50%;width:1px;height:12px;margin-top:-6px;
+  background:color-mix(in srgb, var(--ink) 14%, transparent)}
+.intro-stats b{font:700 15px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* 进入按钮：品牌渐变 + 光带扫过，点之前就有点想按 */
+.intro-enter{margin:34px auto 0;--d:.82s;display:inline-flex;align-items:center;gap:10px;
+  height:52px;padding:0 30px;border:0;border-radius:999px;cursor:pointer;position:relative;overflow:hidden;
+  font:700 16px/1 var(--sans);letter-spacing:.14em;color:#fff;
+  background:linear-gradient(115deg,#2A5BE0,#3E7BFF 62%,#00C4B4);
+  box-shadow:0 12px 30px -12px rgba(42,91,224,.62), inset 0 1px 0 rgba(255,255,255,.42);
+  transition:transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease}
+.intro-enter svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round;transition:transform .22s ease}
+.intro-enter:hover{transform:translateY(-2px);box-shadow:0 18px 40px -14px rgba(42,91,224,.72), inset 0 1px 0 rgba(255,255,255,.5)}
+.intro-enter:hover svg{transform:translateX(4px)}
+.intro-enter:active{transform:translateY(0) scale(.985)}
+.intro-enter:focus-visible{outline:none;box-shadow:0 0 0 3px var(--bg),0 0 0 6px rgba(42,91,224,.5),0 18px 40px -14px rgba(42,91,224,.6)}
+.intro-enter::after{content:'';position:absolute;top:0;left:-60%;width:45%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);
+  animation:introSheen 4.6s ease-in-out 1.9s infinite}
+@keyframes introSheen{0%{left:-60%}55%,100%{left:130%}}
+
+.intro-hint{margin:16px 0 0;--d:.94s;font-size:11.5px;color:var(--ink3);letter-spacing:.04em}
+.intro-hint kbd{font:600 10.5px/1 var(--mono);padding:3px 6px;border-radius:5px;
+  border:1px solid color-mix(in srgb, var(--ink) 16%, transparent);background:color-mix(in srgb, var(--ink) 5%, transparent)}
+
+/* 鲸鱼娘：从右下浮上来，轻轻呼吸。她本身就是页面的"人" */
+.intro-whale{position:absolute;right:clamp(18px,4vw,64px);bottom:clamp(18px,3vw,52px);z-index:3;
+  width:clamp(96px,12vw,152px);aspect-ratio:1;opacity:0;transform:translate3d(28px,34px,0) scale(.9);
+  animation:introWhale 1.15s cubic-bezier(.16,.84,.24,1) .95s forwards;pointer-events:none}
+.intro-whale img{width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 16px 26px rgba(16,19,25,.22))}
+@keyframes introWhale{to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+.intro-whale::after{content:'';position:absolute;left:12%;right:12%;bottom:-6%;
+  height:12px;border-radius:50%;background:radial-gradient(closest-side,rgba(16,19,25,.22),transparent 76%);
+  filter:blur(2px)}
+
+/* 右上一个"V"小印，和主站等级印章呼应 */
+.intro-seal{position:absolute;left:clamp(18px,4vw,64px);bottom:clamp(18px,3vw,52px);z-index:3;
+  font:800 12px/1 var(--mono);letter-spacing:.3em;color:var(--ink3);opacity:0;
+  animation:introRise .9s cubic-bezier(.16,.84,.24,1) 1.05s forwards}
+
+@keyframes introRise{to{opacity:1;transform:translateY(0)}}
+
+/* 退场：整屏像相机对焦一样散开，主界面接上 */
+.intro.leaving{opacity:0;visibility:hidden;pointer-events:none}
+.intro.leaving .intro-stage{transform:scale(1.06);filter:blur(9px);transition:transform .5s ease, filter .5s ease}
+.intro.leaving .intro-whale{transform:translate3d(30px,26px,0) scale(.94);transition:transform .5s ease}
+.intro.leaving .intro-bg i{animation-play-state:paused}
+
+/* 主界面入场：卡片错峰升起（只在进场后跑一次，路由切换不再重放） */
+html.boot-anim .wrap>*{animation:introCard .72s cubic-bezier(.16,.84,.24,1) backwards}
+html.boot-anim .wrap>*:nth-child(1){animation-delay:.04s}
+html.boot-anim .wrap>*:nth-child(2){animation-delay:.1s}
+html.boot-anim .wrap>*:nth-child(3){animation-delay:.16s}
+html.boot-anim .wrap>*:nth-child(4){animation-delay:.22s}
+html.boot-anim .wrap>*:nth-child(5){animation-delay:.28s}
+@keyframes introCard{from{opacity:0;transform:translateY(16px) scale(.994)}to{opacity:1;transform:none}}
+
+/* 关掉动效的用户：内容直接可见，仍然要点进入（不替用户做决定） */
+@media (prefers-reduced-motion:reduce){
+  .intro-stage>*,.intro-title span>*,.intro-whale,.intro-seal,.intro-frame{animation:none!important;opacity:1!important;transform:none!important;clip-path:none!important}
+  .intro-enter::after{display:none}
+  html.boot-anim .wrap>*{animation:none!important}
+  .intro.leaving .intro-stage{transform:none;filter:none}
+}

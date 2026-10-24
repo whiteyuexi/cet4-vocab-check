@@ -110,6 +110,9 @@ try {
   /* ---------- 桌面视口 ---------- */
   await send('Page.navigate', { url });
   await evalJs('new Promise(function(r){ if(document.readyState==="complete") r(1); else addEventListener("load",function(){r(1)}); })');
+  // 跳过入场页：这些脚本要直接操作主界面（入场页本身由 scripts/check-intro.mjs 验收）
+  await evalJs("window.__APP__ && window.__APP__.enterApp && window.__APP__.enterApp(true)");
+  await sleep(160);
   await sleep(1200);
 
   const boot = JSON.parse(await evalJs(`JSON.stringify({

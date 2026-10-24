@@ -339,6 +339,27 @@ DeepSeek 允许跨域（从 origin=null 的 file:// 页面直调返回 401 可�
    于是在模型还在"正在分析…"时就提前收工 → 断言误判。必须盯**最后一条**机器人消息。
 
 回归：`scripts/check-ai-lock.mjs` 14 项（含"产物里搜不到明文 Key""错误密码解不开""刷新后重新上锁"）。
+### 入场页（2026-10-24 新做）
+
+需求：「设置个入场动画，要好看高级符合主题，每次点开网页都出来，点进入再跳转。」
+
+实现：`src/index.template.html` 里的 `#intro` + `src/app.css` 末尾的入场样式段 +
+`src/app.part7.js` 的 `A.initIntro() / A.enterApp()`，由 `A.init` 最后调用。
+
+**几条刻意的设计，改之前先想清楚**：
+1. **内容早就渲染好了，入场页只是盖在上面**。所以退场是纯视觉过渡，不会出现"点了进入还要等"的空窗；
+   代价是入场期间要挡住主界面，于是给 `header/.nav/#view/.pet/.rail/.seal` 加 `inert`（键盘与读屏都进不去）。
+2. **每次打开都出现**（不记忆已看过）——这是用户明确要求，别自作聪明加 localStorage。
+3. **`?intro=0` 跳过**：自动化测试与录屏调试用。所有浏览器测试脚本（pet/offline/recipient/ai-lock）
+   在页面就绪后调 `A.enterApp(true)`；入场页本身由 `scripts/check-intro.mjs` 单独验收（27 项）。
+4. **`prefers-reduced-motion` 下关动画但保留入场页**：尊重设置，但不替用户做决定。
+5. 动效只碰 `transform / opacity / filter / clip-path`，不碰布局属性，避免掉帧。
+6. 数字滚动用 `window.WORDS.length` 与 **`Object.keys(window.SENTENCES).length`**——
+   例句是按词索引的对象（`{word:[句子]}`），不是数组，写 `.length` 会得到 **NaN**（第一版就这么错的）。
+
+**测试坑（这轮真踩到）**：桌宠的两条断言原来用固定 `sleep(1100)` / 取一次样式，
+加了入场页后页面达到同一状态的耗时变长，于是出现"弹簧还没回摆完""落地抖灰还没播完"的假失败。
+改成**轮询等条件成立**（最多 3–4 秒）后稳定。规则：断言时序相关的东西不要死等固定毫秒数。
 ## 四、绝对不要再试的路（都试过并失败了）
 
 1. **手绘 SVG 形象** —— 画了四版，用户评价"怎么长这样"，放弃
@@ -400,6 +421,7 @@ node scripts/check-recipient.mjs  # 模拟「别人收到文件」的环境（18
 node scripts/check-online-ai.mjs  # 联网 AI 主路径（5 项，需后端在跑）
 node scripts/make-ai-lock.mjs "密码"   # 生成 AI 授权锁（把密码加密后的 Key 内联进产物）
 node scripts/check-ai-lock.mjs         # 密码授权链路（14 项，密码从 AI_LOCK_PASS 读）
+node scripts/check-intro.mjs           # 入场页验收（27 项：分层浮现 / 退场干净 / 旁路 / 窄屏）
 ```
 
 ## 七、几个环境坑

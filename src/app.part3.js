@@ -740,6 +740,8 @@
     A.render();
     // 视效层（卡片聚光 / 磁吸 / 导航滑块）。纯装饰，挂了也不能影响主流程
     if (A.initFx) { try { A.initFx(); } catch (e) {} }
+    // 入场页：内容已经渲染好了，由它盖在上面，退场纯视觉过渡（不产生加载空窗）
+    if (A.initIntro) { try { A.initIntro(); } catch (e) {} }
     if (A.storageBroken) A.toast('浏览器禁用了本地存储，本次数据无法保存');
     window.addEventListener('beforeunload', function () { A.save(); });
   };
