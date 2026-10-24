@@ -621,4 +621,9 @@
     });
   };
 
+  /* 给设置页用：当前 AI 处在哪一级（有锁/已解锁/模型名）。不要暴露 Key 本身。 */
+  A.aiLockInfo = function () {
+    return { lock: !!AI_LOCK, live: !!AI_LIVE, model: AI_LIVE ? AI_LIVE.model : '' };
+  };
+
 })(window.__APP__ || (window.__APP__ = {}));

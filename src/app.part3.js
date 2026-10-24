@@ -422,6 +422,28 @@
       '<b>快捷键：</b>自评模式 <span class="kbd">1</span> 不认识 <span class="kbd">2</span> 模糊 <span class="kbd">3</span> 认识；四选一模式 <span class="kbd">1</span>-<span class="kbd">4</span> 选项；<span class="kbd">空格</span> 发音/下一题；<span class="kbd">退格</span> 撤销。' +
       '</div>';
 
+    /* AI 诊断与授权：把"这个功能在哪、现在是什么形态"写在设置里。
+       之前只有 AI 对话框内部才看得到锁，用户根本不知道有这个功能，更不知道要密码。 */
+    var ai = (A.aiLockInfo ? A.aiLockInfo() : { lock: false, live: false, model: '' });
+    h += '<div class="sec-title">AI 诊断与授权<span class="line"></span></div>';
+    h += '<div class="card" style="line-height:1.9">' +
+      '<div class="tiny" style="margin-bottom:10px">' +
+      (ai.lock
+        ? (ai.live
+          ? '<b style="color:var(--ok)">已授权</b>：本次打开可用大模型（' + esc(ai.model) + '），刷新页面后需要重新输入密码。'
+          : '<b>大模型已锁定</b>：作者把 API Key 用密码加密后内联在文件里，输入正确密码才解得出。' +
+            '离线规则诊断随时可用、不消耗任何额度。')
+        : '本文件未启用授权锁：AI 面板会使用离线规则诊断（不需要任何密码）。') +
+      '</div>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<button class="btn primary" data-act="ai-open">打开 AI 诊断</button>' +
+      (ai.lock && !ai.live ? '<button class="btn" data-act="ai-open">输入密码解锁大模型</button>' : '') +
+      '</div>' +
+      '<div class="tiny" style="margin-top:10px;color:var(--ink3)">' +
+      '密码由作者单独提供；解锁只对本次打开有效，刷新即失效，Key 只存在内存里。' +
+      '所有提问只上行汇总数据（覆盖率、频段掌握率、未掌握词清单），逐题作答不出本机。' +
+      '</div></div>';
+
     h += '<div class="sec-title">素材来源<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.95">' +
       '桌宠立绘：<b>DS鲸鱼娘</b> · Sutera-Diffusus · ' +
@@ -557,6 +579,7 @@
           if (!lstB.length) { A.toast('这个词段本次没有未掌握的词'); break; }
           A.startSession('list', { list: lstB, label: '复测「' + A.BAND_NAMES[rbBand] + '」段 · ' + lstB.length + ' 词' });
           break;
+        case 'ai-open': A.openAIDialog(); break;
         case 'ai-ask': A.openAIDialog(t.getAttribute('data-q')); break;
         case 'ai-send': {
           var aiq = el('aiInput');
