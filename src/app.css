@@ -1040,12 +1040,16 @@ html[data-theme="dark"] .mail-seal.locked{background:radial-gradient(circle at 3
    极光、纸颗粒、品牌蓝、鲸鱼娘立绘；区别只是这里所有元素都"逐层浮现"。
    动效只用 transform / opacity / filter（能在合成层跑），不碰布局属性。
    ========================================================================== */
-.intro{position:fixed;inset:0;z-index:120;display:grid;place-items:center;
+/* 注意：入场页的样式一律用 #intro（id），不要写成 .intro ——
+   viewHome() 里第一次打开的主卡片是 <div class="hero intro">，类名 intro 是应用原有语义。
+   2026-10-24 这里撞过一次：.intro{} 把那张主卡片变成了全屏 fixed 遮罩，
+   卡片底色消失、内容被 grid 摊到整屏高度。 */
+#intro{position:fixed;inset:0;z-index:120;display:grid;place-items:center;
   background:var(--bg);overflow:hidden;isolation:isolate;
   transition:opacity .52s ease, visibility .52s}
 html.intro-open{overflow:hidden}
 html.intro-open body{overflow:hidden}
-.intro.gone{opacity:0;visibility:hidden;pointer-events:none}
+#intro.gone{opacity:0;visibility:hidden;pointer-events:none}
 
 /* 背景：两团极光缓慢反向漂移 + 顶部一点暖光，避免大色块死板 */
 .intro-bg{position:absolute;inset:-20%;z-index:0;pointer-events:none}
@@ -1059,9 +1063,9 @@ html.intro-open body{overflow:hidden}
 @keyframes introDriftA{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(4%,6%,0) scale(1.08)}}
 @keyframes introDriftB{0%,100%{transform:translate3d(0,0,0) scale(1.05)}50%{transform:translate3d(-5%,-4%,0) scale(1)}}
 /* 颗粒：复用主站那张噪点，去掉纯渐变的塑料感 */
-.intro::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;
+#intro::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;
   background-image:var(--pet-grain);mix-blend-mode:multiply}
-html[data-theme="dark"] .intro::after{mix-blend-mode:screen;opacity:.28}
+html[data-theme="dark"] #intro::after{mix-blend-mode:screen;opacity:.28}
 
 /* 展台框：内缩 22px 的细线 + 四角刻度，给整屏一点"展览/制图"的气质 */
 .intro-frame{position:absolute;inset:22px;z-index:2;pointer-events:none;
@@ -1153,10 +1157,10 @@ html[data-theme="dark"] .intro::after{mix-blend-mode:screen;opacity:.28}
 @keyframes introRise{to{opacity:1;transform:translateY(0)}}
 
 /* 退场：整屏像相机对焦一样散开，主界面接上 */
-.intro.leaving{opacity:0;visibility:hidden;pointer-events:none}
-.intro.leaving .intro-stage{transform:scale(1.06);filter:blur(9px);transition:transform .5s ease, filter .5s ease}
-.intro.leaving .intro-whale{transform:translate3d(30px,26px,0) scale(.94);transition:transform .5s ease}
-.intro.leaving .intro-bg i{animation-play-state:paused}
+#intro.leaving{opacity:0;visibility:hidden;pointer-events:none}
+#intro.leaving .intro-stage{transform:scale(1.06);filter:blur(9px);transition:transform .5s ease, filter .5s ease}
+#intro.leaving .intro-whale{transform:translate3d(30px,26px,0) scale(.94);transition:transform .5s ease}
+#intro.leaving .intro-bg i{animation-play-state:paused}
 
 /* 主界面入场：卡片错峰升起（只在进场后跑一次，路由切换不再重放） */
 html.boot-anim .wrap>*{animation:introCard .72s cubic-bezier(.16,.84,.24,1) backwards}
@@ -1172,7 +1176,7 @@ html.boot-anim .wrap>*:nth-child(5){animation-delay:.28s}
   .intro-stage>*,.intro-title span>*,.intro-whale,.intro-seal,.intro-frame{animation:none!important;opacity:1!important;transform:none!important;clip-path:none!important}
   .intro-enter::after{display:none}
   html.boot-anim .wrap>*{animation:none!important}
-  .intro.leaving .intro-stage{transform:none;filter:none}
+  #intro.leaving .intro-stage{transform:none;filter:none}
 }
 /* 光束：一条带辉光的细线，宽度由 JS 按"已飞出的距离"写入 */
 .intro-beam{position:absolute;left:0;top:0;z-index:4;height:3px;border-radius:3px;pointer-events:none;

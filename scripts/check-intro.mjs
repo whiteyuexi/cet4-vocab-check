@@ -124,6 +124,27 @@ try {
   ok('主界面卡片有升起动效类', await evalJs(`document.documentElement.classList.contains('boot-anim') ||
     !document.documentElement.classList.contains('boot-anim')`) === true);
 
+  /* ---------- 2.2 主卡片必须留在文档流里 ----------
+     2026-10-24 踩过：入场页样式用了裸 .intro 选择器，把 viewHome 的 `.hero intro`
+     主卡片变成了 position:fixed 的全屏遮罩（底色消失、内容被 grid 摊满整屏）。 */
+  const heroChk = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var h = document.querySelector('.hero');
+    if (!h) return { none: true };
+    var s = getComputedStyle(h), b = h.getBoundingClientRect();
+    return { cls: h.className, position: s.position, display: s.display,
+             w: Math.round(b.width), h: Math.round(b.height),
+             vw: document.documentElement.clientWidth };
+  })())`));
+  if (heroChk.none) {
+    ok('首页主卡片存在于文档流（当前状态无 hero 卡片，跳过）', true);
+  } else {
+    ok('首页主卡片不是全屏遮罩（position≠fixed）', heroChk.position !== 'fixed',
+      heroChk.position + ' / display=' + heroChk.display);
+    ok('首页主卡片宽度正常（不被撑到整屏）', heroChk.w < heroChk.vw - 100,
+      heroChk.w + '/' + heroChk.vw);
+    ok('首页主卡片高度正常', heroChk.h < 620, heroChk.h + 'px');
+  }
+
   // 进场后主流程能用
   const usable = await evalJs(`(function(){
     var b = document.querySelector('[data-kind=probe]');

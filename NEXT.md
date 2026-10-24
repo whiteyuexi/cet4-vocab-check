@@ -357,6 +357,32 @@ DeepSeek 允许跨域（从 origin=null 的 file:// 页面直调返回 401 可�
 6. 数字滚动用 `window.WORDS.length` 与 **`Object.keys(window.SENTENCES).length`**——
    例句是按词索引的对象（`{word:[句子]}`），不是数组，写 `.length` 会得到 **NaN**（第一版就这么错的）。
 
+### ⚠ 类名撞车：`.intro` 把首页主卡片变成了全屏遮罩（2026-10-24 修）
+
+**这是本项目最值得记住的一类 bug。** 入场页的 CSS 一开始写的是类选择器 `.intro{position:fixed;inset:0;...}`，
+而 `viewHome()` 在"还没做过摸底"时渲染的主卡片是 **`<div class="hero intro">`** ——
+`intro` 是应用早就有的语义（`.hero.intro` 那套 h1/p/cta 样式）。
+入场样式追加在 CSS 末尾、同特异度、后写的赢，于是那张**主卡片**变成了固定全屏 grid 遮罩：
+
+```
+position: fixed      （本该 relative）
+display:  grid       （本该 block）
+width    1418px      （本该 952px）
+background rgb(237,240,246)   ← 卡片玻璃底色被换成整页底色
+z-index  120
+```
+
+表现：卡片底色消失、内容被 grid 按整屏高度摊开（出现 100px 级空档）、按钮孤零零悬在页面中间。
+**而且它不是每次都出现** —— 只有"还没做过随机摸底"的用户才会看到 `.hero.intro`，所以很容易漏。
+
+**修法**：入场页样式一律改成 **id 选择器 `#intro`**（含 `#intro.gone / #intro.leaving / #intro::after`），
+`intro-*` 那些前缀类名保留（全局唯一，不撞）。
+**回归防线**：`scripts/check-intro.mjs` 与 `btest.js` 都加了断言——
+"首页主卡片 `position ≠ fixed`"、"宽度 < 视口-100px"、"入场页本身才是 fixed"。
+
+**教训**：给新功能起类名之前，先 `grep` 一下应用已有的类名。`intro`、`hero`、`card`、`on`、`active`
+这种通用词最容易撞；本项目已经有一个 `.on`（命中态）。宁可加前缀（`.splash-*`）也不要裸用通用词。
+
 **鲸鱼的两段表演（2026-10-24 二次迭代）**：用户反馈"大肥鱼太呆板"，改成绕场跑 + 化作光束。
 `startWhaleShow()` 在 part7：沿四边跑一圈（`SHOW_MS = 1900` 按总时长分段，别写成像素速度，
 否则大屏拖成 5 秒）、每帧叠 sin 颠簸 + 方向前倾 + 镜像翻转、加一张滞后 70ms 的淡影；
