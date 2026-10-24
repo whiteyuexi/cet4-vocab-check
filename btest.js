@@ -105,7 +105,9 @@ const script = [
   ' var darkBg=modeEl?getComputedStyle(modeEl).backgroundColor:"";',
   ' ok("切暗色后卡片底色真的变暗",document.documentElement.dataset.theme==="dark"&&darkBg!==lightBg&&/30, 34, 44|0\\.62/.test(darkBg),lightBg+" -> "+darkBg);',
   ' var gbtnEl=document.querySelector(".gbtn"),gbtnBg=gbtnEl?getComputedStyle(gbtnEl).backgroundColor:"";',
-  ' ok("切暗色后分组格子也变暗",gbtnBg!==lightBg&&/30, 34, 44|0\\.62/.test(gbtnBg),gbtnBg);',
+  ' /* 分组格子有 done/part 等状态色，每种状态都有对应的暗色版本；所以判据是"不再是浅色玻璃"，
+     而不是钉死某一个 rgb —— 第一版只认玻璃色，命中"部分完成"格（暗色 warn-soft）时就假失败 */',
+  ' ok("切暗色后分组格子也跟着变暗",gbtnBg!==lightBg&&!/255, 255, 255|237, 240, 246/.test(gbtnBg),gbtnBg);',
   ' document.getElementById("themeBtn").click();',
   ' ok("切回浅色恢复",getComputedStyle(modeEl).backgroundColor===lightBg,getComputedStyle(modeEl).backgroundColor);',
   ' /* 视效层：装饰物存在、且不接收指针事件 */',

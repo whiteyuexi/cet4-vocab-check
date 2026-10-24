@@ -580,6 +580,12 @@
           A.startSession('list', { list: lstB, label: '复测「' + A.BAND_NAMES[rbBand] + '」段 · ' + lstB.length + ' 词' });
           break;
         case 'ai-open': A.openAIDialog(); break;
+        case 'book-import': A.openImportBook(); break;
+        case 'book-preview': A.previewImport(); break;
+        case 'book-save': A.commitImport(); break;
+        case 'book-use': A.useBook(t.getAttribute('data-book')); break;
+        case 'book-del': A.removeBook(t.getAttribute('data-book')); break;
+        case 'book-del-confirm': A.confirmRemoveBook(t.getAttribute('data-book')); break;
         case 'ai-ask': A.openAIDialog(t.getAttribute('data-q')); break;
         case 'ai-send': {
           var aiq = el('aiInput');

@@ -4,7 +4,7 @@ const path = require('path');
 const ROOT = __dirname;
 
 const css = fs.readFileSync(path.join(ROOT, 'src', 'app.css'), 'utf8');
-const parts = ['app.part1.js', 'app.part2.js', 'app.part3.js', 'app.part4.js', 'app.part6.js', 'app.part5.js', 'app.part7.js'];
+const parts = ['app.part1.js', 'app.part2.js', 'app.part3.js', 'app.part4.js', 'app.part6.js', 'app.part5.js', 'app.part7.js', 'app.part8.js'];
 const js = parts.map(function (f) {
   return '/* ===== ' + f + ' ===== */\n' + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
 }).join('\n');

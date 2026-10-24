@@ -1242,3 +1242,59 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
 .ai-log::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:6px}
 html[data-theme="dark"] .ai-log{scrollbar-color:rgba(255,255,255,.18) transparent}
 html[data-theme="dark"] .ai-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}
+/* ==========================================================================
+   自定义词书：首页词书条 + 导入窗口
+   口径提示（.book-banner）是这段里最重要的东西：词书是有偏样本，
+   不能拿它的掌握率换算词汇量 —— 这句话必须出现在用户看得见的地方。
+   ========================================================================== */
+.bookbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0;width:100%}
+.bank.book-add{border-style:dashed;border-color:rgba(42,91,224,.38);color:var(--accent);
+  background:linear-gradient(180deg,rgba(42,91,224,.07),rgba(42,91,224,.02))}
+.bank.book-add:hover{border-color:var(--accent);background:var(--accent-soft)}
+.book-chip{display:inline-flex;align-items:stretch;border-radius:var(--r-md);overflow:hidden;
+  border:1px solid var(--line2);background:var(--glass)}
+.book-chip.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.book-use{display:flex;flex-direction:column;align-items:flex-start;gap:1px;
+  padding:8px 12px;background:none;border:0;cursor:pointer;text-align:left;
+  font:650 13px/1.25 var(--sans);color:var(--ink)}
+.book-use small{font:500 10.5px/1.2 var(--mono);color:var(--ink3)}
+.book-chip.on .book-use{color:var(--accent)}
+.book-del{padding:0 9px;background:none;border:0;border-left:1px solid var(--line);
+  cursor:pointer;color:var(--ink3);font-size:15px;line-height:1}
+.book-del:hover{background:rgba(176,46,34,.09);color:#B02E22}
+
+.book-banner{margin:14px 0 0;padding:11px 14px;border-radius:12px;font-size:12.8px;line-height:1.7;
+  color:var(--ink2);background:rgba(217,138,0,.09);border:1px solid rgba(217,138,0,.28)}
+html[data-theme="dark"] .book-banner{background:rgba(224,177,92,.12);border-color:rgba(224,177,92,.3)}
+
+/* 导入窗口 */
+.book-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.book-head b{font-size:16.5px}
+.drop{border:1.5px dashed rgba(42,91,224,.3);border-radius:14px;padding:20px 16px;text-align:center;
+  cursor:pointer;transition:border-color .18s,background .18s;background:rgba(42,91,224,.03)}
+.drop:hover,.drop.over{border-color:var(--accent);background:rgba(42,91,224,.08)}
+.drop-in{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink2);font-size:13.5px}
+.drop-in svg{width:26px;height:26px;fill:none;stroke:var(--accent);stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.drop-in b{font-size:14px;color:var(--ink)}
+.linky{color:var(--accent);text-decoration:underline;cursor:pointer}
+.book-text{width:100%;margin-top:10px;padding:11px 13px;border-radius:12px;resize:vertical;
+  border:1px solid var(--line2);background:var(--glass);color:var(--ink);
+  font:13px/1.6 var(--mono);min-height:96px}
+.book-text:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.book-row{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.book-row .search{flex:1;min-width:180px}
+
+.book-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 10px}
+.book-stats>div{background:var(--glass);border:1px solid var(--line);border-radius:10px;
+  padding:9px 10px;text-align:center}
+.book-stats b{display:block;font:700 18px/1.2 var(--mono);color:var(--accent)}
+.book-stats span{font-size:11.5px;color:var(--ink3)}
+.book-bands{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.book-bands .bk{font-size:11.5px;color:var(--ink2);background:var(--glass);
+  border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.book-note{font-size:12.5px;line-height:1.7;color:var(--ink3);margin:8px 0}
+.book-note.warn{color:var(--ink2);background:rgba(217,138,0,.08);border:1px solid rgba(217,138,0,.24);
+  border-radius:10px;padding:10px 12px}
+html[data-theme="dark"] .book-note.warn{background:rgba(224,177,92,.1);border-color:rgba(224,177,92,.26)}
+@media (max-width:640px){ .book-stats{grid-template-columns:repeat(2,1fr)} }

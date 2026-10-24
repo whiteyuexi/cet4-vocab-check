@@ -113,7 +113,16 @@ try {
   ok('身体被手甩在抓点后面（不是刚性跟手）', Math.abs(heldState.hangX) > 3,
     'hangX=' + heldState.hangX);
   ok('摆动角跟着手的速度走', Math.abs(heldState.swing) > 3, heldState.swing + 'deg');
-  ok('下半身有次级斜切', Math.abs(heldState.skew) > 1, heldState.skew + 'deg');
+  // 斜切是弹簧的次级量，起手瞬间可能还没长到 1° —— 轮询等它出现，别点采（点采会时好时坏）
+  const skewSeen = await (async () => {
+    let v = Math.abs(heldState.skew) > 1 ? heldState.skew : 0;
+    for (let i = 0; i < 20 && Math.abs(v) <= 1; i++) {
+      v = JSON.parse(await evalJs('JSON.stringify({ s: window.__APP__.petInfo().skew })')).s;
+      if (Math.abs(v) <= 1) await sleep(60);
+    }
+    return v;
+  })();
+  ok('下半身有次级斜切', Math.abs(skewSeen) > 1, skewSeen + 'deg');
   ok('悬空时换成挣扎的表情', /^(angry|meme-doubt)$/.test(heldState.sprite), heldState.sprite);
   ok('挣扎立绘是内联数据（离线单文件也有脸）',
     heldState.imgs > 0 && heldState.inline === heldState.imgs,

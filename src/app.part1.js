@@ -108,6 +108,7 @@
       samples: [],
       round: { n: 1, startedAt: Date.now() },   // 当前轮次
       rounds: [],                               // 已完成并归档的历史轮次（报告快照）
+      books: {},                                // 用户导入的自定义词书：{ id: {id,name,indices,...} }
       welcomed: false,                          // 是否已过了"怎么称呼"那一步
       settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
       theme: 'light',
@@ -129,6 +130,12 @@
         d.samples = o.samples || [];
         d.round = o.round || d.round;
         d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
+        d.books = (o.books && typeof o.books === 'object') ? o.books : {};
+        // 老存档里可能残留一个已被删掉的词书 id：退回四级，避免打开就是空词库
+        if (typeof d.settings.bank === 'string' && d.settings.bank.indexOf('u:') === 0 &&
+            !d.books[d.settings.bank.slice(2)]) {
+          d.settings.bank = 'c4';
+        }
         d.welcomed = !!o.welcomed;
         d.theme = o.theme || 'light';
         d.tokens = o.tokens || 0;
@@ -235,13 +242,51 @@
     c6: { name: '六级', short: '六级', hint: '大学英语六级大纲词汇表（含四级已覆盖的词）', mask: 3 }
   };
   A.BANKS = BANKS;
-  function bankKey() { var k = S.settings.bank; return BANKS[k] ? k : 'c4'; }
+  /* ---------- 自定义词书（用户导入） ----------
+     存法：S.books = { id: {id,name,createdAt,indices:[...],meta:{...}} }
+     indices 指向 WORDS 里的下标；导入时若单词不在内置词库，会**追加**进 WORDS
+     （b:0 = 不属于四六级大纲，f:0 = 不在前 20k 词频表里，u:1 = 用户导入）。
+     这样抽样、区间估计、词汇地图、跨轮差分全都不用改——它们只认「下标 + 频段 + 单词」。 */
+  function userBook(id) { return (S.books && S.books[id]) || null; }
+  A.userBook = userBook;
+  A.userBooks = function () {
+    var out = [], m = S.books || {};
+    for (var k in m) if (m[k] && (m[k].words || m[k].indices)) out.push(m[k]);
+    out.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+    return out;
+  };
+
+  function bankKey() {
+    var k = S.settings.bank;
+    // 自定义词书用 'u:<id>' 形式；书被删掉就退回四级
+    if (typeof k === 'string' && k.indexOf('u:') === 0) {
+      return userBook(k.slice(2)) ? k : 'c4';
+    }
+    return BANKS[k] ? k : 'c4';
+  }
   A.bankKey = bankKey;
-  A.bankName = function () { return BANKS[bankKey()].name; };
-  A.bankShort = function () { return BANKS[bankKey()].short; };
-  A.bankHint = function () { return BANKS[bankKey()].hint; };
+  A.isUserBank = function () { return bankKey().indexOf('u:') === 0; };
+  A.bankName = function () {
+    var k = bankKey();
+    if (k.indexOf('u:') === 0) { var b = userBook(k.slice(2)); return b ? b.name : '自定义词书'; }
+    return BANKS[k].name;
+  };
+  A.bankShort = function () {
+    var k = bankKey();
+    if (k.indexOf('u:') === 0) return '自定义';
+    return BANKS[k].short;
+  };
+  A.bankHint = function () {
+    var k = bankKey();
+    if (k.indexOf('u:') === 0) return '你导入的词书：结果只表示对这本书的掌握率，不等同于词汇量';
+    return BANKS[k].hint;
+  };
   function inBank(w) {
-    return (w.b & BANKS[bankKey()].mask) !== 0;
+    var B = BANKS[bankKey()];
+    // 自定义词书的成员是「书里的词」，不是位掩码 —— 这里一律返回 false，
+    // 由 orderedPool / bankIdx 走 bookIndices 那条路
+    if (!B) return false;
+    return (w.b & B.mask) !== 0;
   }
   A.inBank = inBank;
   /* 各词库规模（给切换按钮显示） */
@@ -288,6 +333,19 @@
     var key = bankKey() + (S.settings.includeExt ? 'E' : 'C');
     if (_poolCache[key]) return _poolCache[key];
     var pos = ordPos(), arr = [];
+    if (A.isUserBank()) {
+      // 自定义词书：向 part8 要下标（它负责把内置词表没有的词补进 WORDS）
+      var bk = userBook(bankKey().slice(2));
+      var idx = (A.bookIndices && bk) ? A.bookIndices(bk) : [];
+      pos = ordPos();                     // 补词会改变序位表，这里重新取一次
+      for (var n = 0; n < idx.length; n++) {
+        var i2 = idx[n];
+        if (i2 >= 0 && i2 < WORDS.length) arr.push(i2);
+      }
+      arr.sort(function (a, b) { return pos[a] - pos[b]; });
+      _poolCache[key] = arr;
+      return arr;
+    }
     for (var i = 0; i < WORDS.length; i++) {
       var w = WORDS[i];
       if (!inBank(w)) continue;
@@ -298,6 +356,12 @@
     _poolCache[key] = arr;
     return arr;
   }
+  /* 导入词书会往 WORDS 里追加词条，序位表与词池缓存必须作废 */
+  A.invalidateWordCaches = function () {
+    _ordPos = null;
+    _poolCache = {};
+    _bankCache = {};
+  };
   function activePool() { return orderedPool().slice(); }
   A.activePool = activePool;
   A.keyOf = function (i) { return WORDS[i].w.toLowerCase(); };
@@ -316,6 +380,20 @@
     var key = bankKey() + (wantExt ? 'e' : 'c');
     if (_bankCache[key]) return _bankCache[key];
     var pos = ordPos(), a = [];
+    if (A.isUserBank()) {
+      var bk = userBook(bankKey().slice(2));
+      var idx = (A.bookIndices && bk) ? A.bookIndices(bk) : [];
+      pos = ordPos();
+      for (var u = 0; u < idx.length; u++) {
+        var iu = idx[u];
+        if (iu < 0 || iu >= WORDS.length) continue;
+        if (wantExt ? !WORDS[iu].x : !!WORDS[iu].x) continue;
+        a.push(iu);
+      }
+      a.sort(function (x, y) { return pos[x] - pos[y]; });
+      _bankCache[key] = a;
+      return a;
+    }
     for (var i = 0; i < WORDS.length; i++) {
       var w = WORDS[i];
       if (!inBank(w)) continue;
@@ -1171,6 +1249,12 @@
       h += '<button class="btn retest-btn" data-act="new-round">重新测试 · 开始第 ' + (A.roundNo() + 1) + ' 轮</button>';
     }
     h += '</div>';
+    // 自定义词书：导入入口 + 已导入的书（可切换 / 删除）
+    if (A.bookBarHTML) h += A.bookBarHTML();
+    if (A.isUserBank && A.isUserBank()) {
+      h += '<div class="book-banner">当前词书是<b>自定义词书《' + A.esc(A.bankName()) + '》</b>：' +
+        '结果只表示<b>对这本书的掌握率</b>，不能换算成词汇量（词书本身是有偏样本）。</div>';
+    }
     if (es.kind === 'none') {
       /* 第一次打开时，屏幕上应该是"点哪里"，而不是术语。
          主路径只留一条（快速摸底），第二条是"想更准"的可选项。 */
