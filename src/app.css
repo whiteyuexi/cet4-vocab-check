@@ -1157,7 +1157,10 @@ html[data-theme="dark"] #intro::after{mix-blend-mode:screen;opacity:.28}
 @keyframes introRise{to{opacity:1;transform:translateY(0)}}
 
 /* 退场：整屏像相机对焦一样散开，主界面接上 */
-#intro.leaving{opacity:0;visibility:hidden;pointer-events:none}
+/* 退场时**不能**放开 pointer-events：那 0.5 秒里用户的第二下点击会直接穿透到底下的元素。
+   2026-10-24 踩过：点「进入」后手快点第二下，正好落在右下角的桌宠身上，
+   于是她被"幽灵拖拽"跟着光标拖到左上角，看着像卡死。只淡出、继续吃点击。 */
+#intro.leaving{opacity:0;pointer-events:auto;cursor:default}
 #intro.leaving .intro-stage{transform:scale(1.06);filter:blur(9px);transition:transform .5s ease, filter .5s ease}
 #intro.leaving .intro-whale{transform:translate3d(30px,26px,0) scale(.94);transition:transform .5s ease}
 #intro.leaving .intro-bg i{animation-play-state:paused}

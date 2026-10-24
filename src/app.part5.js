@@ -138,7 +138,7 @@
   var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null, hangEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
-  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
+  var drag = { on: false, armed: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
                lx: 0, ly: 0, lt: 0, cvx: 0, cvy: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
   // 最后一道保险：按住不动超过这么久才当作松手，正常操作不会碰到
@@ -381,7 +381,12 @@
 
   function onDown(e) {
     if (!hostEl) return;
-    drag.on = true; drag.moved = 0;
+    /* 两层防护，都是为了一个实际发生过的 bug：入场页退场的 0.5 秒里点击穿透，
+       落在右下角的桌宠身上就变成"幽灵拖拽"，她被一路拖到左上角、看着像卡死。 */
+    if (document.getElementById('intro')) return;                // 入场页还在
+    var md = document.getElementById('modal');
+    if (md && md.children.length) return;                        // 有模态开着
+    drag.on = true; drag.moved = 0; drag.armed = false;
     drag.sx = e.clientX; drag.sy = e.clientY;
     drag.ox = P.x; drag.oy = P.y;
     drag.lastMove = performance.now();
@@ -409,6 +414,11 @@
 
     var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
+    // 死区：位移不到 5px 不算"拖动"，只当抖动 —— 否则误触一下就能把她挪出几十像素
+    if (!drag.armed) {
+      if (Math.abs(dx) + Math.abs(dy) < 5) return;
+      drag.armed = true;
+    }
     P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
     P.y = Math.max(4, Math.min(window.innerHeight - 40, drag.oy + dy));
     setFace(dx < -4 ? true : dx > 4 ? false : P.faceL);
@@ -447,6 +457,12 @@
     window.addEventListener('pointercancel', endDrag);
     // 拖到窗口外松手时通常只剩 blur 能收到
     window.addEventListener('blur', function () { if (P.dragging) endDrag(); });
+    // 兜底：又按下了鼠标/手指，却没按在她身上 —— 上一次拖拽必然是残留状态，收尾
+    window.addEventListener('pointerdown', function (e) {
+      if (!P.dragging) return;
+      if (hostEl && hostEl.contains(e.target)) return;
+      endDrag();
+    }, true);
   }
 
   /* 立体感三件套：透视倾斜 + 接地投影 + 受光膜。

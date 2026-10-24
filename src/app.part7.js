@@ -375,6 +375,9 @@
     };
     if (instant || !intro) { finish(); return; }
     intro.classList.add('leaving');
+    // 退场期间继续"吃掉"点击：这层虽然已经在淡出，但必须挡住下层元素，
+    // 否则手快的第二下会穿透（曾经把桌宠拖到左上角，看着像卡死）。
+    intro.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); }, true);
     setTimeout(finish, 520);
   };
 

@@ -1165,7 +1165,10 @@ html[data-theme="dark"] #intro::after{mix-blend-mode:screen;opacity:.28}
 @keyframes introRise{to{opacity:1;transform:translateY(0)}}
 
 /* 退场：整屏像相机对焦一样散开，主界面接上 */
-#intro.leaving{opacity:0;visibility:hidden;pointer-events:none}
+/* 退场时**不能**放开 pointer-events：那 0.5 秒里用户的第二下点击会直接穿透到底下的元素。
+   2026-10-24 踩过：点「进入」后手快点第二下，正好落在右下角的桌宠身上，
+   于是她被"幽灵拖拽"跟着光标拖到左上角，看着像卡死。只淡出、继续吃点击。 */
+#intro.leaving{opacity:0;pointer-events:auto;cursor:default}
 #intro.leaving .intro-stage{transform:scale(1.06);filter:blur(9px);transition:transform .5s ease, filter .5s ease}
 #intro.leaving .intro-whale{transform:translate3d(30px,26px,0) scale(.94);transition:transform .5s ease}
 #intro.leaving .intro-bg i{animation-play-state:paused}
@@ -5094,7 +5097,7 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
   var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null, hangEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
-  var drag = { on: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
+  var drag = { on: false, armed: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
                lx: 0, ly: 0, lt: 0, cvx: 0, cvy: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
   // 最后一道保险：按住不动超过这么久才当作松手，正常操作不会碰到
@@ -5337,7 +5340,12 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
 
   function onDown(e) {
     if (!hostEl) return;
-    drag.on = true; drag.moved = 0;
+    /* 两层防护，都是为了一个实际发生过的 bug：入场页退场的 0.5 秒里点击穿透，
+       落在右下角的桌宠身上就变成"幽灵拖拽"，她被一路拖到左上角、看着像卡死。 */
+    if (document.getElementById('intro')) return;                // 入场页还在
+    var md = document.getElementById('modal');
+    if (md && md.children.length) return;                        // 有模态开着
+    drag.on = true; drag.moved = 0; drag.armed = false;
     drag.sx = e.clientX; drag.sy = e.clientY;
     drag.ox = P.x; drag.oy = P.y;
     drag.lastMove = performance.now();
@@ -5365,6 +5373,11 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
 
     var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
+    // 死区：位移不到 5px 不算"拖动"，只当抖动 —— 否则误触一下就能把她挪出几十像素
+    if (!drag.armed) {
+      if (Math.abs(dx) + Math.abs(dy) < 5) return;
+      drag.armed = true;
+    }
     P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
     P.y = Math.max(4, Math.min(window.innerHeight - 40, drag.oy + dy));
     setFace(dx < -4 ? true : dx > 4 ? false : P.faceL);
@@ -5403,6 +5416,12 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
     window.addEventListener('pointercancel', endDrag);
     // 拖到窗口外松手时通常只剩 blur 能收到
     window.addEventListener('blur', function () { if (P.dragging) endDrag(); });
+    // 兜底：又按下了鼠标/手指，却没按在她身上 —— 上一次拖拽必然是残留状态，收尾
+    window.addEventListener('pointerdown', function (e) {
+      if (!P.dragging) return;
+      if (hostEl && hostEl.contains(e.target)) return;
+      endDrag();
+    }, true);
   }
 
   /* 立体感三件套：透视倾斜 + 接地投影 + 受光膜。
@@ -6059,6 +6078,9 @@ html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
     };
     if (instant || !intro) { finish(); return; }
     intro.classList.add('leaving');
+    // 退场期间继续"吃掉"点击：这层虽然已经在淡出，但必须挡住下层元素，
+    // 否则手快的第二下会穿透（曾经把桌宠拖到左上角，看着像卡死）。
+    intro.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); }, true);
     setTimeout(finish, 520);
   };
 

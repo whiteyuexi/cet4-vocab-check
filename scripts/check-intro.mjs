@@ -202,6 +202,36 @@ try {
   const nearBtn = moved.filter(s => Math.hypot(s.x - btnC.x, s.y - btnC.y) < 260).length;
   ok('末段朝按钮方向收束', nearBtn >= 1, nearBtn + ' 个采样点靠近按钮（按钮中心 ' + btnC.x + ',' + btnC.y + '）');
 
+  /* ---------- 2.7 退场那 0.5 秒里的点击不能穿透 ----------
+     2026-10-24 实测过的 bug：点「进入」后手快点第二下，正好落在右下角桌宠身上，
+     于是她被"幽灵拖拽"一路拖到左上角（拖拽坐标下限 P=4），看着像卡死。 */
+  await load(fileURL);
+  await sleep(3200);                                   // 等鲸鱼表演完，进入稳定期
+  const geo = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var b = document.getElementById('introEnter').getBoundingClientRect();
+    var f = document.getElementById('petFig').getBoundingClientRect();
+    return { enter: { x: Math.round(b.left + b.width/2), y: Math.round(b.top + b.height/2) },
+             pet: { x: Math.round(f.left + f.width/2), y: Math.round(f.top + f.height/2) } };
+  })())`));
+  const before = JSON.parse(await evalJs('JSON.stringify(window.__APP__.petInfo())'));
+  const mouse = (type, x, y, buttons) => send('Input.dispatchMouseEvent',
+    { type, x, y, button: 'left', buttons, clickCount: 1, pointerType: 'mouse' });
+  await mouse('mousePressed', geo.enter.x, geo.enter.y, 1);
+  await mouse('mouseReleased', geo.enter.x, geo.enter.y, 0);
+  await sleep(120);                                     // 退场进行中（520ms 窗口内）
+  await mouse('mousePressed', geo.pet.x, geo.pet.y, 1);
+  for (let i = 1; i <= 10; i++) {                       // 假装用户抖了一下手并往左上移动
+    await mouse('mouseMoved', geo.pet.x - i * 90, geo.pet.y - i * 55, 1);
+    await sleep(16);
+  }
+  await mouse('mouseReleased', geo.pet.x - 900, geo.pet.y - 550, 0);
+  await sleep(900);
+  const petAfter = JSON.parse(await evalJs('JSON.stringify(window.__APP__.petInfo())'));
+  ok('退场期间的点击不会穿透到桌宠（不会把她拖走）',
+    Math.abs(petAfter.x - before.x) < 6 && Math.abs(petAfter.y - before.y) < 6,
+    'before=' + before.x + ',' + before.y + ' after=' + petAfter.x + ',' + petAfter.y);
+  ok('桌宠没有停留在拖拽态', petAfter.dragging === false, 'dragging=' + petAfter.dragging);
+
   /* ---------- 3. ?intro=0 跳过 ---------- */
   await load(fileURL + '?intro=0');
   await sleep(500);
