@@ -124,6 +124,175 @@
     })(t0);
   }
 
+  /* ---------- 入场页的鲸鱼：绕场跑一圈，最后化作光束扎进「进入」 ----------
+     为什么用 rAF 而不是 CSS keyframes：
+     终点是按钮的中心，而按钮位置取决于视口与字号 —— 写死关键帧就会在别的屏幕上扎偏。
+     所以路径用代码算，但每一帧只改 transform/opacity（合成层上跑，不触发布局）。 */
+  var whaleRAF = null;
+
+  function roamPath(w, size) {
+    var W = window.innerWidth, H = window.innerHeight;
+    var m = Math.round(Math.min(46, Math.max(22, Math.min(W, H) * 0.05)));
+    var pad = size / 2 + m;                      // 让整只在视口内
+    var x0 = pad, x1 = W - pad, y0 = pad, y1 = H - pad;
+    // 从右下角出发，逆时针绕一圈回到右下，再奔向右下偏中的按钮
+    return [
+      { x: x1, y: y1 }, { x: x1, y: y0 }, { x: x0, y: y0 },
+      { x: x0, y: y1 }, { x: (x0 + x1) / 2, y: y1 }
+    ];
+  }
+
+  function startWhaleShow(w, btn) {
+    var reduce = false;
+    try { reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+
+    var size = w.offsetWidth || 120;
+    var stage = w.parentNode;
+    // 拖影：一张滞后 70ms 的淡影，速度感全靠它（单张图硬移就是"呆板"的本因）
+    var ghost = w.cloneNode(true);                 // 深克隆：拖影里也要有那两条鲸鱼
+    ghost.removeAttribute('id');
+    ghost.className = 'intro-whale ghost';
+    stage.appendChild(ghost);
+
+    var cur = { x: 0, y: 0, tx: 0, ty: 0, face: -1, ang: 0 };
+    var trail = { x: 0, y: 0 };
+    var t0 = performance.now();
+
+    function place(el, x, y, scale, extra) {
+      el.style.transform = 'translate3d(' + (x - size / 2).toFixed(1) + 'px,' + (y - size / 2).toFixed(1) + 'px,0)' +
+        ' scale(' + (cur.face * scale) + ',' + scale + ')' + (extra || '');
+    }
+
+    // 入场：从右下角淡入
+    cur.x = cur.tx = window.innerWidth - size;
+    cur.y = cur.ty = window.innerHeight - size;
+    place(w, cur.x, cur.y, 1);
+    w.style.opacity = '0';
+    ghost.style.opacity = '0';
+
+    if (reduce) {
+      // 减少动效：不跑、不发光束，静静站在按钮旁边
+      var br = btn ? btn.getBoundingClientRect() : null;
+      cur.x = cur.tx = br ? br.left + br.width + size * 0.7 : window.innerWidth - size;
+      cur.y = cur.ty = br ? br.top + br.height / 2 - size / 4 : window.innerHeight - size * 1.2;
+      place(w, cur.x, cur.y, 0.72);
+      w.style.opacity = '0.9';
+      if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      return;
+    }
+
+    setTimeout(function () {
+      w.style.opacity = '1';
+      // 1) 淡入 240ms
+      var a0 = performance.now();
+      (function fadeIn(now) {
+        var k = Math.min(1, (now - a0) / 240);
+        w.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(fadeIn);
+        else roam();
+      })(a0);
+    }, 820);
+
+    // 2) 绕场：按路程匀速，拐角处插值出一条圆滑轨迹
+    function roam() {
+      var pts = roamPath(w, size);
+      var segs = [], sumD = 0;
+      for (var i = 1; i < pts.length; i++) {
+        var a = pts[i - 1], b = pts[i];
+        var d = Math.hypot(b.x - a.x, b.y - a.y);
+        segs.push({ a: a, b: b, d: d });
+        sumD += d;
+      }
+      // 不按"固定像素速度"算时长：屏幕一大，绕一圈能拖到 5 秒，观感就散了。
+      // 直接规定整圈的表演时间，再按路程比例分配 —— 大屏小屏都是 1.9 秒跑完。
+      var SHOW_MS = 1900;
+      segs.forEach(function (g) { g.dur = Math.max(150, (g.d / (sumD || 1)) * SHOW_MS); });
+      var total = segs.reduce(function (s, g) { return s + g.dur; }, 0);
+      var start = performance.now();
+      var gait = 0;
+
+      (function step(now) {
+        if (INTRO_DONE) return;
+        var t = Math.min(total, now - start);
+        var acc = 0, seg = segs[segs.length - 1], local = 1;
+        for (var i = 0; i < segs.length; i++) {
+          if (t <= acc + segs[i].dur) { seg = segs[i]; local = segs[i].dur ? (t - acc) / segs[i].dur : 1; break; }
+          acc += segs[i].dur;
+        }
+        // 段内缓动：起步加速、收尾减速，看起来像"蹬了一下"
+        var e = local < 0.5 ? 2 * local * local : 1 - Math.pow(-2 * local + 2, 2) / 2;
+        var nx = seg.a.x + (seg.b.x - seg.a.x) * e;
+        var ny = seg.a.y + (seg.b.y - seg.a.y) * e;
+        if (Math.abs(seg.b.x - seg.a.x) > 4) cur.face = seg.b.x > seg.a.x ? 1 : -1;
+        cur.x = nx; cur.y = ny;
+
+        // 跑动感：上下小幅颠 + 顺速度方向的前倾，再叠一点点挤压
+        gait += 1;
+        var bob = Math.sin(gait * 0.42) * 3.5;
+        var tilt = cur.face * 5 + Math.sin(gait * 0.21) * 2;
+        place(w, cur.x, cur.y + bob, 1);
+        w.style.transform += ' rotate(' + tilt.toFixed(1) + 'deg)';
+        w.style.filter = 'drop-shadow(0 14px 22px rgba(16,19,25,.2))';
+
+        trail.x += (cur.x - trail.x) * 0.22;
+        trail.y += (cur.y - trail.y) * 0.22;
+        place(ghost, trail.x, trail.y + bob, 1);
+        ghost.style.opacity = '0.16';
+
+        if (t < total) requestAnimationFrame(step);
+        else beam();
+      })(start);
+    }
+
+    // 3) 化作光束：先压成一道，再飞进按钮，撞上时按钮起一圈涟漪
+    function beam() {
+      var br = btn ? btn.getBoundingClientRect() : null;
+      var tx = br ? br.left + br.width / 2 : window.innerWidth / 2;
+      var ty = br ? br.top + br.height / 2 : window.innerHeight - 80;
+      var sx = cur.x, sy = cur.y;
+      if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+      var line = document.createElement('i');
+      line.className = 'intro-beam';
+      stage.appendChild(line);
+
+      var dur = 400, s0 = performance.now();
+      (function fly(now) {
+        if (INTRO_DONE) return;
+        var k = Math.min(1, (now - s0) / dur);
+        var e = k * k;                                    // 加速：越接近按钮越快
+        var hx = sx + (tx - sx) * e, hy = sy + (ty - sy) * e;
+        var dx = hx - sx, dy = hy - sy;
+        var len = Math.hypot(dx, dy);
+        var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        line.style.transform = 'translate3d(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px,0) rotate(' + ang.toFixed(2) + 'deg)';
+        line.style.width = Math.max(0, len).toFixed(1) + 'px';
+        line.style.opacity = String(0.35 + 0.65 * Math.min(1, k * 2.2));
+        // 本体被拉成一道光并消失
+        w.style.transform = 'translate3d(' + (cur.x - size / 2).toFixed(1) + 'px,' + (cur.y - size / 2).toFixed(1) + 'px,0)' +
+          ' scale(' + (cur.face * (1 + k * 1.6)) + ',' + (1 - k * 0.86) + ')';
+        w.style.opacity = String(Math.max(0, 1 - k * 1.5));
+        if (k < 1) requestAnimationFrame(fly);
+        else hit(hx, hy);
+      })(s0);
+
+      function hit(hx, hy) {
+        line.style.opacity = '0';
+        setTimeout(function () { if (line.parentNode) line.parentNode.removeChild(line); }, 220);
+        if (btn) {
+          btn.classList.add('charged');
+          setTimeout(function () { btn.classList.remove('charged'); }, 1000);
+        }
+        // 命中点的一点炸开
+        var burst = document.createElement('i');
+        burst.className = 'intro-burst';
+        burst.style.transform = 'translate3d(' + (hx - 30).toFixed(1) + 'px,' + (hy - 30).toFixed(1) + 'px,0)';
+        stage.appendChild(burst);
+        setTimeout(function () { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 620);
+        w.style.display = 'none';
+      }
+    }
+  }
   A.initIntro = function () {
     var intro = document.getElementById('intro');
     if (!intro) return;
@@ -139,10 +308,16 @@
     });
 
     // 立绘：复用内联的那张待机图（离线也有）
-    var w = document.getElementById('introWhale');
-    if (w) {
-      var art = (window.PET_ART && window.PET_ART['idle-cute']) || '';
-      if (art) w.src = art; else w.parentNode.style.display = 'none';
+    // 注意：要驱动的是外层定位容器 #introWhaleBox，不是里面的 <img> ——
+    // 容器才是 position:absolute 的那个，直接改 img 会和容器的基准位移叠加，坐标全乱。
+    var wbox = document.getElementById('introWhaleBox');
+    var wimg = document.getElementById('introWhale');
+    var art = (window.PET_ART && window.PET_ART['idle-cute']) || '';
+    if (wbox && art && wimg) {
+      wimg.src = art;
+      startWhaleShow(wbox, document.getElementById('introEnter'));
+    } else if (wbox) {
+      wbox.style.display = 'none';
     }
     // 数字滚动：用真实词库规模，不写死
     var words = (window.WORDS && window.WORDS.length) || 0;

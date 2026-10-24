@@ -1132,9 +1132,12 @@ html[data-theme="dark"] .intro::after{mix-blend-mode:screen;opacity:.28}
   border:1px solid color-mix(in srgb, var(--ink) 16%, transparent);background:color-mix(in srgb, var(--ink) 5%, transparent)}
 
 /* 鲸鱼娘：从右下浮上来，轻轻呼吸。她本身就是页面的"人" */
-.intro-whale{position:absolute;right:clamp(18px,4vw,64px);bottom:clamp(18px,3vw,52px);z-index:3;
-  width:clamp(96px,12vw,152px);aspect-ratio:1;opacity:0;transform:translate3d(28px,34px,0) scale(.9);
-  animation:introWhale 1.15s cubic-bezier(.16,.84,.24,1) .95s forwards;pointer-events:none}
+/* 鲸鱼的位置/朝向/挤压全部由 JS 每帧写 transform（见 part7 的 startWhaleShow）：
+   CSS 只负责"框"——尺寸、层叠、拖影的样式。两套 transform 同时写会互相覆盖。 */
+.intro-whale{position:absolute;left:0;top:0;z-index:3;
+  width:clamp(100px,12.5vw,158px);aspect-ratio:1;opacity:0;pointer-events:none;
+  will-change:transform,opacity;transform:translate3d(-999px,-999px,0)}
+.intro-whale.ghost{opacity:0;filter:blur(1.5px) saturate(.9);z-index:2}
 .intro-whale img{width:100%;height:100%;object-fit:contain;
   filter:drop-shadow(0 16px 26px rgba(16,19,25,.22))}
 @keyframes introWhale{to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
@@ -1171,3 +1174,23 @@ html.boot-anim .wrap>*:nth-child(5){animation-delay:.28s}
   html.boot-anim .wrap>*{animation:none!important}
   .intro.leaving .intro-stage{transform:none;filter:none}
 }
+/* 光束：一条带辉光的细线，宽度由 JS 按"已飞出的距离"写入 */
+.intro-beam{position:absolute;left:0;top:0;z-index:4;height:3px;border-radius:3px;pointer-events:none;
+  transform-origin:0 50%;opacity:0;mix-blend-mode:screen;
+  background:linear-gradient(90deg,rgba(42,91,224,0) 0%,rgba(127,164,255,.9) 26%,#fff 54%,
+    rgba(0,196,180,.9) 78%,rgba(0,196,180,0) 100%);
+  box-shadow:0 0 16px 3px rgba(42,91,224,.55), 0 0 48px 12px rgba(0,196,180,.22)}
+html[data-theme="dark"] .intro-beam{mix-blend-mode:screen}
+
+/* 命中按钮时的一点炸开 */
+.intro-burst{position:absolute;left:0;top:0;z-index:4;width:60px;height:60px;border-radius:50%;
+  pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,255,255,.95),rgba(127,164,255,.5) 38%,rgba(0,196,180,0) 72%);
+  animation:introBurst .58s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes introBurst{0%{transform:scale(.2);opacity:1}100%{transform:scale(2.4);opacity:0}}
+
+/* 按钮被点亮：一圈涟漪扩出去，边框短暂发光 */
+.intro-enter.charged{box-shadow:0 0 0 2px rgba(255,255,255,.45) inset,0 18px 46px -14px rgba(42,91,224,.8)}
+.intro-enter.charged::before{content:'';position:absolute;inset:-4px;border-radius:999px;pointer-events:none;
+  border:1.5px solid rgba(0,196,180,.6);animation:introRipple .95s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes introRipple{0%{transform:scale(.94);opacity:.95}100%{transform:scale(1.35);opacity:0}}

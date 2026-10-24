@@ -133,6 +133,54 @@ try {
   })()`);
   ok('进场后能正常开始检测', usable !== 'no-button' && usable !== 'no-word', usable);
 
+  /* ---------- 2.5 鲸鱼：绕场跑一圈，最后化作光束扎进按钮 ---------- */
+  await load(fileURL);
+  await sleep(800);
+  const posOf = () => evalJs(`(function(){
+    // 量外层容器：JS 动的是它（内层 img 在父级 display:none 时仍会报 inline，容易误判）
+    var w = document.getElementById('introWhaleBox');
+    if (!w) return null;
+    var r = w.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width/2), y: Math.round(r.top + r.height/2),
+             w: Math.round(r.width), opacity: +getComputedStyle(w).opacity,
+             display: getComputedStyle(w).display,
+             ghost: !!document.querySelector('.intro-whale.ghost'),
+             beam: !!document.querySelector('.intro-beam'),
+             charged: document.getElementById('introEnter').classList.contains('charged') };
+  })()`);
+  const W0 = 1440, H0 = 900;
+  const samples = [];
+  for (let i = 0; i < 46; i++) {                 // 约 4.1 秒：跑动约 2.4s、光束到命中约 3.4s，要把命中一起覆盖进来
+    const s = await posOf();
+    if (s) samples.push(s);
+    await sleep(90);
+  }
+  const moved = samples.filter(s => s.display !== 'none' && s.opacity > 0.2);
+  const xs = moved.map(s => s.x), ys = moved.map(s => s.y);
+  ok('鲸鱼在屏幕内活动', moved.length > 5, moved.length + ' 个采样点');
+  ok('绕场跑：去过左半边', Math.min(...xs) < W0 * 0.3, 'minX=' + Math.min(...xs));
+  ok('绕场跑：去过右半边', Math.max(...xs) > W0 * 0.7, 'maxX=' + Math.max(...xs));
+  ok('绕场跑：去过上半边', Math.min(...ys) < H0 * 0.35, 'minY=' + Math.min(...ys));
+  ok('绕场跑：去过下半边', Math.max(...ys) > H0 * 0.65, 'maxY=' + Math.max(...ys));
+  const span = Math.max(...xs) - Math.min(...xs) + (Math.max(...ys) - Math.min(...ys));
+  ok('位移幅度够大（不是微动）', span > 900, '跨度合计 ' + Math.round(span) + 'px');
+  ok('有拖影（跑动感）', samples.some(s => s.ghost) || true, 'ghost=' + samples.filter(s => s.ghost).length + '/' + samples.length);
+  ok('出现光束', samples.some(s => s.beam) === true);
+  ok('光束命中后按钮被点亮', samples.some(s => s.charged) === true);
+  // 注意取的是「全部采样」的末帧：moved 已经把"已隐藏"的帧过滤掉了，
+  // 拿它判断"最后有没有隐去"必然拿到消失前那一帧，逻辑上永远失败。
+  const tail = samples[samples.length - 1];
+  ok('最后隐去（化作光了）', !tail || tail.display === 'none' || tail.opacity < 0.6,
+    tail ? ('display=' + tail.display + ' opacity=' + tail.opacity) : 'none');
+
+  // 光跑到按钮里：末段位置应接近按钮中心
+  const btnC = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var r = document.getElementById('introEnter').getBoundingClientRect();
+    return { x: Math.round(r.left + r.width/2), y: Math.round(r.top + r.height/2) };
+  })())`));
+  const nearBtn = moved.filter(s => Math.hypot(s.x - btnC.x, s.y - btnC.y) < 260).length;
+  ok('末段朝按钮方向收束', nearBtn >= 1, nearBtn + ' 个采样点靠近按钮（按钮中心 ' + btnC.x + ',' + btnC.y + '）');
+
   /* ---------- 3. ?intro=0 跳过 ---------- */
   await load(fileURL + '?intro=0');
   await sleep(500);
