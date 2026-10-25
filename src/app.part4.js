@@ -309,6 +309,26 @@
     if (a.act === 'ask') { A.runAI(a.q, true); return; }
   };
 
+  /* 用作者额度直连：先扣 1 次，扣不到就退回本地方案（额度是"完成检测"换来的，不能白给） */
+  function spendThenDirect(box, question, cfg) {
+    if (!A.spendAiQuota()) {
+      localAnswer(box, question);
+      var tip = document.createElement('div');
+      tip.className = 'tiny';
+      tip.style.marginTop = '8px';
+      tip.textContent = '（作者额度已用完，以上为本地方案。完成下一轮整库检测可获得新的深度诊断；' +
+        '或在「设置 → AI 与额度」里接入你自己的 API Key，之后不再受额度限制。）';
+      box.appendChild(tip);
+      return;
+    }
+    runDirect(box, question, cfg);
+    updateQuotaBadge();
+  }
+
+  function updateQuotaBadge() {
+    var b = el('aiQuotaBadge');
+    if (b) b.textContent = A.aiTierLabel();
+  }
   /* 离线也要有动作：本地规则诊断同样能给出"复测这一段 / 开一轮摸底 / 看剖面" */
   A.localActions = function () {
     var out = [];
@@ -326,9 +346,37 @@
     return out;
   };
 
+  /* ---------- 三档通路 ----------
+     ③ 自带 Key（用户自己的 token，无限次）
+     ② 作者额度（作者 Key，完成一次检测换一次）—— 只有在评委版构建里才存在
+     ① 本地方案（确定性规则引擎，永远可用、无限次）
+     顺序不能反：自带 Key 优先，因为那是用户自己付费、且能问最多的形态。 */
+  A.aiTier = function () {
+    if (A.S.userKey && A.S.userKey.key) return 'user';
+    if (AUTHOR_KEY && A.aiQuota().left > 0) return 'author';
+    return 'local';
+  };
+  A.aiTierLabel = function () {
+    var t = A.aiTier();
+    if (t === 'user') return '自带 Key · 不限次';
+    if (t === 'author') return '作者额度 · 剩 ' + A.aiQuota().left + ' 次';
+    return '本地方案 · 不限次';
+  };
+  /* 用户自带 Key 的读写（只存本机；导出备份时会剔除） */
+  A.setUserKey = function (cfg) {
+    if (!cfg || !cfg.key) { A.S.userKey = null; A.save(); return false; }
+    A.S.userKey = {
+      key: String(cfg.key).trim(),
+      model: String(cfg.model || 'deepseek-chat').trim(),
+      base: String(cfg.base || 'https://api.deepseek.com').replace(/\/$/, '')
+    };
+    A.save();
+    return true;
+  };
   A.openAIDialog = function (question, focus) {
     A.modal('<div class="ai-head"><b>AI 诊断教练</b>' +
-      '<span class="pill brand" id="aiMode">连接中…</span></div>' +
+      '<span class="pill brand" id="aiMode">连接中…</span>' +
+      '<span class="pill" id="aiQuotaBadge" style="margin-left:6px"></span></div>' +
       '<div id="aiLockBar"></div>' +
       '<div class="ai-log" id="aiLog"></div>' +
       '<div class="row" style="margin-top:12px;gap:8px">' +
@@ -371,6 +419,9 @@
      要点：解出来的 Key 只放内存（AI_LIVE），刷新即失效，授权是"这一次打开"。
      离线规则诊断不受锁影响，谁都能用、不花钱。 */
   var AI_LOCK = (typeof window !== 'undefined' && window.AI_LOCK) || null;
+  /* 作者提供的 Key：**只有评委版构建才会内联**（build.js --with-key）。
+     公开仓库里的产物是 null —— 这条纪律由 scripts/check-no-key.mjs 守着。 */
+  var AUTHOR_KEY = (typeof window !== 'undefined' && window.AI_AUTHOR_KEY) || null;
   var AI_LIVE = null;                    // { key, model, base } —— 只存在内存里
   var UNLOCKING = false;
   var PBKDF2_MIN_IT = 100000;            // 密文里写了迭代次数，但不接受低到可爆的值
@@ -435,7 +486,7 @@
         AI_LIVE = { key: obj.k, model: obj.m || 'deepseek-chat', base: (obj.b || 'https://api.deepseek.com').replace(/\/$/, '') };
         UNLOCKING = false;
         renderLockBar();
-        setModePillText('在线 · 大模型（已授权）', 'brand');
+        setModePillText('在线 · 直连模型', 'brand');
         return true;
       })
       .catch(function () {
@@ -454,7 +505,11 @@
   }
 
   /* 直连模型厂商（DeepSeek 允许跨域，实测 file:// 也能调）：流式渲染复用同一套逻辑 */
-  function runDirect(box, question) {
+  /* 直连厂商：keyCfg 可以是 {key,model,base}（用户自带）或作者 Key。
+     走这条路时不经过我们的后端，数据直接到厂商——这一点在界面上要说清。 */
+  function runDirect(box, question, keyCfg) {
+    var KC = keyCfg || (A.S.userKey && A.S.userKey.key ? A.S.userKey : AUTHOR_KEY) || null;
+    if (!KC || !KC.key) { localAnswer(box, question); return; }
     var ctx = '';
     try { ctx = JSON.stringify(A.buildAIContext()); } catch (e) { ctx = '{}'; }
     var sys = '你是「四六级词汇量检测」工具里的诊断教练。规则：\n' +
@@ -463,11 +518,11 @@
       '3. 这是抽样估计：总掌握率会被高低频段平均掉，判断强弱要看频段剖面；有置信区间时要提醒误差范围。\n' +
       '4. 不要输出代码块以外的表格，篇幅控制在 400 字以内。\n\n用户数据：' + ctx;
 
-    fetch(AI_LIVE.base + '/chat/completions', {
+    fetch(KC.base + '/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AI_LIVE.key },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + KC.key },
       body: JSON.stringify({
-        model: AI_LIVE.model,
+        model: KC.model || 'deepseek-chat',
         stream: true,
         temperature: 0.3,
         max_tokens: 900,
@@ -480,7 +535,7 @@
       }
       if (!res.body) throw new Error('浏览器不支持流式读取');
       var reader = res.body.getReader(), dec2 = new TextDecoder(), buf = '', text = '';
-      setModePillText('在线 · 大模型（已授权）', 'brand');
+      setModePillText('在线 · 直连模型', 'brand');
       function pump() {
         return reader.read().then(function (r) {
           if (r.done) {
@@ -709,24 +764,31 @@
     var toolBox = null;
     var evidence = [];
 
-    // 有授权锁但没解锁：提示先输密码，离线诊断照答（不花钱）
-    if (AI_LOCK && !AI_LIVE) {
+    /* ---------- 三档通路（顺序不能反） ----------
+       ① 用户自己跑着后端 → 那是他自己的 Key 与额度，不扣作者额度，且质量最好（有工具）
+       ② 用户自带 Key    → 直连厂商，不扣作者额度
+       ③ 作者额度        → 直连作者 Key，扣 1 次
+       ④ 都没有          → 本地方案（确定性规则引擎，永远可用）
+       判后端是否在线需要一次探测，所以先探再分流；探不到就走后面几档。 */
+    var authorCfg = AI_LIVE || AUTHOR_KEY;
+    if (AI_LOCK && !AI_LIVE && !A.S.userKey) {
+      // 兼容旧形态：产物启用了授权锁但没解锁
       localAnswer(box, question);
       var hint = document.createElement('div');
       hint.className = 'tiny';
       hint.style.marginTop = '8px';
-      hint.textContent = '（以上为离线规则诊断，不消耗任何额度。要用大模型，请在上方输入访问密码后重发这个问题。）';
+      hint.textContent = '（以上为本地方案，不消耗任何额度。要用大模型，请在上方输入访问密码后重发这个问题。）';
       box.appendChild(hint);
       lockMsg('要用大模型请先输入访问密码。', false);
       return;
     }
-
-    // 已知离线：解锁过就直连厂商（比本地规则强），否则本地规则诊断
-    if (AI_STATE === 'offline') {
-      if (AI_LIVE) { runDirect(box, question); return; }
+    var hasOwn = !!(A.S.userKey && A.S.userKey.key);
+    if (AI_STATE === 'offline' && !hasOwn && !authorCfg) {
       setTimeout(function () { localAnswer(box, question); }, 320);
       return;
     }
+    if (AI_STATE === 'offline' && hasOwn) { runDirect(box, question, A.S.userKey); return; }
+    if (AI_STATE === 'offline' && !hasOwn && authorCfg) { spendThenDirect(box, question, authorCfg); return; }
 
     var ctx;
     try { ctx = A.buildAIContext(); }
@@ -813,7 +875,8 @@
       // 对收到文件的同学/评委就是一条死胡同。
       AI_STATE = 'offline';
       setModePill(false);
-      if (AI_LIVE) { runDirect(box, question); return; }   // 后端挂了但解锁过 → 直连
+      if (hasOwn) { runDirect(box, question, A.S.userKey); return; }        // 自带 Key → 直连
+      if (authorCfg) { spendThenDirect(box, question, authorCfg); return; } // 作者额度 → 扣一次再直连
       localAnswer(box, question);
       if (e && e.message) {
         var tip = document.createElement('div');
@@ -825,6 +888,71 @@
     });
   };
 
+  /* ---------- 接入指南（左下角卡片点进来） ----------
+     内容只讲"怎么把你自己厂商的 Key 接进来"，并把踩过的坑写在前面：
+     浏览器直连要过 CORS，我们实测 DeepSeek 允许、OpenAI/智谱拒绝。 */
+  A.openAiGuide = function () {
+    var cur = A.aiTier();
+    A.modal(
+      '<div class="book-head"><b>接入你自己的 AI</b>' +
+      '<span class="tiny">用你自己的 Key，不限次数，数据不经过我们</span></div>' +
+      '<div class="guide">' +
+        '<div class="g-step"><b>为什么建议自带 Key</b>' +
+          '作者提供的额度是「完成一次检测换一次诊断」；自带 Key 后不再受此限制，' +
+          '而且请求直接发到模型厂商，<b>我们的服务器完全不参与</b>。' +
+          '<br>当前状态：<b>' + esc(A.aiTierLabel()) + '</b>' +
+          (cur === 'local' ? '（用完作者额度后，本地方案仍然无限可用）' : '') +
+        '</div>' +
+        '<div class="g-step"><b>支持哪些厂商</b>' +
+          '浏览器要直连厂商 API，必须厂商允许跨域（CORS）。我们实测：' +
+          '<br>· <b>DeepSeek</b> —— ✅ 允许，<code>file://</code> 打开也能用（推荐）' +
+          '<br>· OpenAI / 智谱 —— ❌ 默认拒绝跨域，直连会报 <code>Failed to fetch</code>' +
+          '<br>其它兼容 OpenAI 协议的厂商可以试，报错多半就是 CORS。' +
+        '</div>' +
+        '<div class="g-step"><b>三步接入</b>' +
+          '<br>1. 到厂商控制台创建 API Key（DeepSeek 在「API keys」页面）' +
+          '<br>2. 回到本应用：<b>设置 → AI 与额度</b>，把 Key 贴进去，点「保存并测试」' +
+          '<br>3. 测试通过后，AI 面板右上角会变成「自带 Key · 无限次」' +
+        '</div>' +
+        '<div class="g-step warn"><b>安全提示（务必看）</b>' +
+          '<br>· Key 只存在<b>你自己的浏览器</b>里，不上传、不写进导出的备份文件' +
+          '<br>· 公共电脑上用完请点「清除 Key」' +
+          '<br>· 别把 Key 发给别人、别贴进截图；泄露了去厂商后台<b>立刻删除重建</b>' +
+        '</div>' +
+        '<div class="g-step"><b>费用大概多少</b>' +
+          '<br>一次深度诊断约 1.5–3 千 token（含工具往返），按 DeepSeek 现价约 <b>几分钱</b>。' +
+          '本应用会显示每次消耗的 token，累计值在桌宠旁边能看到。' +
+        '</div>' +
+        '<div class="g-step"><b>常见报错怎么处理</b>' +
+          '<br>· <code>Failed to fetch</code> → 厂商不允许跨域（换 DeepSeek），或网络不通' +
+          '<br>· <code>401</code> → Key 错了或已失效' +
+          '<br>· <code>402 / 余额不足</code> → 去厂商后台充值' +
+          '<br>· 一直"正在分析" → 检查是否开了代理/VPN 拦截' +
+        '</div>' +
+      '</div>' +
+      '<div class="book-row"><button class="btn primary" data-act="modal-close">知道了</button>' +
+      '<button class="btn ghost" data-act="ai-guide-settings">去设置里填写</button></div>', true);
+  };
+
+  /* 设置页的「测试连接」：真发一次极短请求，不做假绿灯 */
+  A.testUserKey = function (cfg) {
+    if (!cfg || !cfg.key) return Promise.resolve({ ok: false, msg: '还没填 Key' });
+    return fetch(cfg.base + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify({
+        model: cfg.model, max_tokens: 1, stream: false,
+        messages: [{ role: 'user', content: 'ping' }]
+      })
+    }).then(function (r) {
+      if (r.ok) return { ok: true, msg: '连接成功，可以用了' };
+      if (r.status === 401 || r.status === 403) return { ok: false, msg: 'Key 无效或已失效（' + r.status + '）' };
+      if (r.status === 402 || r.status === 429) return { ok: false, msg: '额度/频率限制（' + r.status + '），去厂商后台看看' };
+      return { ok: false, msg: '接口返回 ' + r.status };
+    }).catch(function (e) {
+      return { ok: false, msg: '连不上：' + (e && e.message ? e.message : e) + '（多半是厂商不允许浏览器跨域）' };
+    });
+  };
   /* 给设置页用：当前 AI 处在哪一级（有锁/已解锁/模型名）。不要暴露 Key 本身。 */
   A.aiLockInfo = function () {
     return { lock: !!AI_LOCK, live: !!AI_LIVE, model: AI_LIVE ? AI_LIVE.model : '' };

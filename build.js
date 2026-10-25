@@ -64,12 +64,31 @@ ty: {
 let html = fs.readFileSync(path.join(ROOT, 'src', 'index.template.html'), 'utf8');
 html = html.replace('/*__CSS__*/', function () { return css; });
 html = html.replace('/*__PETART__*/', function () { return JSON.stringify(petArt); });
+// 作者 Key：**只有显式传 --with-key 才内联**，用于生成"给评委的演示版"。
+// 默认构建（以及提交到公开仓库的产物）绝不包含任何 Key —— 由 scripts/check-no-key.mjs 把关。
+// 文件位置：private/ai-key.json（已 gitignore），内容 { key, model, base }
+let authorKey = null;
+if (process.argv.includes('--with-key')) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'private', 'ai-key.json'), 'utf8'));
+    if (cfg && cfg.key) {
+      authorKey = { key: cfg.key, model: cfg.model || 'deepseek-chat', base: (cfg.base || 'https://api.deepseek.com').replace(/\/$/, '') };
+      console.log('⚠ 本次构建内联了作者 Key（演示版）—— 这份产物不要提交到公开仓库');
+    } else {
+      console.log('⚠ --with-key 但 private/ai-key.json 里没有 key，按无 Key 构建');
+    }
+  } catch (e) {
+    console.log('⚠ --with-key 但读不到 private/ai-key.json，按无 Key 构建');
+  }
+}
+
 // AI 授权锁：private/ai-lock.json 里是密文（PBKDF2+AES-GCM），明文 API Key 不进产物
 let aiLock = null;
 try {
   aiLock = JSON.parse(fs.readFileSync(path.join(ROOT, 'private', 'ai-lock.json'), 'utf8'));
 } catch (e) { /* 没有锁 = 产物只有离线规则诊断 */ }
 html = html.replace('/*__AILOCK__*/', function () { return aiLock ? JSON.stringify(aiLock) : 'null'; });
+html = html.replace('/*__AUTHORKEY__*/', function () { return authorKey ? JSON.stringify(authorKey) : 'null'; });
 html = html.replace('/*__WORDS__*/', function () { return wordsJson; });
 html = html.replace('/*__SENTENCES__*/', function () { return sentencesJson; });
 html = html.replace('/*__JS__*/', function () { return js; });
@@ -85,6 +104,7 @@ console.log('词条总数:', words.length, '（核心', pick(true).length, '/ �
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
 console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
+console.log('作者 Key:', authorKey ? '已内联（演示版，勿提交仓库）' : '未内联（仓库版）');
 console.log('AI 授权锁:', aiLock ? ('已内联（' + aiLock.it + ' 次 PBKDF2，密码解锁）') : '未启用（有后端则用大模型，否则离线规则诊断）');
 console.log('桌宠立绘:', Object.keys(petArt).length, '张内联（' + (Object.values(petArt).reduce((s, v) => s + v.length, 0) / 1024).toFixed(0) + ' KB，情绪立绘离线可用）');
 console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB（构建于 ' + new Date().toISOString() + '，此时间不写入产物）');

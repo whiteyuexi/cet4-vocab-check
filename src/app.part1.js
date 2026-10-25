@@ -109,8 +109,12 @@
       round: { n: 1, startedAt: Date.now() },   // 当前轮次
       rounds: [],                               // 已完成并归档的历史轮次（报告快照）
       books: {},                                // 用户导入的自定义词书：{ id: {id,name,indices,...} }
+      /* AI 额度：作者提供的 key 按"完成一次检测 = 授予一次诊断"发放。
+         纯本地计数（无账号），因此只约束诚实用户；Key 本身也不进公开仓库（见 build --with-key）。 */
+      aiQuota: { granted: 0, used: 0 },
+      userKey: null,                            // 用户自带的 API Key 配置（只存本机，导出备份时剔除）
       welcomed: false,                          // 是否已过了"怎么称呼"那一步
-      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4' },
+      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4', dailyMinutes: 30 },
       theme: 'light',
       tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };
@@ -131,6 +135,8 @@
         d.round = o.round || d.round;
         d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
         d.books = (o.books && typeof o.books === 'object') ? o.books : {};
+        d.aiQuota = (o.aiQuota && typeof o.aiQuota === 'object') ? o.aiQuota : { granted: 0, used: 0 };
+        d.userKey = (o.userKey && typeof o.userKey === 'object' && o.userKey.key) ? o.userKey : null;
         // 老存档里可能残留一个已被删掉的词书 id：退回四级，避免打开就是空词库
         if (typeof d.settings.bank === 'string' && d.settings.bank.indexOf('u:') === 0 &&
             !d.books[d.settings.bank.slice(2)]) {
@@ -684,6 +690,52 @@
     return null;
   }
   A.latestSample = latestSample;
+  /* ---------- AI 诊断额度 ----------
+     规则：**完成一次有效检测 = 授予一次诊断**。
+       有效检测 = 该轮测试过的词数 ≥100 且覆盖率 ≥95%（整库口径），
+       或一次达标的随机摸底（达到目标精度且 ≥80 题）。
+     为什么要有下限：自定义 5 个词的词书也能 100% 覆盖，不设下限就能无限刷额度。
+     纯本地计数，没有账号——所以它只约束诚实用户。这是"数据只在你手里"的代价，写在文档里。 */
+  A.aiQuota = function () {
+    var q = S.aiQuota || { granted: 0, used: 0 };
+    return { granted: q.granted | 0, used: q.used | 0, left: Math.max(0, (q.granted | 0) - (q.used | 0)) };
+  };
+  A.grantAiQuota = function (why) {
+    if (!S.aiQuota) S.aiQuota = { granted: 0, used: 0 };
+    S.aiQuota.granted = (S.aiQuota.granted | 0) + 1;
+    A.save();
+    try { A.toast('获得 1 次 AI 深度诊断（' + (why || '完成检测') + '）'); } catch (e) {}
+    return A.aiQuota();
+  };
+  A.spendAiQuota = function () {
+    if (!S.aiQuota) S.aiQuota = { granted: 0, used: 0 };
+    if ((S.aiQuota.granted | 0) - (S.aiQuota.used | 0) <= 0) return false;
+    S.aiQuota.used = (S.aiQuota.used | 0) + 1;
+    A.save();
+    return true;
+  };
+  /* 判定"这次检测够不够格换一次诊断"，并在够格时授予（同一轮只授予一次） */
+  A.maybeGrantAiQuota = function (kind) {
+    var t = A.tally(activePool());
+    if (!t.tested) return false;
+    var cov = t.total ? t.tested / t.total : 0;
+    var ok = (kind === 'round')
+      ? (t.tested >= 100 && cov >= 0.95)
+      : false;
+    if (kind === 'probe') {
+      var es = A.estimateNow();
+      var sess = S.session;
+      ok = !!(es && es.kind === 'sample' && sess && sess.kind === 'probe' && (sess.log || []).length >= 80);
+    }
+    if (!ok) return false;
+    // 同一轮同一口径只授予一次：用 round + 词库做标记
+    var mark = (kind || 'x') + ':' + A.bankKey() + ':' + (S.round && S.round.startedAt ? S.round.startedAt : 0);
+    if (!S.aiGranted) S.aiGranted = {};
+    if (S.aiGranted[mark]) return false;
+    S.aiGranted[mark] = 1;
+    A.grantAiQuota(kind === 'round' ? '整库检测完成' : '随机摸底达标');
+    return true;
+  };
   A.addSample = function (o) {
     if (!S.samples) S.samples = [];
     S.samples.push({
@@ -815,6 +867,7 @@
     if (!A.canRetest()) return false;
     if (!S.rounds) S.rounds = [];
     S.rounds.push(roundSnapshot());
+    try { A.maybeGrantAiQuota('round'); } catch (e) {}
     while (S.rounds.length > ROUNDS_MAX) S.rounds.shift();
 
     var pool = activePool();

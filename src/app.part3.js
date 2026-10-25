@@ -427,28 +427,50 @@
       '<b>快捷键：</b>自评模式 <span class="kbd">1</span> 不认识 <span class="kbd">2</span> 模糊 <span class="kbd">3</span> 认识；四选一模式 <span class="kbd">1</span>-<span class="kbd">4</span> 选项；<span class="kbd">空格</span> 发音/下一题；<span class="kbd">退格</span> 撤销。' +
       '</div>';
 
-    /* AI 诊断与授权：把"这个功能在哪、现在是什么形态"写在设置里。
-       之前只有 AI 对话框内部才看得到锁，用户根本不知道有这个功能，更不知道要密码。 */
-    var ai = (A.aiLockInfo ? A.aiLockInfo() : { lock: false, live: false, model: '' });
-    h += '<div class="sec-title">AI 诊断与授权<span class="line"></span></div>';
-    h += '<div class="card" style="line-height:1.9">' +
-      '<div class="tiny" style="margin-bottom:10px">' +
-      (ai.lock
-        ? (ai.live
-          ? '<b style="color:var(--ok)">已授权</b>：本次打开可用大模型（' + esc(ai.model) + '），刷新页面后需要重新输入密码。'
-          : '<b>大模型已锁定</b>：作者把 API Key 用密码加密后内联在文件里，输入正确密码才解得出。' +
-            '离线规则诊断随时可用、不消耗任何额度。')
-        : '本文件<b>未启用授权锁</b>，不需要任何密码：若本机运行了后端（<code>node server/index.mjs</code>），' +
-          'AI 会走大模型；否则自动使用离线规则诊断（同样给出基于你本机数据的结论）。') +
-      '</div>' +
-      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
-      '<button class="btn primary" data-act="ai-open">打开 AI 诊断</button>' +
-      (ai.lock && !ai.live ? '<button class="btn" data-act="ai-open">输入密码解锁大模型</button>' : '') +
-      '</div>' +
-      '<div class="tiny" style="margin-top:10px;color:var(--ink3)">' +
-      '密码由作者单独提供；解锁只对本次打开有效，刷新即失效，Key 只存在内存里。' +
-      '所有提问只上行汇总数据（覆盖率、频段掌握率、未掌握词清单），逐题作答不出本机。' +
+    /* ---------- AI 与额度 ----------
+       三档通路要在这里讲清楚，否则用户分不清"为什么这次能用大模型、那次不能"：
+       ① 自带 Key（无限次，直连厂商）② 作者额度（完成一次检测换一次）③ 本地方案（无限次） */
+    var q = A.aiQuota ? A.aiQuota() : { granted: 0, used: 0, left: 0 };
+    var uk = (A.S.userKey && A.S.userKey.key) ? A.S.userKey : null;
+    h += '<div class="sec-title">AI 与额度<span class="line"></span></div>';
+    h += '<div class="card" style="line-height:1.9">';
+    h += '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px">' +
+      '<span class="pill brand">' + esc(A.aiTierLabel ? A.aiTierLabel() : '本地方案') + '</span>' +
+      '<span class="tiny">作者额度：已授予 <b>' + q.granted + '</b> 次，已用 <b>' + q.used + '</b> 次，剩余 <b>' + q.left + '</b> 次</span>' +
+      '</div>';
+
+    // ① 自带 Key
+    h += '<div class="tiny" style="margin:12px 0 6px"><b>自带 API Key（推荐，不限次数）</b>' +
+      (uk ? ' —— 已填写 <code>' + esc(uk.key.slice(0, 6)) + '…' + esc(uk.key.slice(-4)) + '</code>，模型 ' + esc(uk.model) : '') +
+      '</div>';
+    h += '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<input class="search" id="userKeyInput" type="password" placeholder="sk-…（只存本机，不上传）" value="' + (uk ? esc(uk.key) : '') + '">' +
+      '<button class="btn primary" data-act="ai-key-save">保存并测试</button>' +
+      (uk ? '<button class="btn ghost" data-act="ai-key-clear">清除 Key</button>' : '') +
+      '<button class="btn ghost" data-act="ai-guide">接入指南</button>' +
+      '</div>';
+    h += '<div class="tiny" id="userKeyMsg" style="margin-top:6px;color:var(--ink3)">' +
+      (uk ? 'Key 只保存在这个浏览器里；导出备份时不会包含它。' : '不知道怎么申请？点「接入指南」，里面有厂商对比与常见报错对照。') +
+      '</div>';
+
+    h += '<div class="tiny" style="margin-top:14px;color:var(--ink3)">' +
+      '<b>作者额度怎么获得：</b>完成一次<b>有效检测</b>换一次深度诊断' +
+      '（整库检测要求测过 ≥100 词且覆盖 ≥95%；或一次达标的随机摸底 ≥80 题）。' +
+      '<br><b>本地方案：</b>不需要任何 Key、也不限次数——按你的等级、短板形态与覆盖状态给一份确定的补词计划，' +
+      '只是不如大模型灵活。' +
+      '<br>三种形态都只上行汇总数据（覆盖率、频段掌握率、未掌握词清单），<b>逐题作答不出本机</b>。' +
       '</div></div>';
+
+    // 每日时间预算：本地方案要用它把"每天多少词"算准
+    h += '<div class="sec-title">每日可投入时间<span class="line"></span></div>';
+    h += '<div class="card tiny" style="line-height:1.9">' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+      [15, 30, 60].map(function (m) {
+        var on = ((A.S.settings.dailyMinutes || 30) === m);
+        return '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="set-daily" data-min="' + m + '">' + m + ' 分钟</button>';
+      }).join('') +
+      '</div>本地方案会用这个数把"每天背多少个词"算成具体数量（按每词约 1.5 分钟估算）。' +
+      '</div>';
 
     h += '<div class="sec-title">素材来源<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.95">' +
@@ -589,6 +611,35 @@
         case 'ai-band': A.openAIDialog(null, A.focusForBand(parseInt(t.getAttribute('data-band'), 10))); break;
         case 'ai-map': A.openAIDialog(null, A.focusForMap()); break;
         case 'ai-do': A.aiRunAction(t.getAttribute('data-aid')); break;
+        case 'ai-guide': A.openAiGuide(); break;
+        case 'ai-guide-settings': A.closeModal(); A.go('settings'); break;
+        case 'set-daily':
+          S.settings.dailyMinutes = parseInt(t.getAttribute('data-min'), 10) || 30;
+          A.save(); A.render();
+          break;
+        case 'ai-key-save': {
+          var ki = el('userKeyInput');
+          var kv = ki ? ki.value.trim() : '';
+          var msg = el('userKeyMsg');
+          if (!kv) { if (msg) msg.textContent = '先把 Key 填进来'; break; }
+          A.setUserKey({ key: kv });
+          if (msg) msg.textContent = '正在测试连接…';
+          A.testUserKey(A.S.userKey).then(function (r) {
+            var m2 = el('userKeyMsg');
+            if (m2) {
+              m2.textContent = r.ok ? ('✓ ' + r.msg + '（现在起 AI 走你自己的额度，不限次数）')
+                : ('✗ ' + r.msg + '　Key 已保存，但仍会回退到作者额度/本地方案。');
+              m2.style.color = r.ok ? 'var(--ok)' : 'var(--bad)';
+            }
+            A.render();
+          });
+          break;
+        }
+        case 'ai-key-clear':
+          A.setUserKey(null);
+          A.toast('已清除本机保存的 Key');
+          A.render();
+          break;
         case 'book-import': A.openImportBook(); break;
         case 'book-preview': A.previewImport(); break;
         case 'book-save': A.commitImport(); break;

@@ -77,6 +77,12 @@
     <div class="mail-tag" id="mailTag">词汇报告</div>
   </div>
 
+  <!-- 接入自己的 AI：放在左下角这块空白处，点开是完整指南（很多用户其实有厂商账号，只是不知道怎么接） -->
+  <button class="rail-card rail-ai" id="railAi" data-act="ai-guide" title="接入你自己的 API Key：不限次数，数据不经过我们">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4l1.7 4 4 1.7-4 1.7-1.7 4-1.7-4-4-1.7 4-1.7z"/><path d="M18 15.6l.8 1.8 1.8.8-1.8.8-.8 1.8-.8-1.8-1.8-.8 1.8-.8z"/></svg>
+    <b>接入你的 AI</b>
+    <small>用自己的 Key · 不限次</small>
+  </button>
   <button class="rail-card" id="railProg" title="本轮检测进度 · 点开按分组推进">
     <svg class="rail-ring" viewBox="0 0 48 48" aria-hidden="true">
       <circle class="rail-ring-bg" cx="24" cy="24" r="19"></circle>
@@ -111,7 +117,7 @@
 
 <script>window.PET_ART = /*__PETART__*/;</script>
 <!-- AI 授权：有密码锁时这里是密文（没有明文 Key）；没有锁时是 null -->
-<script>window.AI_LOCK = /*__AILOCK__*/;</script>
+<script>window.AI_LOCK = /*__AILOCK__*/;</script>`r`n<!-- 作者 Key：只有 build.js --with-key 才会内联（评委演示版）；仓库版恒为 null -->`r`n<script>window.AI_AUTHOR_KEY = /*__AUTHORKEY__*/;</script>
 <script>window.WORDS = /*__WORDS__*/;</script>
 <script>window.SENTENCES = /*__SENTENCES__*/;</script>
 <script>

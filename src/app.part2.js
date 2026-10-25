@@ -243,6 +243,8 @@
     if (A.S.history.length > 40) A.S.history.length = 40;
     A.S.session = null;
     A.save();
+    // 一次达标的随机摸底也算「完成一次检测」，给一次 AI 深度诊断额度
+    try { if (A.maybeGrantAiQuota) A.maybeGrantAiQuota('probe'); } catch (e) {}
     RUN.revealed = false;
     A.go('result');
   };

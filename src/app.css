@@ -1328,3 +1328,22 @@ html[data-theme="dark"] .ai-act{color:#A8C2FF;
   background:linear-gradient(180deg,rgba(127,164,255,.2),rgba(127,164,255,.09));
   border-color:rgba(127,164,255,.32)}
 html[data-theme="dark"] .ai-act:hover{color:#fff;background:linear-gradient(180deg,#5B87FF,#3C6BE8)}
+/* 左侧栏「接入你的 AI」卡片：和现有 rail-card 同一套语言，只是多加一点品牌色提示 */
+.rail-card.rail-ai{gap:2px}
+.rail-card.rail-ai svg{width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;margin-bottom:4px}
+.rail-card.rail-ai b{font-size:11.5px;color:var(--ink);font-weight:650}
+.rail-card.rail-ai small{font-size:9.5px;color:var(--ink3)}
+.rail-card.rail-ai:hover{box-shadow:var(--lift-hover)}
+.rail-card.rail-ai:hover svg{stroke:var(--accent-deep,#1E46C8)}
+
+/* 接入指南（模态里的排版） */
+.guide{max-height:52vh;overflow:auto;padding-right:4px;scrollbar-width:thin}
+.g-step{border-left:2px solid rgba(42,91,224,.28);padding:2px 0 2px 12px;margin:12px 0;font-size:13.2px;line-height:1.85;color:var(--ink2)}
+.g-step>b{display:block;color:var(--ink);font-size:13.6px;margin-bottom:3px}
+.g-step.warn{border-color:rgba(217,138,0,.5);background:rgba(217,138,0,.06);border-radius:0 8px 8px 0}
+.g-step code{background:rgba(16,19,25,.06);border:0;border-radius:4px;padding:1px 5px;font:12px/1.5 var(--mono)}
+html[data-theme="dark"] .g-step code{background:rgba(255,255,255,.1)}
+html[data-theme="dark"] .g-step.warn{background:rgba(224,177,92,.1)}
+.guide::-webkit-scrollbar{width:5px}
+.guide::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:5px}
