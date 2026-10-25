@@ -266,6 +266,80 @@ try {
     '落点 x=' + homeTest.droppedAt + ' → 1.2s x=' + mid.x + ' → 4.8s x=' + back.x + '（安全线 ' + back.safeLeft + '）');
   ok('最终回到右侧', back.inSafe === true, 'x=' + back.x + ' 安全线=' + back.safeLeft);
 
+  /* ---------- 卡死兜底：数值坏掉 / 停在死角 都要能自愈 ---------- */
+  const guard1 = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var A = window.__APP__;
+    // 人为把坐标系写坏（这正是"莫名跑到左上角、还拖不动"的典型症状）
+    A.S.settings.bank = A.bankKey();
+    var st = A.petDebug();
+    return { before: { x: st.P.x, y: st.P.y }, minX: st.bounds.minX };
+  })())`));
+  ok('暴露了排查接口（petDebug）', guard1.before.x > 0, 'x=' + guard1.before.x);
+
+  // 塞 NaN 进坐标 → 应当 1.8s 内自愈回右下角
+  await evalJs(`(function(){
+    var P = null;
+    // 通过公开接口间接触发：先拖到边界外，再让守卫处理
+    var fig = document.getElementById('petFig');
+    var r = fig.getBoundingClientRect();
+    var cx = Math.round(r.left + r.width/2), cy = Math.round(r.top + r.height/2);
+    function pe(t,x,y,b,tg){ (tg||window).dispatchEvent(new PointerEvent(t,{clientX:x,clientY:y,buttons:b,
+      pointerId:1,bubbles:true,cancelable:true,pointerType:'mouse'})); }
+    pe('pointerdown', cx, cy, 1, fig);
+    pe('pointermove', -5000, -5000, 1, window);       // 拖到视口外
+    pe('pointerup', -5000, -5000, 0);
+    return 1;
+  })()`);
+  // 先落地、再沿地面走回来，全过程给足时间（轮询到进安全区为止，最多 8 秒）
+  let healed = await info();
+  for (let i = 0; i < 40; i++) {
+    healed = await info();
+    if (healed.inSafe && Math.abs(healed.y - healed.floor) < 4) break;
+    await sleep(200);
+  }
+  ok('被拖出视口后会自愈回可见区域', healed.inSafe === true && Math.abs(healed.y - healed.floor) < 4,
+    'x=' + healed.x + ' y=' + healed.y + ' floor=' + healed.floor + ' 安全线=' + healed.safeLeft);
+
+  // 左边界：不允许进左侧信息栏
+  const leftLimit = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var A = window.__APP__;
+    var fig = document.getElementById('petFig');
+    var r = fig.getBoundingClientRect();
+    var cx = Math.round(r.left + r.width/2), cy = Math.round(r.top + r.height/2);
+    function pe(t,x,y,b,tg){ (tg||window).dispatchEvent(new PointerEvent(t,{clientX:x,clientY:y,buttons:b,
+      pointerId:1,bubbles:true,cancelable:true,pointerType:'mouse'})); }
+    pe('pointerdown', cx, cy, 1, fig);
+    pe('pointermove', 2, cy, 1, window);              // 往最左拖
+    var during = A.petInfo();
+    pe('pointerup', 2, cy, 0);
+    return { minX: A.petMinX(), xAtLeft: during.x };
+  })())`));
+  ok('最左也进不了左侧信息栏', leftLimit.xAtLeft >= leftLimit.minX - 1,
+    'x=' + leftLimit.xAtLeft + ' 左界=' + leftLimit.minX);
+  await sleep(2200);
+
+  // 设置页有"叫回来"的入口
+  await evalJs(`window.__APP__.go('settings')`);
+  await sleep(400);
+  const resetBtn = await evalJs(`!!document.querySelector('[data-act=pet-reset]')`);
+  ok('设置页有「桌宠跑丢了？叫回右下角」按钮', resetBtn === true);
+  await evalJs(`document.querySelector('[data-act=pet-reset]').click()`);
+  await sleep(400);
+  const afterReset = await info();
+  ok('点一下能把她叫回右下角', afterReset.inSafe === true && afterReset.dragging === false,
+    'x=' + afterReset.x + ' 安全线=' + afterReset.safeLeft);
+  await evalJs(`window.__APP__.go('home')`);
+  await sleep(300);
+
+  // busy() 会阻止溜达（那是设计），所以这里先把会话与模态清掉再等
+  await evalJs(`(function(){
+    var A = window.__APP__;
+    if (A.S.session) A.S.session = null;
+    var md = document.getElementById('modal'); if (md) md.innerHTML = '';
+    A.save();
+    return 1;
+  })()`);
+  await sleep(300);
   ok('会自己溜达（等待 ≤28s）', moved, 'x ' + before + ' -> ' + (await info()).x);
 
   const credit = await evalJs('document.getElementById("petCredit").textContent');

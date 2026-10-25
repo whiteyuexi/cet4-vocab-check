@@ -405,6 +405,7 @@
     h += '<div class="sec-title">数据管理<span class="line"></span></div>';
     h += '<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px">' +
       '<button class="btn" data-act="profiles">切换 / 新建使用者</button>' +
+      '<button class="btn" data-act="pet-reset" title="如果桌宠跑到了奇怪的位置、或者拖不动，点这里把她叫回右下角">桌宠跑丢了？叫回右下角</button>' +
       '<button class="btn" data-act="export-json">导出作答备份（JSON）</button>' +
       '<button class="btn" data-act="export-csv">导出未掌握词表（CSV）</button>' +
       '<button class="btn" data-act="import-json">导入备份</button>' +
@@ -770,6 +771,10 @@
           } else {
             A.closeModal(); A.toast('本轮还没测完整个词库，先测完再开新一轮');
           }
+          break;
+        case 'pet-reset':
+          // 兜底入口：万一她跑到奇怪的位置（或坐标系被写坏），用户自己能一键叫回来
+          if (A.petReset) { A.petReset(); A.toast('桌宠已回到右下角'); }
           break;
         case 'export-json': A.exportJSON(); break;
         case 'import-json': A.importJSON(); break;

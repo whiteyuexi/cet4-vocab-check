@@ -190,6 +190,17 @@
   function feetTop() { return groundLine() - (NH - GROUND_FROM_BOTTOM); }
   function floorY() { return feetTop(); }
   function maxX() { return Math.max(8, window.innerWidth - NW - 8); }
+  /* 左边界：宽屏时左侧有信息栏（rail），她不该走进去——既会挡住卡片，也会让用户点不到她。
+     窄屏 rail 不显示，就退回原来的 8px。 */
+  function minX() {
+    var rail = document.querySelector('.rail');
+    if (rail) {
+      var r = rail.getBoundingClientRect();
+      if (r.width > 0 && r.right > 0) return Math.round(r.right + 10);
+    }
+    return 8;
+  }
+  A.petMinX = minX;
 
   function apply() {
     if (!hostEl) return;
@@ -309,6 +320,31 @@
 
     stepHang(now, dt);
     applyDepth();
+    petGuard(now);
+  }
+
+  /* ---------- 兜底守卫 ----------
+     用户反馈过两次"莫名其妙跑到左上角、还拖不动"。与其猜触发路径，不如让她**不可能留在异常位置**：
+       1) 数值卫生：任何一处出现 NaN/Infinity（速度、弹簧、坐标），立刻复位——NaN 会永久污染坐标系；
+       2) 极端位置自愈：没在拖拽却连续 1.8s 停在边界（x≤minX+1 且 y≤4）或跑到视口外，复位；
+       3) 视口内钳位：任何时候都不许整只离开视口。
+     这些检查很便宜（每帧几个比较），只在异常时动手，正常操作完全无感。 */
+  var badSince = 0;
+  function petGuard(now) {
+    if (!hostEl) return;
+    var bad = false;
+    if (!isFinite(P.x) || !isFinite(P.y) || !isFinite(HANG.hx) || !isFinite(HANG.hy) ||
+        !isFinite(HANG.sw) || !isFinite(V.tx) || !isFinite(V.ty)) bad = true;
+    if (!bad) {
+      var lo = minX(), hi = maxX();
+      if (P.x < lo - 40 || P.x > hi + 40) bad = true;                 // 跑到视口外
+      if (!P.dragging && P.x <= lo + 1 && P.y <= 6) bad = true;        // 卡在左上角那种死角
+    }
+    if (!bad) { badSince = 0; return; }
+    if (!badSince) badSince = now;
+    if (now - badSince < 1800) return;                                 // 给正常拖拽 1.8s 宽限
+    badSince = 0;
+    if (A.petReset) { try { A.petReset(); } catch (e) {} }              // resetPos 现在会清 NaN
   }
 
   function startLoop() {
@@ -388,8 +424,14 @@
     stopWalk();
     P.dragging = false; drag.on = false;
     P.vy = 0; setAir(false);
-    P.x = Math.max(8, window.innerWidth - NW - 26);
-    P.y = floorY();
+    // 兜底复位：坐标、弹簧、透视全部清回干净值（NaN 会永久污染坐标系，必须显式清）
+    HANG.hx = HANG.hy = HANG.hxv = HANG.hyv = 0;
+    HANG.sw = HANG.swv = HANG.sk = 0; HANG.skx = HANG.sky = 1;
+    V.tx = V.ty = 0;
+    glideSeq++;
+    var fx = floorY();
+    P.x = Math.max(minX(), window.innerWidth - NW - 26);
+    P.y = isFinite(fx) ? fx : 313;
     apply();
     scheduleWalk();
   }
@@ -478,7 +520,7 @@
       if (Math.abs(dx) + Math.abs(dy) < 5) return;
       drag.armed = true;
     }
-    P.x = Math.max(4, Math.min(maxX(), drag.ox + dx));
+    P.x = Math.max(minX(), Math.min(maxX(), drag.ox + dx));
     P.y = Math.max(4, Math.min(window.innerHeight - 40, drag.oy + dy));
     setFace(dx < -4 ? true : dx > 4 ? false : P.faceL);
     apply();
@@ -810,7 +852,25 @@
       safeLeft: Math.round(safeLeft()), inSafe: inSafeZone(), busy: busy()
     };
   };
-  A.petReset = function () { resetPos(); return A.petInfo(); };
+  A.petReset = function () { resetPos(); apply(); return A.petInfo(); };
+  /* 排查用：把"坐标系"的原始值都摊开。卡住时先看这里——
+       px/py 是容器位置，hx/hy 是悬空层的额外位移，tx/ty 是透视角度。
+     任何一个是非有限数（NaN/Infinity），就说明有东西写坏了坐标系。 */
+  A.petDebug = function () {
+    return {
+      P: { x: P.x, y: P.y, vy: P.vy, dragging: P.dragging, air: P.air, walking: P.walking },
+      drag: { on: drag.on, moved: drag.moved, cvx: drag.cvx, cvy: drag.cvy },
+      hang: { hx: HANG.hx, hy: HANG.hy, sw: HANG.sw, sk: HANG.sk },
+      view: { tx: V.tx, ty: V.ty },
+      bounds: { minX: minX(), maxX: maxX(), floor: floorY(), ground: groundLine() },
+      css: hostEl ? {
+        px: hostEl.style.getPropertyValue('--px'),
+        py: hostEl.style.getPropertyValue('--py'),
+        hx: hangEl ? hangEl.style.getPropertyValue('--hx') : '',
+        hy: hangEl ? hangEl.style.getPropertyValue('--hy') : ''
+      } : null
+    };
+  };
 
   // 允许用 ?pet=none 关掉桌宠（录屏或做对比图时用）
   try {
