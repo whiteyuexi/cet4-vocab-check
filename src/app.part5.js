@@ -205,14 +205,71 @@
     P.vx = 0; setWalk(false);
   }
 
+  /* ---------- 活动范围：她只在自己的右栏里溜达 ----------
+     以前的落点是「当前位置 ± 320px」，于是她会一路走到页面中间，正好压在正文与题目上；
+     做大范围检测（几百题）时人本来就容易走神，一只鲸鱼从中间横穿过去非常打扰。
+     现在：
+       · 溜达落点被限制在右侧安全区（视线右栏），不会跨进正文列；
+       · **检测进行中不自己走动**（只在原地呼吸/看鼠标），把注意力留给题目；
+       · 被人拖到正文区、或窗口变化把她留在那儿，会自己顺着地面走回右下角。 */
+  function safeLeft() {
+    // 正文列右边界 + 一点余量；同时保证至少留出她自己的宽度
+    var w = window.innerWidth;
+    var byRatio = w * 0.68;              // 右侧约三分之一
+    var byContent = w - NW - 340;        // 离右边缘 340px 以内
+    return Math.max(NW + 8, Math.min(maxX(), Math.max(byRatio, byContent)));
+  }
+  function inSafeZone() { return P.x >= safeLeft() - 2; }
+  function busy() {
+    // 检测进行中、或有模态打开时不溜达（前者怕打扰，后者怕挡住操作）
+    try {
+      if (A.S && A.S.session) return true;
+      var md = document.getElementById('modal');
+      if (md && md.children.length) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /* 走回右下角（沿着地面，不瞬移）。
+     必须能被"新的拖拽"打断，否则会和 onMove 抢着写 P.x —— 表现是拖拽时的弹簧几乎没速度。
+     用一个自增 token 作废上一次归位动画。 */
+  var glideSeq = 0;
+  function glideHome(done) {
+    var tx = Math.max(8, window.innerWidth - NW - 26);
+    if (Math.abs(tx - P.x) < 4) { if (done) done(); return; }
+    var my = ++glideSeq;
+    var from = P.x, t0 = performance.now();
+    var dur = Math.max(260, Math.abs(tx - from) / 0.34);     // 约 340 px/s，比溜达快
+    setWalk(true); setFace(tx < from);
+    (function step(now) {
+      if (my !== glideSeq || P.dragging) {          // 被拖拽或新动画接管 → 立刻让位
+        if (my === glideSeq) setWalk(false);
+        return;
+      }
+      var k = Math.min(1, (now - t0) / dur);
+      P.x = from + (tx - from) * (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+      apply();
+      if (k < 1) requestAnimationFrame(step);
+      else { setWalk(false); if (done) done(); }
+    })(t0);
+  }
+  A.petGlideHome = glideHome;          // 测试钩子
+
   // 溜达：隔一段时间挑一个附近的落点走过去；拖拽中或页面不可见时不动
   function scheduleWalk() {
     if (walkTimer) clearTimeout(walkTimer);
     if (!wide() || document.hidden) return;
     walkTimer = setTimeout(function () {
       if (P.dragging || document.hidden) return scheduleWalk();
-      var span = Math.min(320, window.innerWidth * 0.32);
-      var tx = Math.max(8, Math.min(maxX(), P.x + (Math.random() * 2 - 1) * span));
+      if (busy()) return scheduleWalk();                  // 检测中不溜达
+      // 先在安全区里挑落点；如果她本来就在区外，先走回来
+      if (!inSafeZone()) {
+        glideHome(function () { scheduleWalk(); });
+        return;
+      }
+      var lo = safeLeft(), hi = maxX();
+      var span = Math.min(170, (hi - lo) * 0.6);          // 幅度也收小，别横穿
+      var tx = Math.max(lo, Math.min(hi, P.x + (Math.random() * 2 - 1) * span));
       var dur = Math.abs(tx - P.x) / 0.075;            // 约 75 px/s
       var from = P.x, t0 = performance.now();
       setWalk(true); setFace(tx < from);
@@ -388,6 +445,7 @@
     var md = document.getElementById('modal');
     if (md && md.children.length) return;                        // 有模态开着
     drag.on = true; drag.moved = 0; drag.armed = false;
+    glideSeq++;                                        // 抓住她时立刻中止归位动画
     drag.sx = e.clientX; drag.sy = e.clientY;
     drag.ox = P.x; drag.oy = P.y;
     drag.lastMove = performance.now();
@@ -445,7 +503,19 @@
       P.vy = 0; setAir(true);                            // 交给重力落下
       apply();
     }
-    scheduleWalk();
+    // 被她自己停到正文区（挡内容的地方）时，落地后自己走回右下角
+    if (!inSafeZone()) {
+      var x0 = P.x;
+      var waitLand = setInterval(function () {
+        if (P.air || P.dragging) return;
+        clearInterval(waitLand);
+        if (!inSafeZone()) glideHome(function () { scheduleWalk(); });
+        else scheduleWalk();
+      }, 120);
+      setTimeout(function () { clearInterval(waitLand); }, 4000);
+    } else {
+      scheduleWalk();
+    }
   }
 
   // 指针事件挂在 window 上：pointerup 一旦丢在浏览器窗口外，
@@ -658,6 +728,7 @@
       if (wide()) { hostEl.classList.add('on'); startLoop(); scheduleWalk(); }
       else { hostEl.classList.remove('on'); stopLoop(); }
       P.x = Math.max(8, Math.min(maxX(), P.x));
+      if (!P.dragging && P.x < safeLeft() - 2) glideHome();     // 窗口变窄把她挤进正文区时归位
       // 不在空中就重新站回地面：窗口变大变小都不会把她留在半空或视口外
       if (P.dragging) return;
       P.y = P.air ? Math.min(P.y, floorY()) : floorY();
@@ -735,7 +806,8 @@
       x: Math.round(P.x), y: Math.round(P.y), air: P.air, dragging: P.dragging,
       loop: !!rafId, walking: P.walking, floor: floorY(), ground: groundLine(),
       tiltX: +V.tx.toFixed(1), tiltY: +V.ty.toFixed(1),
-      swing: +HANG.sw.toFixed(1), hangX: +HANG.hx.toFixed(1), skew: +HANG.sk.toFixed(1)
+      swing: +HANG.sw.toFixed(1), hangX: +HANG.hx.toFixed(1), skew: +HANG.sk.toFixed(1),
+      safeLeft: Math.round(safeLeft()), inSafe: inSafeZone(), busy: busy()
     };
   };
   A.petReset = function () { resetPos(); return A.petInfo(); };

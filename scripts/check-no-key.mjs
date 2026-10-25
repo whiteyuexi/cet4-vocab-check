@@ -58,8 +58,8 @@ for (const f of files) {
   for (const s of secrets) if (s.value && txt.indexOf(s.value) >= 0) hit = s;
   ok(rel + ' 不含本机真实 Key', !hit, hit ? '命中了 ' + hit.file + ' 的内容' : '');
 
-  // 3) 作者 Key 内联位必须是 null
-  if (/window\.AI_AUTHOR_KEY/.test(txt)) {
+  // 3) 作者 Key 内联位必须是 null —— 只对 HTML 产物成立（文档里提到这个变量名是正常的）
+  if (/\.html?$/i.test(f) && /window\.AI_AUTHOR_KEY/.test(txt)) {
     const m = /window\.AI_AUTHOR_KEY = ([^;]{0,20});/.exec(txt);
     ok(rel + ' 的作者 Key 内联位为 null（仓库版）', !!m && m[1] === 'null', m ? m[1].slice(0, 16) : '未匹配');
   }

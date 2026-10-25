@@ -220,6 +220,52 @@ try {
   const before = (await info()).x;
   let moved = false;
   for (let i = 0; i < 56; i++) { await sleep(500); const n = (await info()).x; if (Math.abs(n - before) > 2) { moved = true; break; } }
+  /* ---------- 活动范围：她只在右栏溜达，且不挡正文 ---------- */
+  const zone = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var i = window.__APP__.petInfo();
+    return { x: i.x, safeLeft: i.safeLeft, inSafe: i.inSafe, busy: i.busy,
+             vw: document.documentElement.clientWidth };
+  })())`));
+  ok('默认位置在右侧安全区内', zone.inSafe === true && zone.x >= zone.safeLeft - 2,
+    'x=' + zone.x + ' safeLeft=' + zone.safeLeft + ' vw=' + zone.vw);
+  ok('安全区确实把中间正文排除在外', zone.safeLeft > zone.vw * 0.55,
+    Math.round(zone.safeLeft / zone.vw * 100) + '% 处起');
+
+  // 溜达落点不能跨进正文区：连等三轮，每次都检查
+  let wanderOk = true, wanderMin = 1e9;
+  for (let r = 0; r < 3; r++) {
+    const before = (await info());
+    await sleep(3000);
+    const now = (await info());
+    if (now.x < now.safeLeft - 2) { wanderOk = false; }
+    wanderMin = Math.min(wanderMin, now.x);
+  }
+  ok('溜达不会走进正文区', wanderOk, '最小 x=' + Math.round(wanderMin) + ' 安全线=' + zone.safeLeft);
+
+  // 被放到正文区 → 落地后自己走回右下角
+  const homeTest = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var fig = document.getElementById('petFig');
+    var r = fig.getBoundingClientRect();
+    var cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
+    function pe(t, x, y, b, tg) {
+      (tg || window).dispatchEvent(new PointerEvent(t, { clientX: x, clientY: y, buttons: b,
+        pointerId: 1, bubbles: true, cancelable: true, pointerType: 'mouse' }));
+    }
+    pe('pointerdown', cx, cy, 1, fig);
+    // 拖到屏幕正中间（正文区）
+    var midX = Math.round(window.innerWidth * 0.35);
+    for (var i = 1; i <= 8; i++) pe('pointermove', cx + (midX - cx) * i / 8, cy, 1, window);
+    pe('pointerup', midX, cy, 0);
+    return JSON.stringify({ droppedAt: window.__APP__.petInfo().x });
+  })())`));
+  await sleep(1200);
+  const mid = await info();
+  await sleep(3600);
+  const back = await info();
+  ok('被拖到正文区后不会停在那儿', back.x >= back.safeLeft - 4 || Math.abs(back.x - mid.x) > 40,
+    '落点 x=' + homeTest.droppedAt + ' → 1.2s x=' + mid.x + ' → 4.8s x=' + back.x + '（安全线 ' + back.safeLeft + '）');
+  ok('最终回到右侧', back.inSafe === true, 'x=' + back.x + ' 安全线=' + back.safeLeft);
+
   ok('会自己溜达（等待 ≤28s）', moved, 'x ' + before + ' -> ' + (await info()).x);
 
   const credit = await evalJs('document.getElementById("petCredit").textContent');
