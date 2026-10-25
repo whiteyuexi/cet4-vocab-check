@@ -1298,3 +1298,33 @@ html[data-theme="dark"] .book-banner{background:rgba(224,177,92,.12);border-colo
   border-radius:10px;padding:10px 12px}
 html[data-theme="dark"] .book-note.warn{background:rgba(224,177,92,.1);border-color:rgba(224,177,92,.26)}
 @media (max-width:640px){ .book-stats{grid-template-columns:repeat(2,1fr)} }
+/* ==========================================================================
+   AI ↔ 可视化的双向联动
+     反向：图表上的「问」（频段条 .bask / 地图 Shift+点击 / 地图工具条）
+     正向：AI 回答末尾给出的可点击动作（.ai-acts / .ai-act）
+   ========================================================================== */
+.bask{flex:none;margin-left:6px;width:22px;height:22px;border-radius:7px;cursor:pointer;
+  font:650 11px/1 var(--sans);color:var(--ink3);
+  background:var(--glass);border:1px solid var(--line);
+  transition:color .16s,border-color .16s,background .16s,transform .16s}
+.bask:hover{color:var(--accent);border-color:rgba(42,91,224,.42);background:var(--accent-soft);transform:translateY(-1px)}
+.bask:active{transform:translateY(0)}
+html[data-theme="dark"] .bask:hover{color:#A8C2FF;border-color:rgba(127,164,255,.45)}
+
+/* AI 回答里的"可以接着做"：动作按钮 */
+.ai-acts{margin-top:2px}
+.ai-acts-t{font-size:11.5px;color:var(--ink3);margin-bottom:6px}
+.ai-act{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 13px;margin:0 6px 6px 0;
+  font:650 12px/1 var(--sans);color:var(--accent);cursor:pointer;border-radius:999px;
+  background:linear-gradient(180deg,rgba(42,91,224,.13),rgba(42,91,224,.06));
+  border:1px solid rgba(42,91,224,.26);box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+  transition:transform .16s cubic-bezier(.2,.7,.3,1),background .18s,color .18s,box-shadow .18s}
+.ai-act::before{content:'▸';font-size:10px;opacity:.7}
+.ai-act:hover{color:#fff;border-color:transparent;transform:translateY(-1px);
+  background:linear-gradient(180deg,#3E7BFF,#2A5BE0);
+  box-shadow:0 7px 16px -7px rgba(42,91,224,.7)}
+.ai-act:active{transform:translateY(0)}
+html[data-theme="dark"] .ai-act{color:#A8C2FF;
+  background:linear-gradient(180deg,rgba(127,164,255,.2),rgba(127,164,255,.09));
+  border-color:rgba(127,164,255,.32)}
+html[data-theme="dark"] .ai-act:hover{color:#fff;background:linear-gradient(180deg,#5B87FF,#3C6BE8)}

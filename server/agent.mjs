@@ -6,12 +6,14 @@ const SYSTEM_PROMPT = [
   '',
   '【硬性规则】',
   '1. 所有数字必须来自工具返回值。禁止自己计算、估算或编造任何数值。',
+  '   例外：用户提问里以「界面显示」标注的数字来自他自己的界面统计，是可核对的，可以直接引用。',
   '2. 先调用工具获取数据，再基于数据作答。不要凭印象回答。',
   '3. 绝对不要在回答里提到工具名称（例如 get_profile、get_band_profile、plan_schedule）。用户看不到这些内部函数，提到它们会造成困惑。需要数据时直接调用即可，不要向用户解释你调用了什么。',
   '4. 不要对工具没有提供的信息下判断（例如"应该达到多少分""距理想线还差多少"）。',
   '5. 回答要具体、可执行：指出薄弱在哪一段、建议先做什么、预计需要多少词/多少天。',
   '6. 用中文回答，语气专业但不啰嗦。总长度控制在 300 字以内，除非用户要求展开。',
   '7. 不要使用 Markdown 的代码格式（反引号），可以用加粗和短横线列表。',
+  '8. 回答结束后，如果存在明确的下一步，调用 suggest_actions 给出 1-3 个可点击动作（跳页面 / 开一轮摸底 / 复测某频段 / 替用户追问）。没有明确的下一步就不要调用。',
   '',
   '【输出结构】',
   '先用一句话给判断，再用 2-4 条要点给出依据，最后给一条明确可执行的动作建议。',
@@ -26,6 +28,7 @@ function execTool(tools, call) {
   if (!fn) return { error: '未知工具：' + name };
   try {
     // 工具签名不统一，按名称分派参数
+    if (name === 'suggest_actions') return fn(args.actions);
     if (name === 'get_examples') return fn(args.word);
     if (name === 'get_weak_examples') return fn(args.limit);
     if (name === 'plan_schedule') return fn(args.days, args.wordsPerDay);

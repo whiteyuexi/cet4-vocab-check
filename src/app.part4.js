@@ -154,7 +154,179 @@
     return h;
   }
 
-  A.openAIDialog = function (question) {
+  /* ---------- 反向联动：带着"用户正在看的那块图"去问 AI ----------
+     地图的一格、某一段频段，本身就是用户眼前的图。让他点一下就能带着这格的真实数字提问，
+     比让人自己复述"最高频段那一片"强得多——这也是"AI 分析"与"可视化"真正接上的地方。 */
+  var AI_FOCUS = null;          // 当前提问附带的图表上下文
+  var AI_ACTIONS = [];          // 当前回答附带的、可点击的下一步
+  var PENDING_ACTIONS = null;   // 流式过程中收到的动作，等 done 再渲染
+
+  function bandNameOf(b) { return (A.BAND_NAMES || [])[b] || ('频段 ' + b); }
+
+  A.focusForCell = function (band, letter) {
+    var m = null, c = null;
+    try { m = A.vocabMap(); } catch (e) { m = null; }
+    if (m) {
+      for (var r = 0; r < m.rows.length && !c; r++) {
+        if (m.rows[r].band !== band) continue;
+        for (var i = 0; i < m.rows[r].cells.length; i++) {
+          if (m.rows[r].cells[i].letter === letter) { c = m.rows[r].cells[i]; break; }
+        }
+      }
+    }
+    var sample = [];
+    try {
+      sample = (A.mapCellWords ? A.mapCellWords(band, letter) : []).slice(0, 5)
+        .map(function (idx) { return A.WORDS[idx].w; });
+    } catch (e) {}
+    return {
+      type: 'cell', band: band, letter: letter,
+      label: bandNameOf(band) + ' · 首字母 ' + letter,
+      N: c ? c.N : 0, tested: c ? c.tested : 0,
+      gap: c ? c.gap : 0, untested: c ? c.untested : 0,
+      ratio: c ? Math.round(c.ratio * 100) : null, words: sample
+    };
+  };
+
+  A.focusForBand = function (band) {
+    var row = null;
+    try {
+      var prof = A.bandProfile();
+      prof.rows.forEach(function (r) { if (r.band === band) row = r; });
+    } catch (e) {}
+    return {
+      type: 'band', band: band, label: bandNameOf(band) + ' 段',
+      N: row ? row.N : 0, n: row ? row.n : 0,
+      p: row && row.p !== null ? Math.round(row.p * 100) : null
+    };
+  };
+
+  A.focusForMap = function () {
+    var m = null;
+    try { m = A.vocabMap(); } catch (e) { m = null; }
+    return {
+      type: 'map',
+      label: '整张词汇地图',
+      hot: m ? m.hot.map(function (c) {
+        return { cell: c.name + ' · ' + c.letter, N: c.N, tested: c.tested, gap: c.gap, untested: c.untested };
+      }) : [],
+      testedCells: m ? m.testedCells : 0,
+      untestedCells: m ? m.untestedCells : 0
+    };
+  };
+
+  /* 把聚焦对象翻译成"人话说给模型听"的问题。
+     里面的数字标注为「界面显示」——它们来自本机统计，是可核对的（Prompt 里也为此开了口子）。 */
+  function questionFromFocus(f) {
+    if (!f) return '帮我看看我的数据';
+    if (f.type === 'cell') {
+      return '我想弄明白词汇地图上「' + f.label + '」这一格。界面显示：共 ' + f.N + ' 词，测过 ' + f.tested +
+        ' 词，测过却没掌握 ' + f.gap + ' 词，完全没测 ' + f.untested + ' 词' +
+        (f.ratio !== null ? '，这一格掌握率 ' + f.ratio + '%' : '') +
+        (f.words && f.words.length ? '（缺口词举例：' + f.words.slice(0, 5).join('、') + '）' : '') +
+        '。这一格为什么薄？先补哪些词、怎么补？';
+    }
+    if (f.type === 'band') {
+      return '我想弄清「' + f.label + '」。界面显示：全段 ' + f.N + ' 词，抽到 ' + f.n + ' 词' +
+        (f.p !== null ? '，掌握率 ' + f.p + '%' : '，还没有抽样数据') + '。这一段该怎么补？';
+    }
+    if (f.type === 'map') {
+      var s = (f.hot || []).map(function (h) {
+        return h.cell + '（共 ' + h.N + ' 词，缺口 ' + h.gap + '、未测 ' + h.untested + '）';
+      }).join('；');
+      return '看我的词汇地图：已测格子 ' + f.testedCells + ' 个，完全没测 ' + f.untestedCells + ' 个。' +
+        (s ? '缺口最大的三块是：' + s + '。' : '') + '我该从哪一块开始补？';
+    }
+    return '帮我看看我的数据';
+  }
+
+  /* ---------- 结构化动作：把"AI 的建议"变成"能点的按钮" ----------
+     白名单执行：只认 go / start / review / ask 四种，参数一律重新校验，
+     模型给出的任何字符串都不会被当成代码或路径执行。 */
+  var ACT_OK = { go: 1, start: 1, review: 1, ask: 1 };
+
+  function normAction(a) {
+    if (!a || typeof a !== 'object') return null;
+    var act = String(a.act || '');
+    if (!ACT_OK[act]) return null;
+    var label = String(a.label || '').trim().slice(0, 26);
+    if (!label) return null;
+    var out = { act: act, label: label };
+    if (act === 'go') {
+      var r = String(a.route || '');
+      if (['home', 'test', 'groups', 'stats', 'report', 'settings'].indexOf(r) < 0) return null;
+      out.route = r;
+    } else if (act === 'start') {
+      var tg = parseInt(a.target, 10);
+      out.target = [150, 250, 400].indexOf(tg) >= 0 ? tg : 250;
+    } else if (act === 'review') {
+      var b = parseInt(a.band, 10);
+      if (!(b >= 0 && b <= 6)) return null;
+      out.band = b;
+      out.letter = /^[A-Z]$/.test(String(a.letter || '')) ? a.letter : 'all';
+    } else if (act === 'ask') {
+      var q = String(a.q || '').trim().slice(0, 120);
+      if (!q) return null;
+      out.q = q;
+    }
+    return out;
+  }
+
+  A._normAction = normAction;        // 测试钩子：白名单归一化是安全边界，必须能被断言
+
+  /* 每个按钮绑定自己的动作对象（不是全局下标）。
+     第一版用全局数组下标，问第二次时上一组按钮还在，点它会执行**新一组**里的动作——
+     这类"看起来没事、点了做错事"的 bug 最难发现，所以干脆让按钮自带动作。 */
+  var ACTIONS_BY_ID = {};
+  var ACTION_SEQ = 0;
+
+  function renderAiActions(list) {
+    AI_ACTIONS = (list || []).map(normAction).filter(Boolean).slice(0, 4);
+    if (!AI_ACTIONS.length) return;
+    var log = el('aiLog');
+    if (!log) return;
+    // 新一组动作出现时，把旧的收起来（避免同一屏出现两组含义不同的按钮）
+    Array.prototype.forEach.call(log.querySelectorAll('.ai-acts'), function (old) {
+      if (old.parentNode) old.parentNode.removeChild(old);
+    });
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-msg ai-acts';
+    wrap.innerHTML = '<div class="ai-acts-t">可以接着做：</div>' + AI_ACTIONS.map(function (a) {
+      var id = 'a' + (++ACTION_SEQ);
+      ACTIONS_BY_ID[id] = a;
+      return '<button class="ai-act" data-act="ai-do" data-aid="' + id + '">' + esc(a.label) + '</button>';
+    }).join('');
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  A.aiRunAction = function (aid) {
+    var a = ACTIONS_BY_ID[aid];
+    if (!a) return;
+    if (a.act === 'go') { A.closeModal(); A.go(a.route); return; }
+    if (a.act === 'start') { A.closeModal(); A.startSession('probe', { target: a.target }); return; }
+    if (a.act === 'review') { A.closeModal(); if (A.reviewCell) A.reviewCell(a.band, a.letter); return; }
+    if (a.act === 'ask') { A.runAI(a.q, true); return; }
+  };
+
+  /* 离线也要有动作：本地规则诊断同样能给出"复测这一段 / 开一轮摸底 / 看剖面" */
+  A.localActions = function () {
+    var out = [];
+    try {
+      var prof = A.bandProfile();
+      var rows = prof.rows.filter(function (r) { return r.n > 0 && r.p !== null; })
+        .sort(function (a, b) { return a.p - b.p; });
+      if (rows.length) {
+        out.push({ act: 'review', band: rows[0].band, letter: 'all', label: '复测「' + bandNameOf(rows[0].band) + '」段' });
+      }
+      var un = (A.untestedWords ? A.untestedWords() : []).length;
+      if (un > 0) out.push({ act: 'start', target: 250, label: '再测一轮（±250）' });
+      out.push({ act: 'go', route: 'stats', label: '看频段剖面' });
+    } catch (e) {}
+    return out;
+  };
+
+  A.openAIDialog = function (question, focus) {
     A.modal('<div class="ai-head"><b>AI 诊断教练</b>' +
       '<span class="pill brand" id="aiMode">连接中…</span></div>' +
       '<div id="aiLockBar"></div>' +
@@ -164,13 +336,27 @@
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
     A.resetAIHistory();
+    AI_FOCUS = focus || null;
+    AI_ACTIONS = [];
+    PENDING_ACTIONS = null;
     renderLockBar();
+    // 带图表上下文进来时，问题可以由上下文自动生成（用户只点了一下格子）
+    if (!question && AI_FOCUS) question = questionFromFocus(AI_FOCUS);
     // 有授权锁时不要先去探后端：这个文件本来就是给别人用的离线形态，
     // 探了也白探，还会让用户以为"在连什么"。只有无锁版本才走健康检查。
-    if (AI_LOCK) {
-      // 有锁就不要停在"连接中…"：如实告诉用户现在是离线规则诊断，大模型需要授权
-      if (!AI_LIVE) setModePillText('离线 · 本地规则（大模型需授权）', 'warn');
+    if (AI_LOCK && !AI_LIVE) {
+      // 未解锁：不要停在"连接中…"，如实说清现在是离线规则诊断
+      setModePillText('离线 · 本地规则（大模型需授权）', 'warn');
       if (question) A.runAI(question);
+      return;
+    }
+    if (AI_LOCK && AI_LIVE) {
+      // 已解锁：先看后端在不在。**后端优先**——它有工具调用、证据面板与可执行动作；
+      // 直连厂商只是"没有后端时"的兜底，功能明显更弱，不该当主路径。
+      probeBackend(function (online) {
+        if (!online) setModePillText('在线 · 直连模型（无工具）', 'brand');
+        if (question) A.runAI(question);
+      });
       return;
     }
     probeBackend(function (online) {
@@ -335,9 +521,14 @@
   }
 
   // 透明说明：把哪些数据发给了模型（隐私承诺要能核对）
+  // 走直连、走后端都调这一个函数，所以两条路径的"透明度"是一致的。
   function sentDataHTML(question) {
     var ctx = '';
-    try { ctx = JSON.stringify(A.buildAIContext(), null, 1); } catch (e) { ctx = '{}'; }
+    try {
+      var payload = A.buildAIContext();
+      if (AI_FOCUS) payload.focus = AI_FOCUS;      // 反向联动带的图表上下文，也一并公示
+      ctx = JSON.stringify(payload, null, 1);
+    } catch (e) { ctx = '{}'; }
     return '<details class="ai-sent"><summary>本次发送给模型的数据（仅汇总，不含逐题作答）</summary>' +
       '<pre>' + esc(ctx) + '</pre></details>';
   }
@@ -493,6 +684,8 @@
     } catch (e) {}
     var log = el('aiLog');
     if (log) log.scrollTop = log.scrollHeight;
+    // 离线诊断同样给可点击的下一步（和在线形态保持一致的交互）
+    try { renderAiActions(A.localActions()); } catch (e) {}
   }
 
   function logHTML(inner, cls) {
@@ -516,9 +709,8 @@
     var toolBox = null;
     var evidence = [];
 
-    // 有授权锁：解锁了就走直连大模型；没解锁就提示先输密码，离线诊断照答（不花钱）
-    if (AI_LOCK) {
-      if (AI_LIVE) { runDirect(box, question); return; }
+    // 有授权锁但没解锁：提示先输密码，离线诊断照答（不花钱）
+    if (AI_LOCK && !AI_LIVE) {
       localAnswer(box, question);
       var hint = document.createElement('div');
       hint.className = 'tiny';
@@ -529,8 +721,9 @@
       return;
     }
 
-    // 已知离线：不发起那个注定失败的请求，直接走本地规则诊断
+    // 已知离线：解锁过就直连厂商（比本地规则强），否则本地规则诊断
     if (AI_STATE === 'offline') {
+      if (AI_LIVE) { runDirect(box, question); return; }
       setTimeout(function () { localAnswer(box, question); }, 320);
       return;
     }
@@ -542,7 +735,7 @@
     fetch(apiBase() + '/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: question, context: ctx, history: AI_HISTORY.slice(-6) })
+      body: JSON.stringify({ question: question, context: ctx, focus: AI_FOCUS, history: AI_HISTORY.slice(-6) })
     }).then(function (res) {
       if (!res.ok || !res.body) throw new Error('后端返回 ' + res.status);
       var reader = res.body.getReader();
@@ -552,7 +745,9 @@
       function pump() {
         return reader.read().then(function (r) {
           if (r.done) {
-            box.innerHTML = '<div class="ai-a">' + renderMD(text) + evidenceHTML(evidence) + '</div>';
+            // 走后端 Agent 时也把「本次发送的数据」摆出来：透明度不该取决于走哪条路
+            box.innerHTML = '<div class="ai-a">' + renderMD(text) + evidenceHTML(evidence) +
+              sentDataHTML(question) + '</div>';
             // 记入对话历史，支持追问时带上文
             AI_HISTORY.push({ role: 'user', content: question });
             AI_HISTORY.push({ role: 'assistant', content: text });
@@ -576,8 +771,12 @@
                 toolBox.className = 'ai-tools';
                 box.parentNode.insertBefore(toolBox, box);
               }
-              var label = { get_profile: '读取整体情况', get_band_profile: '读取频段数据', get_weak_words: '读取未掌握词', plan_schedule: '生成复习计划', list_banks: '读取词库信息', get_examples: '检索真实例句', get_weak_examples: '检索薄弱词例句' }[evt.name] || evt.name;
+              var label = { get_profile: '读取整体情况', get_band_profile: '读取频段数据', get_weak_words: '读取未掌握词', plan_schedule: '生成复习计划', list_banks: '读取词库信息', get_examples: '检索真实例句', get_weak_examples: '检索薄弱词例句', suggest_actions: '给出可执行动作' }[evt.name] || evt.name;
               if (evt.result) evidence.push({ name: evt.name, label: label, result: evt.result });
+              // 结构化动作：模型通过 suggest_actions 返回可点击的下一步，前端渲染成按钮
+              if (evt.name === 'suggest_actions' && evt.result && evt.result.actions) {
+                PENDING_ACTIONS = evt.result.actions;
+              }
               var chip = document.createElement('span');
               chip.className = 'ai-tool';
               chip.textContent = label;
@@ -588,6 +787,10 @@
               box.innerHTML = '<div class="ai-a">' + renderMD(text) + '</div>';
               log.scrollTop = log.scrollHeight;
             } else if (evt.type === 'done') {
+              if (PENDING_ACTIONS && PENDING_ACTIONS.length) {
+                renderAiActions(PENDING_ACTIONS);
+                PENDING_ACTIONS = null;
+              }
               if (evt.tokens) {
                 A.S.tokens = (A.S.tokens || 0) + evt.tokens;
                 A.S.lastTokens = evt.tokens;
@@ -610,6 +813,7 @@
       // 对收到文件的同学/评委就是一条死胡同。
       AI_STATE = 'offline';
       setModePill(false);
+      if (AI_LIVE) { runDirect(box, question); return; }   // 后端挂了但解锁过 → 直连
       localAnswer(box, question);
       if (e && e.message) {
         var tip = document.createElement('div');

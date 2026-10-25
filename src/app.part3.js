@@ -175,12 +175,14 @@
         h += A.tpl(
           '<div class="brow"><div class="bl">{name}</div>' +
           '<div class="bbar"><i style="width:{w}%;background:{col}"></i></div>' +
-          '<div class="bv">{val}</div></div>',
+          '<div class="bv">{val}</div>' +
+          '<button class="bask" data-act="ai-band" data-band="{b}" title="带着这一段的数据问 AI">问</button></div>',
           {
             name: A.BAND_NAMES[r.band] || ('频段 ' + r.band),
             w: has ? Math.max(2, p) : 0,
             col: p === null ? 'var(--line)' : (p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--warn)' : 'var(--bad)'),
-            val: has ? (p + '%') : '—'
+            val: has ? (p + '%') : '—',
+            b: r.band
           });
         h += '<div class="bmeta">全段 ' + r.N + ' 词' + (prof.source === 'sample' ? ' · 抽到 ' + r.n + ' 词' : ' · 已测 ' + r.n + ' 词') + '</div>';
       });
@@ -207,7 +209,9 @@
     var t = A.tally(A.activePool());
     var h = '';
     h += '<div class="sec-title">词汇地图<span class="line"></span><span class="tiny">' +
-      '纵轴越靠上越常用 · 点格子可复测那一块</span></div>';
+      '纵轴越靠上越常用 · 点格子可复测那一块 · Shift+点击可带着这一格问 AI</span>' +
+      '<button class="btn sm ghost" data-act="ai-map" style="margin-left:auto" title="把整张地图的缺口交给 AI 分析">' +
+      '让 AI 解读这张地图</button></div>';
     h += '<div class="card vmap-card">';
 
     if (!t.tested) {
@@ -235,7 +239,8 @@
           ' data-act="map-review" data-band="' + c.band + '" data-letter="' + c.letter + '"' +
           ' title="' + esc(row.name + ' · ' + c.letter + '：共 ' + c.N + ' 词，已测 ' + c.tested +
             '，认识 ' + c.k + '，模糊 ' + c.f + '，不认识 ' + c.u +
-            '，掌握率 ' + p + '%' + (c.untested ? '，未测 ' + c.untested + ' 词' : '')) + '">' +
+            '，掌握率 ' + p + '%' + (c.untested ? '，未测 ' + c.untested + ' 词' : '') +
+            '｜点击复测 · Shift+点击问 AI') + '">' +
           '</button>';
       });
       h += '</div>';
@@ -580,6 +585,9 @@
           A.startSession('list', { list: lstB, label: '复测「' + A.BAND_NAMES[rbBand] + '」段 · ' + lstB.length + ' 词' });
           break;
         case 'ai-open': A.openAIDialog(); break;
+        case 'ai-band': A.openAIDialog(null, A.focusForBand(parseInt(t.getAttribute('data-band'), 10))); break;
+        case 'ai-map': A.openAIDialog(null, A.focusForMap()); break;
+        case 'ai-do': A.aiRunAction(t.getAttribute('data-aid')); break;
         case 'book-import': A.openImportBook(); break;
         case 'book-preview': A.previewImport(); break;
         case 'book-save': A.commitImport(); break;
@@ -623,6 +631,12 @@
           break;
         case 'map-review':
           var mb = t.getAttribute('data-band'), ml = t.getAttribute('data-letter');
+          // Shift + 点击格子 = 带着这一格的数字去问 AI（反向联动）
+          if (e.shiftKey && mb !== 'all' && A.openAIDialog) {
+            A.openAIDialog(null, A.focusForCell(+mb, ml));
+            break;
+          }
+          if (mb !== 'all' && A.reviewCell) { A.reviewCell(+mb, ml); break; }
           var mlist = (mb === 'all' && ml === 'all')
             ? (A.untestedWords ? A.untestedWords() : [])
             : A.mapCellWords(+mb, ml);
@@ -760,6 +774,21 @@
     if (tg) { tg.className = 'toggle' + (t === 'dark' ? ' on' : ''); tg.setAttribute('aria-checked', t === 'dark' ? 'true' : 'false'); }
   };
 
+  /* 复测地图某一格（未测 + 模糊 + 不认识）。抽成独立函数，供三处复用：
+     点格子 / Shift+点击问 AI 后的动作按钮 / AI 返回的 review 动作。 */
+  A.reviewCell = function (band, letter) {
+    var list = (letter === 'all')
+      ? (A.mapCellWords ? A.mapCellWords(band, 'all') : [])
+      : (A.untestedWords && band === 'all' && letter === 'all' ? A.untestedWords() : A.mapCellWords(band, letter));
+    if (!list || !list.length) { A.toast('这块没有需要复测的词'); return false; }
+    var cap = 400;
+    var use = list.slice(0, cap);
+    var label = (band === 'all' && letter === 'all')
+      ? '复测全部没测过的词'
+      : ('复测「' + (A.BAND_NAMES[band] || ('频段 ' + band)) + (letter === 'all' ? '」整段' : ' · ' + letter) + '」的缺口词');
+    A.startSession('list', { list: use, label: label });
+    return true;
+  };
   /* ---------- 初始化 ---------- */
   A.init = function () {
     document.documentElement.setAttribute('data-theme', S.theme || 'light');

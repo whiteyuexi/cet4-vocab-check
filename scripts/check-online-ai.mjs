@@ -90,6 +90,18 @@ try {
     await sleep(120);
   }
 
+  // 产物带授权锁时必须先解锁，否则走的是离线规则诊断（这是产品行为，不是 bug）
+  // 注意：密码输入框只在对话框打开后才存在，所以这里查的是 A.aiLockInfo() 的锁状态
+  const lockInfo = JSON.parse(await evalJs(
+    `JSON.stringify(window.__APP__.aiLockInfo ? window.__APP__.aiLockInfo() : { lock: false })`));
+  if (lockInfo.lock) {
+    const pass = process.env.AI_LOCK_PASS || '';
+    if (!pass) { console.error('这个产物带 AI 授权锁，请用 AI_LOCK_PASS 提供密码后重跑'); cleanup(1); }
+    const unlocked = await evalJs(`window.__APP__.unlockAI(${JSON.stringify(pass)})`);
+    ok('产物带授权锁，密码解锁成功', unlocked === true);
+    await sleep(400);
+  }
+
   await evalJs(`window.__APP__.openAIDialog('我这几次测下来最该补哪一段？给个具体方案')`);
   // 等流式回答结束：正文不再变长就算完
   let last = '', stable = 0;
@@ -110,9 +122,27 @@ try {
 
   ok('模式标记是「在线」（没有误走离线分支）', /在线|模型：/.test(st.pill), st.pill);
   ok('回答是模型生成的（不是离线规则文本）', st.offline === false);
-  ok('回答有实质内容', st.log.length > 150, st.log.length + ' 字');
+  // 阈值别定太高：Prompt 明确要求 300 字以内，一针见血的短回答反而是好事
+  ok('回答有实质内容（不是空/报错）', st.log.length > 60, st.log.length + ' 字');
   ok('没有报错块', st.err === false);
   ok('带工具调用/依据面板', st.tools > 0 || st.evidence > 0, 'tool=' + st.tools + ' ev=' + st.evidence);
+
+  /* 结构化动作：让模型给"能点的下一步"，并确认前端真的渲染成按钮 */
+  await evalJs(`(function(){
+    var inp = document.getElementById('aiInput2');
+    inp.value = '给我一个具体、能马上开始的下一步';
+    document.querySelector('[data-act=ai-send2]').click();
+    return 1;
+  })()`);
+  let actCount = 0;
+  for (let i = 0; i < 40; i++) {
+    await sleep(500);
+    actCount = await evalJs(`document.querySelectorAll('.ai-act').length`);
+    if (actCount > 0) break;
+  }
+  const actLabels = await evalJs(`JSON.stringify(Array.prototype.map.call(
+    document.querySelectorAll('.ai-act'), function(b){ return b.textContent.trim(); }))`);
+  ok('模型会调用 suggest_actions 给出可点击动作', actCount > 0, actLabels);
 
   const r = await send('Page.captureScreenshot', { format: 'png' });
   fs.mkdirSync(OUT, { recursive: true });

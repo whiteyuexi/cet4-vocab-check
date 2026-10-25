@@ -66,6 +66,39 @@ export function buildTools(ctx) {
     list_banks() {
       return { current: ctx.bankName, available: ctx.availableBanks || [] };
     },
+    /* 结构化动作：后端也做一次白名单归一化，避免模型把奇怪的东西塞进界面。
+       前端还会再校验一遍（双重保险）。 */
+    suggest_actions(actions) {
+      const ok = [];
+      const list = Array.isArray(actions) ? actions : [];
+      for (const a of list.slice(0, 4)) {
+        if (!a || typeof a !== 'object') continue;
+        const act = String(a.act || '');
+        const label = String(a.label || '').trim().slice(0, 26);
+        if (!label) continue;
+        const out = { act, label };
+        if (act === 'go') {
+          const r = String(a.route || '');
+          if (!['home', 'test', 'groups', 'stats', 'report', 'settings'].includes(r)) continue;
+          out.route = r;
+        } else if (act === 'start') {
+          const tg = parseInt(a.target, 10);
+          out.target = [150, 250, 400].includes(tg) ? tg : 250;
+        } else if (act === 'review') {
+          const b = parseInt(a.band, 10);
+          if (!(b >= 0 && b <= 6)) continue;
+          out.band = b;
+          out.letter = /^[A-Z]$/.test(String(a.letter || '')) ? a.letter : 'all';
+        } else if (act === 'ask') {
+          const q = String(a.q || '').trim().slice(0, 120);
+          if (!q) continue;
+          out.q = q;
+        } else continue;
+        ok.push(out);
+      }
+      return { actions: ok, note: ok.length ? '这些动作会渲染成界面上的按钮' : '没有可用的动作' };
+    },
+
     get_examples(word) {
       const ex = examplesFor(word, 2);
       return ex.length
@@ -86,6 +119,7 @@ export function buildTools(ctx) {
     { name: 'get_weak_words', description: '获取未掌握的单词清单，可按词频段筛选', parameters: { type: 'object', properties: { band: { type: 'string', description: '词频段名称，例如 5k-10k；不传则返回全部' }, limit: { type: 'number', description: '最多返回多少个，默认 20' } } } },
     { name: 'plan_schedule', description: '根据剩余词量与天数生成复习计划', parameters: { type: 'object', properties: { days: { type: 'number', description: '计划天数' }, wordsPerDay: { type: 'number', description: '每天词数，不传则自动计算' } } } },
     { name: 'list_banks', description: '列出可用的词库', parameters: { type: 'object', properties: {} } },
+    { name: 'suggest_actions', description: '给出 1-3 个"用户点一下就能做"的下一步动作。当你想建议用户去补某一段、重测、或看某个页面时调用它。动作会被渲染成界面上的按钮。', parameters: { type: 'object', properties: { actions: { type: 'array', description: '动作列表，1-3 个', items: { type: 'object', properties: { act: { type: 'string', description: 'go=跳转页面 / start=开一轮摸底 / review=复测某频段缺口词 / ask=替用户问下一句' }, label: { type: 'string', description: '按钮上的文字，不超过 12 个字' }, route: { type: 'string', description: 'act=go 时用：home/test/groups/stats/report/settings' }, target: { type: 'number', description: 'act=start 时用：150 / 250 / 400（目标精度）' }, band: { type: 'number', description: 'act=review 时用：0-6 的频段编号（0=20k以外，1=最高频1k…）' }, q: { type: 'string', description: 'act=ask 时用：要替用户问的那句话' } }, required: ['act', 'label'] } } }, required: ['actions'] } },
     { name: 'get_examples', description: '检索某个单词的真实例句（英中对照，来自 Tatoeba 语料库）。当你想给用户举例说明某个词的用法时调用', parameters: { type: 'object', properties: { word: { type: 'string', description: '要查例句的英文单词' } }, required: ['word'] } },
     { name: 'get_weak_examples', description: '为用户未掌握的若干单词批量检索例句，用于生成带语境的复习建议', parameters: { type: 'object', properties: { limit: { type: 'number', description: '取几个词的例句，默认 3' } } } },
   ].map(t => ({ type: 'function', function: t }));
