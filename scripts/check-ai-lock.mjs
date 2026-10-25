@@ -17,7 +17,12 @@ const CH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PASS = process.argv[2] || process.env.AI_LOCK_PASS || '';
 const SRC = path.resolve(process.argv[3] || path.join(ROOT, 'index.html'));
-if (!PASS) { console.error('用法: node scripts/check-ai-lock.mjs "授权密码" [页面]'); process.exit(1); }
+// 密码只在产物启用了授权锁时才需要；没有锁属于正常的"无锁形态"，脚本会自动切到那套验收
+const _hasLock = /window\.AI_LOCK = \{/.test(fs.readFileSync(SRC, 'utf8'));
+if (!PASS && _hasLock) {
+  console.error('这个产物启用了 AI 授权锁，需要提供密码：node scripts/check-ai-lock.mjs "密码" [页面]');
+  process.exit(1);
+}
 
 // 收件人视角：孤立目录 + 全新配置
 const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-'));
@@ -45,6 +50,57 @@ function cleanup(code) {
 }
 
 try {
+  /* 0) 先看这个产物有没有启用授权锁。
+        没有锁不是"出错"——那是产品选择（不需要密码）。这时本脚本改为验：
+        面板不出现锁条、不出现解锁按钮、AI 照样给出结论。 */
+  const html0 = fs.readFileSync(SRC, 'utf8');
+  const HAS_LOCK = /window\.AI_LOCK = \{/.test(html0);
+  if (!HAS_LOCK) {
+    console.log('这个产物没有启用授权锁 —— 改为验证「无锁形态」：');
+    for (let i = 0; i < 120; i++) { try { if ((await fetch('http://127.0.0.1:' + PORT + '/json/version')).ok) break; } catch {} await sleep(150); }
+    const l0 = await (await fetch('http://127.0.0.1:' + PORT + '/json/list')).json();
+    ws = new WebSocket(l0.find(t => t.type === 'page').webSocketDebuggerUrl);
+    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+    ws.onmessage = ev => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); } };
+    await send('Page.enable'); await send('Runtime.enable');
+    await send('Page.navigate', { url: 'file:///' + SRC.replace(/\\/g, '/') });
+    await sleep(1200);
+    await evalJs('window.__APP__ && window.__APP__.enterApp && window.__APP__.enterApp(true)');
+    await sleep(300);
+    ok('产物里没有 AI_LOCK 密文', true);
+    ok('产物里搜不到明文 API Key（与 .env 比对）', (() => {
+      const envTxt = fs.existsSync(path.join(ROOT, '.env')) ? fs.readFileSync(path.join(ROOT, '.env'), 'utf8') : '';
+      const km = /DEEPSEEK_API_KEY\s*=\s*(\S+)/.exec(envTxt);
+      return !km || html0.indexOf(km[1]) < 0;
+    })());
+    await evalJs(`window.__APP__.openAIDialog('我该怎么提升？')`);
+    // 有后端时是流式回答，要等到最后一条机器人消息稳定下来（1.6 秒远远不够）
+    let prev = '', stable = 0;
+    for (let i = 0; i < 60; i++) {
+      await sleep(500);
+      const cur = await evalJs(`(function(){
+        var b = document.querySelectorAll('#aiLog .ai-msg.bot');
+        var e = b[b.length - 1];
+        return e ? e.innerText : '';
+      })()`);
+      if (cur.length > 80 && cur === prev) { stable++; if (stable >= 2) break; } else stable = 0;
+      prev = cur;
+    }
+    const noLock = JSON.parse(await evalJs(`JSON.stringify({
+      hasLockBar: !!document.querySelector('.ai-lock'),
+      hasPassInput: !!document.getElementById('aiLockPass'),
+      pill: (document.getElementById('aiMode')||{}).textContent||'',
+      log: (document.getElementById('aiLog')||{}).innerText||'',
+      acts: document.querySelectorAll('.ai-act').length
+    })`));
+    ok('面板里没有锁条与密码框', noLock.hasLockBar === false && noLock.hasPassInput === false);
+    ok('不需要密码就能拿到结论', noLock.log.length > 80, noLock.log.length + ' 字');
+    ok('模式标记如实反映当前形态', /离线|在线|模型/.test(noLock.pill), noLock.pill);
+    ok('照样给可执行动作', noLock.acts > 0, noLock.acts + ' 个');
+    console.log('\n无锁形态验收通过');
+    cleanup(0);
+  }
+
   /* 1) 静态检查：产物里不能有明文 Key */
   const html = fs.readFileSync(SRC, 'utf8');
   const envTxt = fs.existsSync(path.join(ROOT, '.env')) ? fs.readFileSync(path.join(ROOT, '.env'), 'utf8') : '';

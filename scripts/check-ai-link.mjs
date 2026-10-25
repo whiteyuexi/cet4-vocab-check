@@ -20,6 +20,24 @@ const chrome = spawn(CH, ['--headless=new', '--enable-unsafe-swiftshader', '--us
   '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-extensions',
   '--user-data-dir=' + profile, '--remote-debugging-port=' + PORT, '--window-size=1440,900', 'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* 等 AI 回答稳定。离线规则诊断是瞬时返回，走后端时是流式——
+   固定 sleep 只能在其中一种形态下正确，所以统一轮询"最后一条机器人消息不再变长"。 */
+async function waitAnswer(evalJs, maxRounds = 50) {
+  let prev = '', stable = 0;
+  for (let i = 0; i < maxRounds; i++) {
+    await sleep(400);
+    const cur = await evalJs(`(function(){
+      var b = document.querySelectorAll('#aiLog .ai-msg.bot');
+      var e = b[b.length - 1];
+      return e ? e.innerText : '';
+    })()`);
+    const acts = await evalJs(`document.querySelectorAll('.ai-act').length`);
+    if (cur.length > 60 && cur === prev && acts >= 0) { stable++; if (stable >= 2) return cur; } else stable = 0;
+    prev = cur;
+  }
+  return prev;
+}
 let ws, seq = 0, fails = 0;
 const pending = new Map();
 function send(m, p = {}) { const id = ++seq; ws.send(JSON.stringify({ id, method: m, params: p })); return new Promise((res, rej) => pending.set(id, { res, rej })); }
@@ -71,7 +89,7 @@ try {
   })()`);
   ok('频段条上有「问 AI」按钮', bandBtn !== null, 'data-band=' + bandBtn);
   await evalJs(`document.querySelector('[data-act=ai-band]').click()`);
-  await sleep(900);
+  await waitAnswer(evalJs);
   const bandDlg = JSON.parse(await evalJs(`JSON.stringify((function(){
     var log = document.getElementById('aiLog');
     return { open: !!document.getElementById('aiLog'),
@@ -121,7 +139,7 @@ try {
     c.dispatchEvent(d);
     return { band: c.getAttribute('data-band'), letter: c.getAttribute('data-letter') };
   })())`));
-  await sleep(900);
+  await waitAnswer(evalJs);
   const cellDlg = JSON.parse(await evalJs(`JSON.stringify((function(){
     var log = document.getElementById('aiLog');
     return { open: !!log, q: log ? log.innerText.split('\\n')[0] : '',
@@ -136,7 +154,7 @@ try {
   await evalJs(`(function(){ var b=document.querySelector('[data-act=modal-close]'); if(b)b.click(); return 1; })()`);
   await sleep(300);
   await evalJs(`document.querySelector('[data-act=ai-map]').click()`);
-  await sleep(900);
+  await waitAnswer(evalJs);
   const mapDlg = JSON.parse(await evalJs(`JSON.stringify((function(){
     var log = document.getElementById('aiLog');
     return { q: log ? log.innerText.split('\\n')[0] : '',

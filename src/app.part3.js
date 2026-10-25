@@ -438,7 +438,8 @@
           ? '<b style="color:var(--ok)">已授权</b>：本次打开可用大模型（' + esc(ai.model) + '），刷新页面后需要重新输入密码。'
           : '<b>大模型已锁定</b>：作者把 API Key 用密码加密后内联在文件里，输入正确密码才解得出。' +
             '离线规则诊断随时可用、不消耗任何额度。')
-        : '本文件未启用授权锁：AI 面板会使用离线规则诊断（不需要任何密码）。') +
+        : '本文件<b>未启用授权锁</b>，不需要任何密码：若本机运行了后端（<code>node server/index.mjs</code>），' +
+          'AI 会走大模型；否则自动使用离线规则诊断（同样给出基于你本机数据的结论）。') +
       '</div>' +
       '<div class="row" style="gap:8px;flex-wrap:wrap">' +
       '<button class="btn primary" data-act="ai-open">打开 AI 诊断</button>' +

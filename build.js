@@ -85,6 +85,6 @@ console.log('词条总数:', words.length, '（核心', pick(true).length, '/ �
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
 console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
-console.log('AI 授权锁:', aiLock ? ('已内联（' + aiLock.it + ' 次 PBKDF2，密码解锁）') : '未启用（只有离线规则诊断）');
+console.log('AI 授权锁:', aiLock ? ('已内联（' + aiLock.it + ' 次 PBKDF2，密码解锁）') : '未启用（有后端则用大模型，否则离线规则诊断）');
 console.log('桌宠立绘:', Object.keys(petArt).length, '张内联（' + (Object.values(petArt).reduce((s, v) => s + v.length, 0) / 1024).toFixed(0) + ' KB，情绪立绘离线可用）');
 console.log('index.html:', (fs.statSync(out).size / 1024).toFixed(1) + ' KB（构建于 ' + new Date().toISOString() + '，此时间不写入产物）');
