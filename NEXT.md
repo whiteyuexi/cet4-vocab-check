@@ -288,6 +288,30 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 `scripts/check-offline.mjs` 直接打开**桌面上那份孤立 HTML**（旁边无 assets）做 7 项断言：
 立绘来自 `data:` URI、抓起后换表情、弹簧在跑、身体落后于抓点、影子留在地面、松手落回地面、摆角归零。
 `scripts/pet-test.mjs` 同时从 21 项加到 **26 项**，全是"行为对不对"而不是"有没有跑"。
+### 两种产物的操作流程（2026-10-25 起）
+
+**仓库版**（无 Key，可提交）：
+```bash
+node build.js                  # → index.html，window.AI_AUTHOR_KEY = null
+node scripts/check-no-key.mjs  # 提交前必跑，发现 Key 直接退出 1
+```
+
+**评委版**（内联作者 Key，只用于现场演示与比赛附件）：
+```bash
+# 1) Key 写进 private/ai-key.json（已 gitignore）：
+#    {"key":"sk-...","model":"deepseek-chat","base":"https://api.deepseek.com"}
+node build.js --with-key
+# 2) 产物另存（桌面已放：四六级词汇量检测-评委版.html），**绝不 commit**
+```
+
+**实测记录（2026-10-25）**：屏蔽本地后端后，在评委版里授予 1 次额度 → 面板标签变
+`在线 · 直连模型`、额度 `granted 1 → used 1`、有「本次发送的数据」可展开、
+回答 672 字且指出了"高频段反而不稳"这类结构问题；额度用尽后再问，自动回落 `离线 · 本地规则`
+并提示"作者额度已用完"。整条链路成立。
+
+**Key 卫生**：这个 Key 已经出现在对话里，建议在厂商后台<b>设消费上限</b>，比赛结束后<b>删除重建</b>；
+评委版文件本身任何拿到的人都能解出 Key（内联方案的固有代价，已与用户确认接受）。
+
 ### AI 三档通路与额度（2026-10-25 新做）
 
 用户的产品设计：**作者给一个额度，用完就用用户自己的 Key**；本地方案永远兜底。

@@ -204,6 +204,16 @@ npm run server          # 启动后端，默认 http://127.0.0.1:8787
 > | **本地方案** | 上面都不满足时 | 不限次 | 不花钱 |
 >
 > 带作者额度的「评委演示版」由作者本地用 `node build.js --with-key` 构建后单独提交，**不进仓库**。
+>
+> ```bash
+> # 仓库版（无任何 Key，可安全提交）
+> node build.js
+> node scripts/check-no-key.mjs      # 提交前必跑：发现 Key 会直接失败
+>
+> # 评委版（内联作者 Key，只用于现场演示/提交附件）
+> #   先把 Key 写进 private/ai-key.json（已 gitignore）
+> node build.js --with-key
+> ```
 
 ### AI 的两级形态：谁都能用的离线诊断 + 需要授权的真模型
 
