@@ -95,13 +95,13 @@ console.log('路径长度: 蓝', dBlue.length, '字符 / 橙', dOrange.length, '
 /* ---------- 3. 拼成双色 SVG（potrace 输出以 1px = 1 单位，正好对上源图尺寸） ---------- */
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <!--
-  词汇账户余额查询 · 标识（由 AI 原图精确描边而来）
+  四六级词汇量检测 · 标识（由 AI 原图精确描边而来）
   来源：作者提供的 AI 生成图，经 scripts/trace-ai-logo.mjs 用 potrace 描边。
   为什么矢量化：原图仅 274px，放大即糊；描边后任意尺寸清晰，且形状与原图一致（非手绘近似）。
   两色分层：蓝 #1A5FD0（主形）/ 橙 #FF6B4A（仪表扇区 + 指针）。
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="30 · 词汇账户余额查询">
-  <title>词汇账户余额查询</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="30 · 四六级词汇量检测">
+  <title>四六级词汇量检测</title>
   <path fill="#FF6B4A" fill-rule="evenodd" d="${dOrange}"/>
   <path fill="#1A5FD0" fill-rule="evenodd" d="${dBlue}"/>
 </svg>

@@ -1,0 +1,109 @@
+<!-- 报告页 -->
+<view class="page" wx:if="{{!empty}}">
+
+  <!-- 等级卡 -->
+  <view class="card rankcard">
+    <view class="rank-top">
+      <view class="rank-badge chip-{{rankTone === 'ok' ? 'ok' : (rankTone === 'warn' ? 'warn' : 'bad')}}">{{rankK}}</view>
+      <view class="rank-main">
+        <view class="rank-name">{{rankName}}</view>
+        <view class="t3">掌握率 {{ratioPct}}% · 覆盖 {{coveragePct}}%</view>
+      </view>
+    </view>
+
+    <view wx:if="{{!ready}}" class="cap-note">
+      还差 {{needMore}} 词才达到 95% 覆盖率。抽样能给词汇量和误差，但分不出频段上的洞，拿它评级是虚的 —— 所以等级只在覆盖 ≥95% 时给出。
+    </view>
+
+    <view class="hr"></view>
+    <view class="rank-desc">{{rankDesc}}</view>
+    <view class="rank-next">下一步：{{rankNext}}</view>
+
+    <view class="hero-meta">
+      <view class="mi">
+        <view class="mi-k">词汇余额</view>
+        <view class="mi-v num">{{vocabText}}</view>
+      </view>
+      <view class="mi">
+        <view class="mi-k">折中口径</view>
+        <view class="mi-v num">{{looseText}}</view>
+      </view>
+      <view class="mi">
+        <view class="mi-k">严格口径</view>
+        <view class="mi-v num">{{strictText}}</view>
+      </view>
+    </view>
+    <view class="t3" wx:if="{{rangeText}}">95% 区间 {{rangeText}} · 已测 {{testedText}}</view>
+    <view class="t3" wx:else>全库实测 · 已测 {{testedText}}</view>
+  </view>
+
+  <!-- 频段剖面 -->
+  <view class="card">
+    <view class="t1 sect">词频段剖面</view>
+    <view class="t3 row-note">总掌握率会把高低频段平均掉。「缺口」是测过还不会的词，「未测」不构成结论。</view>
+    <view wx:for="{{bands}}" wx:key="name" class="brow">
+      <view class="brow-top">
+        <view class="brow-name">{{item.name}}</view>
+        <view class="brow-ratio num tone-{{item.tone}}">{{item.ratio}}%</view>
+      </view>
+      <view class="bar"><view class="bar-in bfill-{{item.tone}}" style="width:{{item.ratio}}%"></view></view>
+      <view class="t3 brow-foot">测 {{item.tested}} / {{item.N}} 词<text wx:if="{{item.deficit > 0}}"> · 缺口 {{item.deficit}} 词</text></view>
+    </view>
+  </view>
+
+  <!-- 提升优先级 -->
+  <view class="card">
+    <view class="t1 sect">提升优先级</view>
+    <view class="t3 row-note">按「缺口词数 × 词频权重」排序，不是缺口绝对值 —— 冷门词一年遇不上几次，补它们收益远不如补高频。</view>
+    <view wx:for="{{gainTop}}" wx:key="name" class="prow">
+      <view class="prow-idx">{{index + 1}}</view>
+      <view class="prow-main">
+        <view class="prow-name">{{item.name}}</view>
+        <view class="t3">缺口 {{item.deficit}} 词 · 优先级得分 {{item.gain}}</view>
+      </view>
+    </view>
+    <view wx:if="{{baseGap > 0}}" class="base-gap">
+      地基漏洞：最高频 2k 段还有 <text class="bad bold">{{baseGap}}</text> 词没拿下。这一段直接影响阅读速度，优先补。
+    </view>
+    <view wx:else class="base-gap base-ok">最高频 2k 段已无缺口，地基是稳的。</view>
+  </view>
+
+  <!-- 本轮明细 -->
+  <view class="card" wx:if="{{last}}">
+    <view class="t1 sect">本轮明细</view>
+    <view class="t2">{{lastText}}</view>
+    <view class="t3" style="margin-top:8rpx">「有印象」里不确定的占 {{fuzzyPct}}%（模糊词的占比）</view>
+    <view class="btn btn-sm weakbtn" wx:if="{{weakCount > 0}}" bindtap="onReviewWeak">复测本轮未掌握词（{{weakCount}} 个）</view>
+  </view>
+
+  <!-- 多轮对比 -->
+  <view class="card" wx:if="{{hasDiff}}">
+    <view class="t1 sect">与上一轮对比</view>
+    <view class="diffgrid">
+      <view wx:for="{{diffRows}}" wx:key="k" class="dcell">
+        <view class="dcell-v num">{{item.v}}</view>
+        <view class="dcell-k">{{item.k}}</view>
+        <view class="dcell-d">{{item.d}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 动作 -->
+  <view class="card" wx:if="{{canRetest}}">
+    <view class="t1 sect">下一轮</view>
+    <view class="t3 row-note">本轮已测完。换一轮重测，能算出「哪些词是真学进来的、哪些是背了又忘的」。</view>
+    <view class="btn btn-primary" bindtap="onNewRound">开始第 {{roundNo + 1}} 轮</view>
+  </view>
+
+  <view class="btn btn-ghost" bindtap="onHome">回首页</view>
+  <view class="t3 center tip">报告只存在这台手机上，不上传服务器。</view>
+</view>
+
+<!-- 空态 -->
+<view class="page" wx:if="{{empty}}">
+  <view class="card empty">
+    <view class="t2">还没有可报告的检测</view>
+    <view class="t3" style="margin-top:10rpx">先去测一组或做一次快速摸底</view>
+  </view>
+  <view class="btn btn-primary" bindtap="onHome">回首页</view>
+</view>

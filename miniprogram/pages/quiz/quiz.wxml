@@ -1,0 +1,87 @@
+<!-- 答题页 -->
+<view class="page quiz" wx:if="{{!empty}}">
+
+  <view class="qhead">
+    <view class="qlabel">{{s.label}}</view>
+    <view class="qtoggle" bindtap="onToggleMode">{{s.mode === 'self' ? '自评 ⇄' : '四选一 ⇄'}}</view>
+  </view>
+
+  <view class="bar"><view class="bar-in" style="width:{{s.barPct}}%"></view></view>
+  <view class="tiny">{{s.progressText}}</view>
+
+  <!-- 题面 -->
+  <view class="card wordcard">
+    <view class="wtop">
+      <view class="chip chip-plain">{{bandName}}</view>
+      <view class="chip" wx:if="{{s.kind === 'probe'}}">摸底 · 目标 ±{{s.target}}</view>
+      <view class="chip" wx:elif="{{s.kind === 'list'}}">复测</view>
+      <view class="chip" wx:else>第 {{s.group + 1}} 组</view>
+    </view>
+
+    <view class="word">{{s.word.w}}</view>
+    <view class="phon mono" wx:if="{{s.word.p}}">{{s.word.p}}</view>
+
+    <view class="reveal" wx:if="{{s.revealed}}">
+      <view class="hr"></view>
+      <view class="mean">{{s.word.t}}</view>
+    </view>
+  </view>
+
+  <!-- 自评模式 -->
+  <block wx:if="{{s.mode === 'self'}}">
+    <block wx:if="{{!s.revealed}}">
+      <view class="judges">
+        <view class="btn jbtn j-no" data-v="0" bindtap="onJudge">不认识</view>
+        <view class="btn jbtn j-fuzzy" data-v="1" bindtap="onJudge">模糊</view>
+        <view class="btn jbtn j-yes" data-v="2" bindtap="onJudge">认识</view>
+      </view>
+      <view class="btn btn-ghost skipbtn" bindtap="onSkip">跳过这个词</view>
+    </block>
+
+    <block wx:else>
+      <view class="rejudge-tip t3">是不是选错了？点一下可以改判</view>
+      <view class="judges">
+        <view class="btn jbtn j-no {{s.lastV === 0 ? 'on' : ''}}" data-v="0" bindtap="onRejudge">不认识</view>
+        <view class="btn jbtn j-fuzzy {{s.lastV === 1 ? 'on' : ''}}" data-v="1" bindtap="onRejudge">模糊</view>
+        <view class="btn jbtn j-yes {{s.lastV === 2 ? 'on' : ''}}" data-v="2" bindtap="onRejudge">认识</view>
+      </view>
+      <view class="btn btn-primary nextbtn" bindtap="onNext">下一个 →</view>
+    </block>
+  </block>
+
+  <!-- 四选一模式 -->
+  <block wx:else>
+    <view class="opts">
+      <view wx:for="{{s.opts}}" wx:key="i" class="{{item.cls}}" data-n="{{index}}" bindtap="onPick">{{item.t}}</view>
+    </view>
+    <view class="btn btn-primary nextbtn" wx:if="{{s.canNext}}" bindtap="onNext">下一个 →</view>
+  </block>
+
+  <!-- 底部 -->
+  <view class="qfoot">
+    <view class="btn btn-ghost btn-sm {{s.canUndo ? '' : 'disabled'}}" bindtap="onUndo">撤销上一题</view>
+    <view class="btn btn-ghost btn-sm" bindtap="onQuitTap">结束本次</view>
+  </view>
+  <view class="counts t3 center">认识 {{s.counts.k}} · 模糊 {{s.counts.f}} · 不认识 {{s.counts.u}} · 跳过 {{s.skipped}}</view>
+
+  <!-- 退出弹窗 -->
+  <view class="mask" wx:if="{{quitAsk}}" catchtouchmove="noop">
+    <view class="dialog">
+      <view class="t1">结束本次检测？</view>
+      <view class="t3 dg-sub">已作答的部分会保留，随时可以接着测；也可以直接看这一轮的报告。</view>
+      <view class="btn btn-primary" bindtap="onQuitFinish">看报告（保存本次成绩）</view>
+      <view class="btn" bindtap="onQuitKeep">保存并返回</view>
+      <view class="btn quit-drop" bindtap="onQuitDrop">放弃本次</view>
+      <view class="btn btn-ghost" bindtap="onCancelQuit">继续答题</view>
+    </view>
+  </view>
+</view>
+
+<!-- 空态：没有会话（例如被清空过） -->
+<view class="page" wx:if="{{empty}}">
+  <view class="card empty">
+    <view class="t2">当前没有进行中的检测</view>
+    <view class="t3" style="margin-top:10rpx">回首页挑一个入口开始吧</view>
+  </view>
+  <view class="btn btn-primary" bindtap="onBackHome">回首页</view>
+</view>

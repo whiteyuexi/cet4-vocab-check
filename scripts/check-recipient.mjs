@@ -20,7 +20,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 
 // 收件人拿到的目录：只有一个 HTML
 const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'recipient-'));
-const shared = path.join(inbox, '词汇账户余额查询.html');
+const shared = path.join(inbox, '四六级词汇量检测.html');
 fs.copyFileSync(path.join(ROOT, 'index.html'), shared);
 const url = 'file:///' + shared.replace(/\\/g, '/');
 
@@ -104,7 +104,7 @@ try {
   await send('Network.setBlockedURLs', { urls: ['http://*', 'https://*'] });
 
   console.log('收件环境:', inbox);
-  console.log('被测文件: 词汇账户余额查询.html (' + (fs.statSync(shared).size / 1024 / 1024).toFixed(2) + ' MB)');
+  console.log('被测文件: 四六级词汇量检测.html (' + (fs.statSync(shared).size / 1024 / 1024).toFixed(2) + ' MB)');
   console.log('网络: 已屏蔽全部 http/https\n');
 
   /* ---------- 桌面视口 ---------- */

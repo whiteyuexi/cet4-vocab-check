@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/quiz/quiz",
+    "pages/report/report"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#EDF0F6",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "词汇账户余额查询",
+    "backgroundColor": "#EDF0F6",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

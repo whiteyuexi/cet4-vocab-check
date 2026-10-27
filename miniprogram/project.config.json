@@ -1,0 +1,46 @@
+{
+  "description": "词汇账户余额查询 · 微信小程序（CET 词汇量检测与诊断）",
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "test"
+      },
+      {
+        "type": "folder",
+        "value": "tools"
+      },
+      {
+        "type": "file",
+        "value": "IMPORT-NOTES.md"
+      },
+      {
+        "type": "file",
+        "value": "README-MVP.md"
+      }
+    ]
+  },
+  "setting": {
+    "urlCheck": true,
+    "es6": false,
+    "enhance": false,
+    "postcss": false,
+    "minified": false,
+    "newFeature": false,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "showShadowRootInWxmlPanel": false,
+    "useCompilerPlugins": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.5.7",
+  "appid": "touristappid",
+  "projectname": "cet-vocab-miniprogram",
+  "miniprogramRoot": "./",
+  "srcMiniprogramRoot": "./",
+  "condition": {}
+}

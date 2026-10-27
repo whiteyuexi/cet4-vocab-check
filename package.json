@@ -23,7 +23,7 @@
     "art:sprite": "node scripts/make-whale-sprites.mjs",
     "build": "node build.js",
     "test": "node smoke-test.js",
-    "test:browser": "node btest.js",
+    "test:browser": "node scripts/run-btest.mjs",
     "test:pet": "node scripts/pet-test.mjs",
     "test:agent": "node scripts/test-agent-tokens.mjs",
     "audit": "node audit-fixes.js",

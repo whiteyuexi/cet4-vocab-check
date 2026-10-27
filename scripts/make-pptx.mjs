@@ -5,7 +5,7 @@
 // 这个库产出的是标准 OOXML，每个文本框、色块、表格在 WPS/PowerPoint 里都能直接改。
 //
 // 用法：node scripts/make-pptx.mjs [输出路径]
-//   默认 → ~/Desktop/词汇账户余额查询-答辩.pptx
+//   默认 → ~/Desktop/四六级词汇量检测-答辩.pptx
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,7 @@ import PptxGenJS from 'pptxgenjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SHOTS = path.join(ROOT, 'docs', 'screenshots');
-const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '词汇账户余额查询-答辩.pptx');
+const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '四六级词汇量检测-答辩.pptx');
 
 /* ---------- 设计令牌（与产品一致） ---------- */
 const C = {
@@ -32,9 +32,9 @@ const W = 13.333, H = 7.5, M = 0.82, CW = W - M * 2;
 const pptx = new PptxGenJS();
 pptx.defineLayout({ name: 'CET16x9', width: W, height: H });
 pptx.layout = 'CET16x9';
-pptx.author = '词汇账户余额查询';
+pptx.author = '四六级词汇量检测';
 pptx.company = '广东亚视演艺职业学院 · 信息工程学院';
-pptx.title = '词汇账户余额查询 · 答辩';
+pptx.title = '四六级词汇量检测 · 答辩';
 pptx.subject = '筑视界·码绘交互 Web 前端开发创意技能大赛';
 
 /* ---------- 版式助手 ---------- */
@@ -62,7 +62,7 @@ function head(s, title, sub, dark) {
   }
 }
 function foot(s, page, total, dark) {
-  s.addText('词汇账户余额查询 · CET Vocabulary Checker', {
+  s.addText('四六级词汇量检测 · CET Vocabulary Checker', {
     x: M, y: H - 0.58, w: CW * 0.7, h: 0.28, fontFace: F, fontSize: 9.5,
     color: dark ? '8B93A3' : C.ink3,
   });
@@ -109,17 +109,17 @@ const shot = n => path.join(SHOTS, n);
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.dk }, transparency: 30 });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 1.5, w: 0.66, h: 0.055, fill: { color: C.teal } });
   txt(s, '筑视界 · 码绘交互 ／ Web 前端开发创意技能大赛', { x: M, y: 1.7, w: 11, h: 0.35, fontSize: 12, bold: true, color: C.brandLight });
-  s.addText('词汇账户余额查询', { x: M, y: 2.12, w: 11.8, h: 1.0, fontFace: F, fontSize: 52, bold: true, color: C.white });
+  s.addText('四六级词汇量检测', { x: M, y: 2.12, w: 11.8, h: 1.0, fontFace: F, fontSize: 52, bold: true, color: C.white });
   s.addText('把一个数字，做成一份能执行的诊断', { x: M, y: 3.08, w: 11.8, h: 0.6, fontFace: F, fontSize: 24, color: 'C9D4EA' });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 4.15, w: 11.7, h: 0.015, fill: { color: '2A3346' } });
-  const stats = [['7,175', '词库词条'], ['9,204', '英中例句'], ['387', '自动化断言'], ['2.08 MB', '单文件交付']];
+  const stats = [['7,175', '词库词条'], ['9,204', '英中例句'], ['391', '离线断言'], ['2.08 MB', '单文件交付']];
   stats.forEach((it, i) => {
     const x = M + i * 2.95;
     s.addText(it[0], { x, y: 4.4, w: 2.7, h: 0.5, fontFace: FM, fontSize: 22, bold: true, color: C.white });
     s.addText(it[1], { x, y: 4.9, w: 2.7, h: 0.3, fontFace: F, fontSize: 10.5, color: '8B93A3' });
   });
   txt(s, '广东亚视演艺职业学院 · 信息工程学院　｜　单人作品　｜　2026-10', { x: M, y: 6.15, w: 11.8, h: 0.35, fontSize: 11, color: '8B93A3' });
-  s.addNotes('开场 15 秒：一句话说清我们是什么——不是背单词 App，是一台词汇量测量仪 + 处方机。\n紧接着给四个数字：词库 7,175、例句 9,204、断言 387、产物 2.08 MB 单文件。');
+  s.addNotes('开场 15 秒：一句话说清我们是什么——不是背单词 App，是一台词汇量测量仪 + 处方机。\n紧接着给四个数字：词库 7,175、例句 9,204、断言 391、产物 2.09 MB 单文件。');
 }
 
 /* ============================ 2 痛点 ============================ */
@@ -403,8 +403,8 @@ const shot = n => path.join(SHOTS, n);
   const s = newSlide(C.dk);
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.dk2 }, transparency: 55 });
   kicker(s, '工程质量', true);
-  head(s, '387 条断言，守着「看不见的正确性」', '抽样与区间估计这类东西没法靠肉眼验收，只能靠断言', true);
-  const stats = [['387', '条自动化断言'], ['11', '个测试套件'], ['2.08 MB', '单文件产物'], ['0', '运行时依赖']];
+  head(s, '391 条断言，守着「看不见的正确性」', '抽样与区间估计这类东西没法靠肉眼验收，只能靠断言', true);
+  const stats = [['391', '条离线断言'], ['11', '个测试套件'], ['2.09 MB', '单文件产物'], ['0', '运行时依赖']];
   const sw = (CW - 0.3 * 3) / 4;
   stats.forEach((st, i) => stat(s, M + i * (sw + 0.3), 2.42, sw, 1.15, st[0], st[1], true, C.brandLight));
   const rows = [
@@ -423,7 +423,7 @@ const shot = n => path.join(SHOTS, n);
   s.addText('提交纪律：build.js 产出不含任何 API Key 的仓库版；--with-key 只用于生成给评委的演示版；提交前必跑 check-no-key。',
     { x: M, y: 6.42, w: CW, h: 0.32, fontFace: F, fontSize: 10, color: '8B93A3' });
   foot(s, 13, TOTAL, true);
-  s.addNotes('这页是可信度的落点。数字要背下来：387 条断言、11 个套件。如果评委问"你怎么保证统计是对的"，答：抽样和区间估计全部有断言，不是靠肉眼。');
+  s.addNotes('这页是可信度的落点。数字要背下来：391 条离线断言（另 7 条联网）、11 个套件。如果评委问"你怎么保证统计是对的"，答：抽样和区间估计全部有断言，不是靠肉眼。');
 }
 
 /* ============================ 14 收尾 ============================ */
@@ -433,7 +433,7 @@ const shot = n => path.join(SHOTS, n);
   s.addShape(pptx.ShapeType.rect, { x: M, y: 1.85, w: 0.66, h: 0.055, fill: { color: C.teal } });
   s.addText('测准只是起点。', { x: M, y: 2.1, w: 11.8, h: 0.9, fontFace: F, fontSize: 40, bold: true, color: C.white });
   s.addText('能看懂自己差在哪、下一步做什么，才算有用。', { x: M, y: 3.0, w: 11.8, h: 0.7, fontFace: F, fontSize: 22, color: 'C9D4EA' });
-  ['387 条自动化断言 · 11 个套件',
+  ['391 条离线断言 · 11 个套件',
     '单文件 2.08 MB · 断网可用 · 无账号 · 无广告',
     'AI 三档通路：自带 Key / 作者额度 / 本地方案',
   ].forEach((f, i) => {

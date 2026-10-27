@@ -92,7 +92,7 @@ try {
   })()`);
   await sleep(900);
 
-  console.log('2 首页余额');
+  console.log('2 首页词汇量');
   await shot(path.join(OUT, 'ppt-home.jpg'), '.hero', 14, 'document', 2);
 
   console.log('3 分组页');
@@ -100,7 +100,7 @@ try {
   await sleep(700);
   await shot(path.join(OUT, 'ppt-groups.jpg'), '#view', 8, 'viewport', 1.6);
 
-  console.log('4 资产结构');
+  console.log('4 词频分布');
   await evalJs(`(function(){var A=window.__APP__;A.go('stats');A.render();return 1;})()`);
   await sleep(700);
   await shot(path.join(OUT, 'ppt-bands.jpg'), '.bandlist', 16, 'document', 2);
@@ -154,7 +154,7 @@ try {
     var A = window.__APP__;
     A.go('home'); A.render();
     // 让她说句话，气泡里是真实数据
-    if (A.petSay) A.petSay('帮你算好了：余额 4,449 词，最该补最高频 1k 段。');
+    if (A.petSay) A.petSay('帮你算好了：词汇量 4,449 词，最该补最高频 1k 段。');
     return 1;
   })()`);
   await sleep(900);

@@ -1,0 +1,55 @@
+/* 报告页样式 */
+.rankcard { padding: 34rpx 32rpx 30rpx; }
+.rank-top { display: flex; align-items: center; gap: 22rpx; }
+.rank-badge {
+  width: 104rpx; height: 104rpx; border-radius: 26rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46rpx; font-weight: 800;
+}
+.rank-name { font-size: 38rpx; font-weight: 700; }
+.rank-main { flex: 1; }
+.cap-note {
+  margin-top: 22rpx; padding: 18rpx 20rpx; border-radius: 16rpx;
+  background: #FBF3E4; color: #8A5A10; font-size: 23rpx; line-height: 1.55;
+}
+.rank-desc { font-size: 27rpx; line-height: 1.6; }
+.rank-next { font-size: 25rpx; color: #2A5BE0; margin-top: 12rpx; line-height: 1.55; }
+.hero-meta { display: flex; gap: 12rpx; margin: 26rpx 0 14rpx; }
+.mi { flex: 1; background: #F5F7FB; border-radius: 18rpx; padding: 16rpx 18rpx; }
+.mi-k { font-size: 21rpx; color: #8B93A3; }
+.mi-v { font-size: 32rpx; font-weight: 700; margin-top: 2rpx; }
+
+.sect { font-size: 30rpx; }
+.row-note { margin: 8rpx 0 22rpx; line-height: 1.55; }
+
+/* 频段 */
+.brow { margin-bottom: 22rpx; }
+.brow-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8rpx; }
+.brow-name { font-size: 26rpx; font-weight: 600; }
+.brow-ratio { font-size: 28rpx; font-weight: 700; }
+.brow-foot { margin-top: 6rpx; }
+.tone-ok { color: #0A6B4A; } .tone-warn { color: #8A5A10; } .tone-bad { color: #B02E22; }
+.bfill-ok { background: #0A6B4A; } .bfill-warn { background: #C08A28; } .bfill-bad { background: #B02E22; }
+
+/* 优先级 */
+.prow { display: flex; align-items: center; gap: 18rpx; padding: 16rpx 0; border-top: 1rpx solid rgba(16,19,25,.06); }
+.prow-idx {
+  width: 44rpx; height: 44rpx; border-radius: 12rpx; background: rgba(42,91,224,.10);
+  color: #2A5BE0; font-size: 24rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.prow-name { font-size: 28rpx; font-weight: 600; }
+.base-gap { margin-top: 20rpx; padding: 18rpx 20rpx; border-radius: 16rpx; background: #FBEDEB; color: #B02E22; font-size: 24rpx; line-height: 1.55; }
+.base-ok { background: #E7F5EF; color: #0A6B4A; }
+
+.weakbtn { margin-top: 22rpx; }
+
+/* 多轮对比 */
+.diffgrid { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.dcell { width: calc((100% - 14rpx) / 2); background: #F5F7FB; border-radius: 18rpx; padding: 20rpx; }
+.dcell-v { font-size: 40rpx; font-weight: 700; }
+.dcell-k { font-size: 24rpx; font-weight: 600; color: #575E6B; }
+.dcell-d { font-size: 20rpx; color: #8B93A3; line-height: 1.4; margin-top: 2rpx; }
+
+.tip { margin-top: 18rpx; }
+.center { text-align: center; }

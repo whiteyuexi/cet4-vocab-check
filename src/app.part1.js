@@ -796,11 +796,11 @@
   };
 
   function levelText(v) {
-    if (v >= 4200) return { t: '厚实 · 余额已达标', d: '四级大纲词汇基本全覆盖，可以把精力放在真题阅读与写作上。' };
-    if (v >= 3500) return { t: '稳健 · 接近大纲要求', d: '核心词汇掌握不错，重点补齐「模糊」的那部分词。' };
-    if (v >= 2500) return { t: '够花 · 有明显缺口', d: '日常阅读能应付，但高频词仍有漏洞，建议按分组逐组检测，把薄弱词复测到认识。' };
-    if (v >= 1500) return { t: '吃紧 · 需要系统补词', d: '建议每天固定 50-100 词，先用「快速摸底 → 分组检测」定位薄弱区间。' };
-    return { t: '见底 · 从高频词开始', d: '先过高中/初中核心词，再来刷四级大纲，效果更好。' };
+    if (v >= 4200) return { t: '优秀 · 词汇量已达标', d: '四级大纲词汇基本全覆盖，可以把精力放在真题阅读与写作上。' };
+    if (v >= 3500) return { t: '良好 · 接近大纲要求', d: '核心词汇掌握不错，重点补齐「模糊」的那部分词。' };
+    if (v >= 2500) return { t: '中等 · 有明显缺口', d: '日常阅读能应付，但高频词仍有漏洞，建议按分组逐组检测，把薄弱词复测到认识。' };
+    if (v >= 1500) return { t: '偏弱 · 需要系统背词', d: '建议每天固定 50-100 词，先用「快速摸底 → 分组检测」定位薄弱区间。' };
+    return { t: '基础薄弱 · 从高频词开始', d: '先过高中/初中核心词，再来刷四级大纲，效果更好。' };
   }
   A.levelText = levelText;
 
@@ -950,28 +950,27 @@
        b) 二语阅读研究里 95% / 98% 文字覆盖率分别是"能理解"与"无障碍"的参考线，
           所以把 92% / 95% / 98% 标成阶梯上方的参考刻度，而不是硬性及格线。
      掌握率用「认识 + 模糊×0.5」的折中口径（与全站一致），另给严格口径对照。 */
-  /* 等级名字用「账本 / 余额」的语言：让人一眼知道自己的账户有多满。
+  /* 等级名字用中性评价词：卓越 → 优秀 → 良好 → 中等 → 偏弱 → 基础薄弱。
      字母（S/A/B+/B/C/D）保留——印章只能放一个字，报告与技术文档也靠字母对照。
-     六个名字各自对应"账户充盈度"的一个阶段，且都不带羞辱性：
-       满仓（钱到位）→ 厚实（底子厚）→ 稳健（大头稳）→ 够花（勉强够用）→ 吃紧（开始透支）→ 见底（要补地基） */
+     六个名字按掌握率递降排列，不带羞辱性，也不靠比喻，评委一眼就能对上常见评价体系。 */
   A.RANKS = [
-    { k: 'S', name: '满仓', min: 0.92, tone: 'ok',
-      desc: '余额几乎填满整个账户，阅读基本没有生词障碍，可以直接上真题和写作。',
-      next: '保持复现：每周过一遍「模糊」词，防止余额回落。' },
-    { k: 'A', name: '厚实', min: 0.85, tone: 'ok',
-      desc: '底子厚，只剩零散空洞，属于「能考、能读」的水平。',
-      next: '往满仓顶：重点是把「模糊」那部分词转成确定认识。' },
-    { k: 'B+', name: '稳健', min: 0.75, tone: 'warn',
+    { k: 'S', name: '卓越', min: 0.92, tone: 'ok',
+      desc: '大纲词汇几乎全覆盖，阅读基本没有生词障碍，可以直接上真题和写作。',
+      next: '保持复现：每周过一遍「模糊」词，防止回落。' },
+    { k: 'A', name: '优秀', min: 0.85, tone: 'ok',
+      desc: '核心词汇扎实，只剩零散漏洞，属于「能考、能读」的水平。',
+      next: '往 92% 顶：重点是把「模糊」那部分词转成确定认识。' },
+    { k: 'B+', name: '良好', min: 0.75, tone: 'warn',
       desc: '高频词基本拿下，中低频段还有成片缺口。',
       next: '按频段补：优先填 3k-5k 段的缺口，同样的时间收益最大。' },
-    { k: 'B', name: '够花', min: 0.65, tone: 'warn',
+    { k: 'B', name: '中等', min: 0.65, tone: 'warn',
       desc: '日常阅读能应付，但写作和长难句会频繁卡词。',
       next: '每天固定 50 词，用「分组检测」一段一段推进。' },
-    { k: 'C', name: '吃紧', min: 0.50, tone: 'bad',
-      desc: '高频词开始透支，阅读速度会被生词拖住。',
+    { k: 'C', name: '偏弱', min: 0.50, tone: 'bad',
+      desc: '高频词仍有明显漏洞，阅读速度会被生词拖住。',
       next: '先只练最高频 2k 词，把地基打牢再往上走。' },
-    { k: 'D', name: '见底', min: 0, tone: 'bad',
-      desc: '账户余额见底（大纲词汇不到一半），直接刷题会一直在查词。',
+    { k: 'D', name: '基础薄弱', min: 0, tone: 'bad',
+      desc: '大纲词汇掌握不到一半，直接刷题会一直在查词。',
       next: '从高中/初中核心词补起，再回来刷四六级大纲。' }
   ];
   // 报告里标在阶梯上的参考刻度
@@ -1283,13 +1282,13 @@
     var bs = A.bankShort();
     if (es.kind === 'full') {
       var mainFull = strict ? es.strictVocab : es.looseVocab;
-      title = bs + '大纲 · 词汇账户余额'; heroNum = '<span data-count="' + mainFull + '">' + mainFull.toLocaleString('en-US') + '</span><i>词</i>';
+      title = bs + '大纲 · 词汇量估算'; heroNum = '<span data-count="' + mainFull + '">' + mainFull.toLocaleString('en-US') + '</span><i>词</i>';
       sub = '已覆盖 ' + pct(t.tested, t.total) + '% 词库，接近实测值 · 严格口径（只算认识）' + es.strictVocab.toLocaleString('en-US') +
         ' 词 / 折中口径（模糊算一半）' + es.looseVocab.toLocaleString('en-US') + ' 词';
     } else if (es.kind === 'sample') {
       var main = strict ? es.strictVocab : es.looseVocab;
       var lo = strict ? es.strictLo : es.lo, hi = strict ? es.strictHi : es.hi;
-      title = bs + '大纲 · 词汇账户余额'; heroNum = '<span data-count="' + main + '" data-pre="≈ ">≈ ' + main.toLocaleString('en-US') + '</span><i>词</i>';
+      title = bs + '大纲 · 词汇量估算'; heroNum = '<span data-count="' + main + '" data-pre="≈ ">≈ ' + main.toLocaleString('en-US') + '</span><i>词</i>';
       sub = '基于最近一次 ' + es.n + ' 词随机抽样（' + fmtDate(es.ts) + '）· 95% 区间 ' +
         lo.toLocaleString('en-US') + ' ~ ' + hi.toLocaleString('en-US') +
         ' · 另一口径 ' + (strict ? '折中（模糊算一半）' : '严格（只算认识）') + ' ≈ ' +
@@ -1297,10 +1296,10 @@
         (es.n < 50 ? ' · 样本偏小，误差较大' : '') +
         (es.pre / es.n > 0.2 ? ' · 注意：本次抽样有 ' + Math.round(es.pre / es.n * 100) + '% 的词此前已测过，受复习效应影响估算可能偏高' : '');
     } else {
-      title = '账户里还没有可靠的余额'; heroNum = '';
+      title = '还没有可靠的词汇量估算'; heroNum = '';
       sub = t.tested
         ? ('已测 ' + t.tested + ' 词，但这些数据来自分组检测，不是随机抽样，不能外推成词汇量。做一次「快速摸底」即可得到估算。')
-        : '先做一次「快速摸底」（随机抽 100 词，约 3 分钟），就能看到带置信区间的账户余额。';
+        : '先做一次「快速摸底」（随机抽 100 词，约 3 分钟），就能得到带置信区间的词汇量估算。';
     }
 
     var h = '';

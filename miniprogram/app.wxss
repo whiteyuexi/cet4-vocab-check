@@ -1,0 +1,71 @@
+/* 词汇账户余额查询 · 全局样式
+   设计语言对齐网页版 src/app.css 的浅色主题（--bg/--ink/--accent 等取值一致），
+   但去掉了小程序不支持的部分：backdrop-filter 毛玻璃、feTurbulence 颗粒、多层 drop-shadow 合成。
+   这里只用纯色 + 单层阴影 + 圆角，保证在任何机型上都不糊、不掉帧。 */
+page {
+  background: #EDF0F6;
+  color: #101319;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.page { padding: 24rpx 28rpx 60rpx; box-sizing: border-box; min-height: 100vh; }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 4rpx rgba(16,19,25,.03), 0 18rpx 40rpx -26rpx rgba(16,19,25,.32);
+}
+.card-tight { padding: 26rpx 28rpx; }
+
+/* ---------- 文字层级 ---------- */
+.t1 { font-size: 34rpx; font-weight: 700; letter-spacing: .3rpx; color: #101319; }
+.t2 { font-size: 26rpx; color: #575E6B; }
+.t3 { font-size: 23rpx; color: #8B93A3; }
+.mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+.num { font-variant-numeric: tabular-nums; }
+.bold { font-weight: 700; }
+.ok { color: #0A6B4A; }
+.warn { color: #8A5A10; }
+.bad { color: #B02E22; }
+.accent { color: #2A5BE0; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 92rpx; border-radius: 20rpx;
+  font-size: 30rpx; font-weight: 600;
+  background: #F3F5FA; color: #101319;
+  border: 1rpx solid rgba(16,19,25,.06);
+}
+.btn:active { transform: scale(.985); opacity: .92; }
+.btn-primary { background: #2A5BE0; color: #FFFFFF; border-color: #2A5BE0; }
+.btn-ghost { background: transparent; border: 1rpx solid rgba(16,19,25,.14); color: #575E6B; }
+.btn-sm { height: 68rpx; font-size: 26rpx; border-radius: 16rpx; }
+.btn[disabled], .btn.disabled { opacity: .4; }
+
+/* ---------- 徽标 / 胶囊 ---------- */
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 4rpx 16rpx; border-radius: 999rpx;
+  font-size: 21rpx; font-weight: 600;
+  background: rgba(42,91,224,.10); color: #2A5BE0;
+}
+.chip-ok { background: #E7F5EF; color: #0A6B4A; }
+.chip-warn { background: #FBF3E4; color: #8A5A10; }
+.chip-bad { background: #FBEDEB; color: #B02E22; }
+.chip-plain { background: rgba(16,19,25,.05); color: #6B7280; }
+
+/* ---------- 进度条 ---------- */
+.bar { height: 10rpx; border-radius: 999rpx; background: rgba(16,19,25,.07); overflow: hidden; }
+.bar-in { height: 100%; border-radius: 999rpx; background: #2A5BE0; transition: width .25s ease; }
+
+/* ---------- 分隔 ---------- */
+.hr { height: 1rpx; background: rgba(16,19,25,.07); margin: 24rpx 0; }
+
+/* ---------- 空态 ---------- */
+.empty { text-align: center; padding: 80rpx 0; color: #8B93A3; font-size: 26rpx; }

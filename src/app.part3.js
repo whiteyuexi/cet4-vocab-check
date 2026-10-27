@@ -121,7 +121,7 @@
         return A.BAND_NAMES[x.band] + ' ' + Math.round(x.p * 100) + '%';
       }).join(' / '));
     }
-    L.push('（由「词汇账户余额查询」生成，数据仅存本机）');
+    L.push('（由「四六级词汇量检测」生成，数据仅存本机）');
     return L.join('\n');
   };
 
@@ -160,7 +160,7 @@
     var prof = A.bandProfile();
     var rows = prof.rows.filter(function (r) { return r.N > 0; });
     var h = '';
-    h += '<div class="sec-title">资产结构 · 按词频段<span class="line"></span><span class="tiny">' +
+    h += '<div class="sec-title">词频分布 · 按词频段<span class="line"></span><span class="tiny">' +
       (prof.source === 'sample'
         ? '来自最近一次分层抽样（' + prof.n + ' 词）'
         : '来自已测的 ' + prof.n + ' 词，非随机样本，仅供参考') + '</span></div>';

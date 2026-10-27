@@ -36,7 +36,7 @@ for (const [name, svg] of variants) {
   const col = document.createElement('div');
   col.className = 'col';
   col.innerHTML = '<h4>' + name + '</h4>' +
-    '<div class="bar"><i style="display:block;width:26px;height:26px">' + svg.replace('<svg ', '<svg width="26" height="26" ') + '</i><span>词汇账户</span></div>' +
+    '<div class="bar"><i style="display:block;width:26px;height:26px">' + svg.replace('<svg ', '<svg width="26" height="26" ') + '</i><span>四六级词汇量检测</span></div>' +
     '<div class="sizes">' +
       [16, 20, 24, 32, 64, 128].map(s => '<div><i style="display:block;width:' + s + 'px;height:' + s + 'px">' +
         svg.replace('<svg ', '<svg width="' + s + '" height="' + s + '" ') + '</i><span>' + s + '</span></div>').join('') +

@@ -102,7 +102,14 @@ win.addEventListener('load', () => {
   return left.length === 0;
 })(), '注入的残留应被移除');
 
-check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc.getElementById('view').textContent));
+check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.test(doc.getElementById('view').textContent));
+// 命名回摆的护栏：等级名必须是中性评价词，界面上不能再出现账本比喻
+{
+  const names = A.RANKS.map(r => r.name).join('/');
+  check('六个等级名是中性评价词', names === '卓越/优秀/良好/中等/偏弱/基础薄弱', names);
+  const viewTx = doc.getElementById('view').textContent;
+  check('界面不再出现账本比喻', !/词汇账户|资产结构|满仓|够花|见底/.test(viewTx), viewTx.slice(0, 40));
+}
       A.S.samples = []; A.save(); A.go('stats');
     });
 
@@ -170,7 +177,7 @@ check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc
       check('存档结构完整', !!(saved && saved.status && Object.keys(saved.status).length > 0), Object.keys(saved.status).length + ' 条状态');
       check('存档含未完成会话', !!saved.session && saved.session.queue.length === 8);
       A.addSample({ n: 100, k: 60, f: 20 }); A.save(); A.go('home');
-      check('首页显示抽样估算', /词汇账户余额/.test(doc.getElementById('view').textContent));
+      check('首页显示抽样估算', /词汇量估算/.test(doc.getElementById('view').textContent));
       check('首页显示继续检测', /继续检测/.test(doc.getElementById('view').textContent));
       A.go('groups');
       const colored = qa('.gbtn.done, .gbtn.part').length;
@@ -247,7 +254,7 @@ check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc
     const stAll = A.stratEstimate(A.scoreBands(allRight, false), 1000);
     check('全对时区间不坍缩', stAll.half > 50, '20 题全对 → ±' + stAll.half + ' 词');
     A.go('home');
-    check('首页给出估算与区间', /词汇账户余额/.test(q('.hero h1').textContent), q('.hero h1').textContent);
+    check('首页给出估算与区间', /词汇量估算/.test(q('.hero h1').textContent), q('.hero h1').textContent);
     check('标注抽样来自分层', /随机抽样/.test(doc.getElementById('view').textContent));
     A.S.samples = []; A.S.session = null; A.S.status = {}; A.save();
   });
@@ -332,7 +339,7 @@ check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc
 
     A.addSample({ n: 100, k: 60, f: 20 }); A.save(); A.go('home');
     const heroTxt = q('.hero h1').textContent;
-    check('随机样本足够时给出估算', /词汇账户余额/.test(heroTxt), heroTxt);
+    check('随机样本足够时给出估算', /词汇量估算/.test(heroTxt), heroTxt);
 
     const g1 = A.groups()[5].map(i => A.WORDS[i].w).join(',');
     A.S.settings.includeExt = true;
@@ -378,7 +385,7 @@ check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc
           A2 ? Object.keys(A2.S.status).length + ' 条（期望 ' + global.__statusCount + '）' : 'n/a');
         check('刷新后恢复未完成会话', !!A2 && !!A2.S.session);
         const v2 = dom2.window.document.getElementById('view').innerHTML;
-        check('刷新后首页渲染', /词汇账户余额/.test(v2));
+        check('刷新后首页渲染', /词汇量估算/.test(v2));
         check('刷新后随机样本仍保留', (A2.S.samples || []).length >= 1, JSON.stringify((A2.S.samples || []).length));
         check('刷新后检测顺序不变（第 1 组仍是同一批词）',
           !!A2 && A2.groups()[0].join(',') === global.__g1,

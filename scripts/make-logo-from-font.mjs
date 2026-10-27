@@ -73,13 +73,13 @@ const gauge = `<g>
 /* ---------- 组装 ---------- */
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <!--
-  词汇账户余额查询 · 标识「30」
+  四六级词汇量检测 · 标识「30」
   「3」取自 ${path.basename(FONT)} 的字形轮廓（已转路径，不依赖系统字体）；
   「0」是仪表盘，比例取自作者原图实测：外径 64 / 环厚 10.6 / 内孔约占直径 34% / 橙扇区右上约 85°。
   为什么这么做：手工几何拼的 3 会读成 Ξ / Ǝ / ヨ（四种构造都试过），字形必须交给字体设计师。
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${VB_H}" width="${VB_W}" height="${VB_H}" role="img" aria-label="30 · 词汇账户余额查询">
-  <title>词汇账户余额查询</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${VB_H}" width="${VB_W}" height="${VB_H}" role="img" aria-label="30 · 四六级词汇量检测">
+  <title>四六级词汇量检测</title>
   ${g3}
   ${gauge}
 </svg>

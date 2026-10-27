@@ -14,7 +14,7 @@ import PptxGenJS from 'pptxgenjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SHOTS = path.join(ROOT, 'docs', 'screenshots');
-const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '词汇账户余额查询-路演.pptx');
+const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '四六级词汇量检测-路演.pptx');
 
 /* 令牌 */
 const C = {
@@ -28,9 +28,9 @@ const W = 13.333, H = 7.5, M = 0.9, CW = W - M * 2;
 const pptx = new PptxGenJS();
 pptx.defineLayout({ name: 'RS', width: W, height: H });
 pptx.layout = 'RS';
-pptx.author = '词汇账户余额查询';
+pptx.author = '四六级词汇量检测';
 pptx.company = '广东亚视演艺职业学院 · 信息工程学院';
-pptx.title = '词汇账户余额查询 · 路演';
+pptx.title = '四六级词汇量检测 · 路演';
 
 let page = 0;
 const TOTAL = 13;
@@ -100,11 +100,11 @@ function pic(s, file, x, y, w, h) {
   const s = slide({ kicker: '筑视界 · 码绘交互 ／ Web 前端开发创意技能大赛' });
   s.addShape(pptx.ShapeType.rect, { x: W - M - 0.42, y: 1.2, w: 0.42, h: 0.42, fill: { color: C.orange } });
   title(s, '测准，\n然后告诉你该背哪些词', { y: 1.15, sz: 56, h: 2.2 });
-  sub(s, '词汇账户余额查询 —— 一台词汇量测量仪，不是一个背单词 App', 3.35);
-  band(s, [['7,175', '词条，全带音标'], ['9,204', '英中对照例句'], ['387', '条自动化断言'], ['2.08 MB', '单文件 · 断网可用']]);
+  sub(s, '四六级词汇量检测 —— 一台词汇量测量仪，不是一个背单词 App', 3.35);
+  band(s, [['7,175', '词条，全带音标'], ['9,204', '英中对照例句'], ['391', '条离线断言'], ['2.09 MB', '单文件 · 断网可用']]);
   s.addNotes('开场 20 秒：先说结论——我们做的不是背单词 App，是一台词汇量测量仪。'
     + '它测出来的不是一个数字，而是"带误差的词汇量 + 差在哪几段 + 接下来背哪些词"。'
-    + '四个数字先给评委一个体量感：词库 7,175，例句 9,204，测试断言 387，整个东西就一个 2 MB 的文件，断网也能跑。');
+    + '四个数字先给评委一个体量感：词库 7,175，例句 9,204，测试断言 391，整个东西就一个 2 MB 的文件，断网也能跑。');
 }
 
 /* ============================ 02 痛点 ============================ */
@@ -355,7 +355,7 @@ function pic(s, file, x, y, w, h) {
 /* ============================ 11 可信度 ============================ */
 {
   const s = slide({ kicker: '为什么可信' });
-  title(s, '一个 2 MB 的文件，387 条断言守着', { sz: 38 });
+  title(s, '一个 2 MB 的文件，391 条断言守着', { sz: 38 });
   s.addText('抽样与区间估计这类东西，肉眼验收不了。所以全部写成断言：', {
     x: M, y: 2.0, w: CW, h: 0.4, fontFace: F, fontSize: 14, color: C.ink2,
   });
@@ -374,8 +374,8 @@ function pic(s, file, x, y, w, h) {
   s.addText('断网、空目录、全新浏览器配置下，全部功能照常——这是"发到别人电脑上也能用"的证明。', {
     x: M, y: 5.55, w: CW, h: 0.4, fontFace: F, fontSize: 13, color: C.ink,
   });
-  band(s, [['387', '条自动化断言'], ['11', '个测试套件'], ['2.08 MB', '单文件'], ['0', '运行时依赖']]);
-  s.addNotes('这页解决"是不是课程作业"的疑虑。387 条断言、11 个套件，最后一组专门验"发给别人能不能用"：'
+  band(s, [['391', '条离线断言'], ['11', '个测试套件'], ['2.09 MB', '单文件'], ['0', '运行时依赖']]);
+  s.addNotes('这页解决"是不是课程作业"的疑虑。391 条离线断言（另 7 条联网）、11 个套件，最后一组专门验"发给别人能不能用"：'
     + '空目录 + 全新浏览器配置 + 屏蔽全部网络，功能照常。');
 }
 

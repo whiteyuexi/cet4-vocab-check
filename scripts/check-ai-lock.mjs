@@ -26,7 +26,7 @@ if (!PASS && _hasLock) {
 
 // 收件人视角：孤立目录 + 全新配置
 const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-'));
-const shared = path.join(inbox, '词汇账户余额查询.html');
+const shared = path.join(inbox, '四六级词汇量检测.html');
 fs.copyFileSync(SRC, shared);
 const PORT = 9650 + Math.floor(Math.random() * 200);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'lockprof-'));

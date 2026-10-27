@@ -1,0 +1,57 @@
+/* 答题页样式 */
+.qhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.qlabel { font-size: 25rpx; color: #575E6B; flex: 1; }
+.qtoggle { font-size: 23rpx; color: #2A5BE0; background: rgba(42,91,224,.10); padding: 6rpx 18rpx; border-radius: 999rpx; }
+.tiny { font-size: 22rpx; color: #8B93A3; margin: 12rpx 0 24rpx; }
+
+.wordcard { text-align: center; padding: 46rpx 34rpx 40rpx; }
+.wtop { display: flex; gap: 12rpx; justify-content: center; margin-bottom: 26rpx; }
+.word { font-size: 76rpx; font-weight: 700; letter-spacing: .5rpx; line-height: 1.2; word-break: break-all; }
+.phon { font-size: 28rpx; color: #8B93A3; margin-top: 10rpx; }
+.reveal .mean { font-size: 31rpx; color: #101319; line-height: 1.6; }
+
+/* 自评三键 */
+.judges { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.jbtn { flex: 1; height: 108rpx; font-size: 30rpx; border-radius: 22rpx; background: #FFFFFF; border: 1rpx solid rgba(16,19,25,.07); }
+.j-no { color: #B02E22; }
+.j-fuzzy { color: #8A5A10; }
+.j-yes { color: #0A6B4A; }
+.jbtn.on { border-width: 3rpx; font-weight: 700; }
+.j-no.on { border-color: #B02E22; background: #FBEDEB; }
+.j-fuzzy.on { border-color: #8A5A10; background: #FBF3E4; }
+.j-yes.on { border-color: #0A6B4A; background: #E7F5EF; }
+.rejudge-tip { text-align: center; margin: 4rpx 0 14rpx; }
+.skipbtn { margin-bottom: 16rpx; }
+.nextbtn { margin-top: 8rpx; }
+
+/* 四选一 */
+.opts { display: flex; flex-direction: column; gap: 16rpx; margin-bottom: 18rpx; }
+.opt {
+  background: #FFFFFF; border: 1rpx solid rgba(16,19,25,.07);
+  border-radius: 22rpx; padding: 30rpx 28rpx;
+  font-size: 30rpx; line-height: 1.45;
+}
+.opt:active { background: #F5F7FB; }
+.opt.right { border-color: #0A6B4A; background: #E7F5EF; color: #0A6B4A; font-weight: 600; }
+.opt.wrong { border-color: #B02E22; background: #FBEDEB; color: #B02E22; font-weight: 600; }
+
+/* 底部 */
+.qfoot { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.qfoot .btn { flex: 1; }
+.counts { margin-top: 22rpx; }
+
+/* 退出弹窗 */
+.mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(16,19,25,.42);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 20;
+}
+.dialog {
+  width: 100%; background: #FFFFFF;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+}
+.dg-sub { margin: 10rpx 0 26rpx; line-height: 1.55; }
+.dialog .btn { margin-bottom: 14rpx; }
+.quit-drop { color: #B02E22; }

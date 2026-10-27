@@ -1,5 +1,5 @@
 /* ==========================================================================
-   词汇账户余额查询 · 样式表
+   四六级词汇量检测 · 样式表
    设计方向：柔和渐变玻璃（Soft Gradient Glass）
    层次感配方：1px 细边框 + 内侧顶高光 + 一层大而柔的负扩散阴影
    ========================================================================== */
@@ -1346,7 +1346,7 @@ html[data-theme="dark"] .g-step code{background:rgba(255,255,255,.1)}
 html[data-theme="dark"] .g-step.warn{background:rgba(224,177,92,.1)}
 .guide::-webkit-scrollbar{width:5px}
 .guide::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:5px}
-/* 顶栏品牌：主标「词汇账户」+ 功能签「余额查询」（完整名太长，界面里分两段显示） */
+/* 顶栏品牌：主标「四六级词汇量检测」（完整名较长，靠字号与字重压住单行） */
 .logo .logo-sub{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;
   font-size:10px;font-weight:650;letter-spacing:.02em;vertical-align:1px;
   color:var(--accent);background:var(--accent-soft);border:1px solid rgba(42,91,224,.22)}
