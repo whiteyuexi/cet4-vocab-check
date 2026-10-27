@@ -32,7 +32,9 @@
     "all": "npm run build && npm test && npm run audit",
     "ppt": "node scripts/make-pptx.mjs",
     "ppt:shots": "node scripts/make-ppt-shots.mjs",
-    "ppt:check": "py scripts/pptx-check.py"
+    "ppt:check": "py scripts/pptx-check.py",
+    "ppt:roadshow": "node scripts/make-ppt-roadshow.mjs",
+    "ppt:taste": "node scripts/make-ppt-taste.mjs"
   },
   "devDependencies": {
     "jsdom": "^29.0.0",
