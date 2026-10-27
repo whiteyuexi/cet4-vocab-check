@@ -100,10 +100,22 @@ try {
   await sleep(400);
 
   console.log('⑥ 例句与释义（答题揭示态）');
+  /* autoNext 必须关掉：它默认开着，点完作答会在 850ms 后自动跳下一题，
+     截图拍到的是下一题的未揭示态——README 里那张"例句与释义"一直是错的。 */
+  /* 三个坑一起修：
+     ① autoNext 默认开着，点完 850ms 就跳下一题 → 截到的是未揭示态，先关掉；
+     ② 随机抽到的词可能没有例句（比如 generator），这张图要的是"例句" → 手动挑一个必有例句的词；
+     ③ 用 list 会话只放这一个词，避免"再点一下就到下一题"。 */
   await evalJs(`(function(){
     var A = window.__APP__;
-    A.S.settings.mode = 'self'; A.save();
-    A.startSession('probe', { target: 250 });
+    A.S.settings.mode = 'self'; A.S.settings.autoNext = false; A.save();
+    var pool = A.activePool(), pick = null;
+    for (var i = 0; i < pool.length; i++) {
+      var w = A.WORDS[pool[i]].w;
+      if (window.SENTENCES && window.SENTENCES[w]) { pick = pool[i]; break; }
+    }
+    if (pick === null) pick = pool[0];
+    A.startSession('list', { list: [pick], label: '例句展示 · ' + A.WORDS[pick].w });
     return 1;
   })()`);
   await sleep(700);

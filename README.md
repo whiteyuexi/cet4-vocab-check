@@ -328,7 +328,7 @@ scripts/
   process-ai-logo.mjs      AI 原图：抠底 + 裁边 + 六档导出
   make-readme-shots.mjs    README 截图批拍
   make-ppt-shots.mjs       PPT 实拍批拍
-  make-deck.mjs            演示稿生成器（roadshow 19 页 / detail 26 页）
+  make-deck.mjs            演示稿生成器（roadshow 22 页 / detail 29 页）
 smoke-test.js         187 项功能测试
 btest.js              生成真实浏览器断言页（配 scripts/run-btest.mjs 自动跑分）
 data/                 第三方原始数据（不提交，见 data/README.md）

@@ -155,15 +155,16 @@ page_({ kind: 'cover' });
 
 page_({
   kind: 'imgRight', img: '01-home.png', ratio: 1.77,
-  kicker: '做这个的原因', title: '我先给自己测了一次',
-  lead: '我高考英语 30 分。想补，但得先知道自己现在到底有多少词量。',
+  kicker: '做这个的原因', title: '先给自己测一次',
+  lead: '小明同学高考英语 30 分。想补，但得先知道自己现在到底有多少词量。',
   items: [
     ['搜到的测试只给一个数', '说「你的词汇量是 4000」，可这个数误差多大，没人讲'],
     ['知道了数字也没用', '我不知道是高频词没打牢，还是冷门词压根没见过'],
     ['下一步通常是买课', '我想要的是「先背哪 200 个词」这种能直接执行的东西'],
+    ['规划焦虑', '很多人都会对自己接下来要做什么产生焦虑，陷入各种陷阱'],
   ],
   note: '所以这个工具只做两件事：把数字测准，然后告诉你背哪些词。背单词的事交给你习惯用的 App。',
-  notes: '开场先讲这句：我高考英语 30 分。然后说三件事：只给数字没用、不知道差在哪、下一步通常是买课。这一页的目的是让评委觉得这人是为自己做的。',
+  notes: '开场先讲这句：我高考英语 30 分。然后说三件事：只给数字没用、不知道差在哪、下一步通常是买课。最后那条规划焦虑是自己的体会：不知道下一步做什么，比数字低更让人难受。',
 });
 
 page_({
@@ -325,6 +326,35 @@ page_({
 });
 
 page_({
+  kind: 'text', kicker: 'AI 技术清单', title: '这个项目到底用到了哪些 AI 技术',
+  lead: '五层，每一层都能指到具体文件，不是"接了个模型"就说融合。',
+  layout: 'table',
+  rows: [
+    ['1 · 工具调用（Function Calling）', '8 个只读工具 + 1 个动作工具，最多 3 轮；模型决定调哪个、怎么解释，数字由工具返回'],
+    ['2 · 检索增强（RAG）', '本地 9,204 句英中语料建倒排索引，按可读性打分检索，把真实例句当证据注入'],
+    ['3 · 提示工程', 'System Prompt 三条硬规矩：不许自己算数、数据不足要说、口径只有严格和折中两种'],
+    ['4 · 流式输出与可见性', 'SSE 推 mode / tool / delta / actions / done；界面把调了哪些工具、拿到什么摊给你看'],
+    ['5 · 多后端与降级', 'DeepSeek、OpenAI 兼容接口、本地 Ollama 可切换；没有后端就退到确定性规则引擎'],
+  ],
+  note: '前四层是"用 AI 把结论变成行动"，第五层是"没有 AI 也能用"——这两件事同时成立才算融合。',
+  notes: '这页是评委最关心的。不要念表格，按 1→5 说一句一层，重点落在"数字不由模型生成"和"没有后端也能用"。'
+});
+
+page_({
+  kind: 'imgRight', img: '06-example.png', ratio: 1.77,
+  kicker: 'AI 技术 · 检索', title: '例句是查出来的，不是模型编的',
+  lead: '模型很容易编出一句"看着像"的例句，所以例句一律从本地语料里检索。',
+  items: [
+    ['语料', '9,204 句英中对照，来自 Tatoeba（CC-BY 2.0 FR），构建期建成倒排索引'],
+    ['怎么挑', '同一单词的候选句按可读性打分：词数接近 10–12、长度 60–80 字符、主语开头加分'],
+    ['谁在用', '回答里需要举例时，模型调工具取真实例句，界面直接标来源'],
+    ['为什么不用向量库', '向量方案要拖几十 MB 权重，会毁掉"单文件 + 断网可用"，所以只做检索'],
+  ],
+  note: '这条是"AI 少说假话"的具体做法：能查到的就查，查不到就不编。',
+  notes: '这页讲 RAG。一句话说清取舍：我们有 9,204 句现成语料，做成索引按需检索就够，不需要向量库。'
+});
+
+page_({
   kind: 'text', kicker: '自定义词书', title: '换成你手上的词书，检测引擎一行没改',
   lead: '考研、雅思、专业课词汇都能导入，但要先说清它能说明什么。',
   layout: 'table',
@@ -380,6 +410,9 @@ page_({
 });
 
 page_({ kind: 'closing' });
+
+/* 用户自己加的一页：放演示视频。文案保留「视频展示」，做成一张深色分隔页。 */
+page_({ kind: 'split', title: '视频展示', note: '演示视频 / 现场播放' });
 
 /* ---------------- 详细资料稿才有的附录页 ---------------- */
 page_({
@@ -481,12 +514,25 @@ function renderCover(p) {
   s.addText('测准一个数，再告诉你背哪些词', { x: M, y: 4.0, w: CW, h: 0.5, fontFace: F, fontSize: 19, color: 'D6D2C6' });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 4.85, w: CW, h: 0.012, fill: { color: '3A362C' } });
   nums(s, [['7,175', '词条，全部带音标'], ['9,204', '英中对照例句'], ['413', '条离线断言'], ['2.11 MB', '单文件，断网可用']], 5.1, { sz: 26, color: C.white });
-  s.addText('广东亚视演艺职业学院 · 信息工程学院　｜　单人作品　｜　github.com/whiteyuexi/cet4-vocab-check', {
+  s.addText('广东亚视演艺职业学院 · 人工智能学院　｜　李壹铭　｜　github.com/whiteyuexi/cet4-vocab-check', {
     x: M, y: 6.55, w: CW, h: 0.32, fontFace: F, fontSize: 10.5, color: '8E887C',
   });
   s.addNotes(MODE === 'detail'
     ? '这是详细资料稿，28 页，按"问题 → 怎么测 → 怎么诊断 → 怎么规划 → 怎么验证 → 工程质量"的顺序排。'
     : '开场 20 秒：我是谁，为什么做这个。不要念标题，直接说"我高考英语 30 分"这句。');
+}
+
+function renderSplit(p) {
+  const s = base();
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.ink } });
+  s.addText(p.title, {
+    x: 0, y: 3.0, w: W, h: 0.9, fontFace: F, fontSize: 40, bold: true, color: C.white, align: 'center',
+  });
+  s.addShape(pptx.ShapeType.rect, { x: W / 2 - 0.9, y: 4.02, w: 1.8, h: 0.075, fill: { color: C.orange } });
+  if (p.note) s.addText(p.note, {
+    x: 0, y: 4.3, w: W, h: 0.4, fontFace: F, fontSize: 13, color: '9A9488', align: 'center',
+  });
+  s.addNotes('这一页放演示视频：现场播放或提前嵌入。播完直接进收尾，不要再补信息。');
 }
 
 function renderClosing(p) {
@@ -549,6 +595,7 @@ function build() {
     CUR = null;
     if (p.kind === 'cover') renderCover(p);
     else if (p.kind === 'closing') renderClosing(p);
+    else if (p.kind === 'split') renderSplit(p);
     else if (p.kind === 'text') renderText(p);
     else if (p.kind === 'imgRight') {
       const s = base();
