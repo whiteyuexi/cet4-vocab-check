@@ -462,15 +462,27 @@
       '<br>三种形态都只上行汇总数据（覆盖率、频段掌握率、未掌握词清单），<b>逐题作答不出本机</b>。' +
       '</div></div>';
 
-    // 每日时间预算：本地方案要用它把"每天多少词"算准
+    /* 每日时间预算：本地方案要用它把"每天多少词"算成具体数量。
+       三个预设只是快捷方式，用户还能自己填（5–180 分钟）——
+       每个人的通勤/自习时间都不一样，只给三档等于逼人选一个不合适的。 */
+    var dm = A.S.settings.dailyMinutes || 30;
+    var isPreset = [15, 30, 60].indexOf(dm) >= 0;
+    var perDayNow = Math.max(1, Math.round(dm / 1.5));
     h += '<div class="sec-title">每日可投入时间<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.9">' +
       '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
       [15, 30, 60].map(function (m) {
-        var on = ((A.S.settings.dailyMinutes || 30) === m);
+        var on = (dm === m);
         return '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="set-daily" data-min="' + m + '">' + m + ' 分钟</button>';
       }).join('') +
-      '</div>本地方案会用这个数把"每天背多少个词"算成具体数量（按每词约 1.5 分钟估算）。' +
+      '<span style="width:10px"></span>' +
+      '<input class="search" id="dailyMinInput" type="number" min="5" max="180" step="5" inputmode="numeric" ' +
+        'style="width:112px" value="' + dm + '" aria-label="自定义每日分钟数（5–180）">' +
+      '<button class="btn sm" data-act="set-daily-custom">应用</button>' +
+      (isPreset ? '' : '<span class="pill brand" style="margin-left:2px">自定义 ' + dm + ' 分钟</span>') +
+      '</div>' +
+      '当前设置：每天 <b>' + dm + '</b> 分钟，换算成约 <b>' + perDayNow + '</b> 个词/天' +
+      '（按每词约 1.5 分钟估算）。可填 5–180 之间的任意整数。' +
       '</div>';
 
     h += '<div class="sec-title">素材来源<span class="line"></span></div>';
@@ -618,6 +630,17 @@
           S.settings.dailyMinutes = parseInt(t.getAttribute('data-min'), 10) || 30;
           A.save(); A.render();
           break;
+        case 'set-daily-custom': {
+          // 自定义分钟数：夹到 5–180，非数字就退回 30，避免把 0 或 9999 带进计划换算
+          var di = el('dailyMinInput');
+          var raw = di ? parseInt(di.value, 10) : NaN;
+          if (!isFinite(raw) || raw <= 0) { A.toast('请填一个 5–180 之间的数字'); break; }
+          var mins = Math.max(5, Math.min(180, Math.round(raw)));
+          S.settings.dailyMinutes = mins;
+          A.save(); A.render();
+          A.toast('已设为每天 ' + mins + ' 分钟（约 ' + Math.max(1, Math.round(mins / 1.5)) + ' 词/天）');
+          break;
+        }
         case 'ai-key-save': {
           var ki = el('userKeyInput');
           var kv = ki ? ki.value.trim() : '';

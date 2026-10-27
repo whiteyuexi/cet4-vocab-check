@@ -696,7 +696,10 @@
     }
 
     if (wantPlan) {
-      var perDay = 50;
+      /* 每天能背多少词 = 每日可投入时间 ÷ 每词约 1.5 分钟（与设置页文案一致）。
+       这里必须读用户设置——之前写死 50，导致设置页那个"每日可投入时间"根本没生效。 */
+    var dailyMin = (A.S.settings && A.S.settings.dailyMinutes) || 30;
+    var perDay = Math.max(5, Math.min(200, Math.round(dailyMin / 1.5)));
       var days = 14;
       var need = Math.min(untested.length + Math.round(t.f * 0.5), perDay * days);
       out.push('**两周计划（按你的数据算的）**\n' +

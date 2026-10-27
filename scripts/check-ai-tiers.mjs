@@ -148,6 +148,44 @@ try {
   })()`);
   ok('点击 15 分钟能写入设置', daily === 15, String(daily));
 
+  /* 自定义分钟数：输入框 + 应用按钮，夹到 5–180，并且真的影响本地方案的每日词数 */
+  const custom = JSON.parse(await evalJs(`JSON.stringify((function(){
+    var A = window.__APP__;
+    var inp = document.getElementById('dailyMinInput');
+    var out = { hasInput: !!inp, type: inp ? inp.type : '' };
+    if (inp) { inp.value = '45'; document.querySelector('[data-act=set-daily-custom]').click(); }
+    out.saved = A.S.settings.dailyMinutes;
+    // 超范围要夹住
+    var i2 = document.getElementById('dailyMinInput');
+    if (i2) { i2.value = '9999'; document.querySelector('[data-act=set-daily-custom]').click(); }
+    out.clamped = A.S.settings.dailyMinutes;
+    var i3 = document.getElementById('dailyMinInput');
+    if (i3) { i3.value = '1'; document.querySelector('[data-act=set-daily-custom]').click(); }
+    out.floored = A.S.settings.dailyMinutes;
+    // 回到 45 分钟，检查本地方案的每日词数是否跟着变（45 / 1.5 = 30 词）
+    var i4 = document.getElementById('dailyMinInput');
+    if (i4) { i4.value = '45'; document.querySelector('[data-act=set-daily-custom]').click(); }
+    return out;
+  })())`));
+  ok('设置页有自定义分钟输入框', custom.hasInput === true && custom.type === 'number', custom.type);
+  ok('填 45 分钟能保存', custom.saved === 45, String(custom.saved));
+  ok('超范围被夹到 180', custom.clamped === 180, String(custom.clamped));
+  ok('过小被抬到 5', custom.floored === 5, String(custom.floored));
+
+  /* 本地方案里的「每天 N 词」必须跟着设置走（曾经写死 50，设置形同虚设）。
+     这里直接调 A.localDiagnosis 而不是走对话框：对话框在有后端时会请求模型，
+     结论取决于网络，断言会变成"看运气"的测试。 */
+  const planTxt = await evalJs(`window.__APP__.localDiagnosis('帮我安排每天背多少词')`);
+  ok('本地方案的每日词数跟随设置（45 分钟 → 30 词/天）',
+    /每天\s*30\s*词/.test(planTxt),
+    (String(planTxt).match(/每天\s*\d+\s*词/) || ['(未出现)'])[0]);
+
+  // 换个设置再验一次，确认不是巧合
+  await evalJs(`(function(){window.__APP__.S.settings.dailyMinutes = 90; window.__APP__.save(); return 1;})()`);
+  const plan90 = await evalJs(`window.__APP__.localDiagnosis('帮我安排每天背多少词')`);
+  ok('改成 90 分钟后变成 60 词/天', /每天\s*60\s*词/.test(plan90),
+    (String(plan90).match(/每天\s*\d+\s*词/) || ['(未出现)'])[0]);
+
   console.log('\n' + (fails === 0 ? '三档通路与额度验收通过' : '三档通路与额度验收失败 ' + fails + ' 项'));
   cleanup(fails === 0 ? 0 : 1);
 } catch (e) {
