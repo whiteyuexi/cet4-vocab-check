@@ -160,7 +160,7 @@
     var prof = A.bandProfile();
     var rows = prof.rows.filter(function (r) { return r.N > 0; });
     var h = '';
-    h += '<div class="sec-title">按词频段的掌握情况<span class="line"></span><span class="tiny">' +
+    h += '<div class="sec-title">资产结构 · 按词频段<span class="line"></span><span class="tiny">' +
       (prof.source === 'sample'
         ? '来自最近一次分层抽样（' + prof.n + ' 词）'
         : '来自已测的 ' + prof.n + ' 词，非随机样本，仅供参考') + '</span></div>';

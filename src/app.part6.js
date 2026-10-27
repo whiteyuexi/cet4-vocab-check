@@ -475,7 +475,7 @@
       seal.setAttribute('aria-hidden', 'true');
     }
     if (tag) {
-      tag.textContent = R.ready ? (R.rank.name + ' · 看报告') : '词汇等级报告';
+      tag.textContent = R.ready ? (R.rank.name + ' · 看报告') : '账户等级报告';
     }
     m.classList.toggle('ready', R.ready);
     m.setAttribute('aria-label', R.ready

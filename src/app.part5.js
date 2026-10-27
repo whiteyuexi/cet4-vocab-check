@@ -112,7 +112,7 @@
         text: '你这次拿下 ' + R.rank.k + ' ' + R.rank.name + '，掌握率 ' + Math.round(R.ratio * 100) +
           '%。' + (R.nextRank ? '再补 ' + R.toNext + ' 词就是 ' + R.nextRank.k + ' 了。' : '已经到顶，接下来是别让它回落。') +
           (R.fuzzyShare >= 0.4 ? ' 注意「模糊」那部分占了 ' + Math.round(R.fuzzyShare * 100) + '%，词汇量有点虚。' : ''),
-        acts: [{ label: '让 AI 深读报告', act: 'ai-ask', q: '根据我的词汇等级报告，帮我制定下一步提升计划' },
+        acts: [{ label: '让 AI 深读报告', act: 'ai-ask', q: '根据我的词汇账户等级报告，帮我制定下一步提升计划' },
                { label: '看缺口词表', act: 'go', route: 'stats' }] };
     }
 
