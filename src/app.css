@@ -1368,10 +1368,10 @@ html[data-theme="dark"] .logo{--logo-main:#7FA4FF;--logo-accent:#FF6A4D}
 .intro-logo .logo-mark{width:216px;height:105px;overflow:visible}
 @media (max-width:640px){.intro-logo .logo-mark{width:150px;height:73px}}
 @media (prefers-reduced-motion:reduce){.intro-logo{animation:none;opacity:1;transform:none}}
-/* 标识现在是作者提供的 AI 原图（透明底 PNG 内联）。用 height 定高、宽度自适应，
+/* 标识现在是作者提供的 AI 原图（透明底 PNG 内联）。\n   尺寸上限由源图决定：原图里标识只有 216×122 像素，256 档资产在 2x 屏上清晰的极限约 128 CSS px。\n   想要更大的清晰标识，需要重新生成 1024px 的原图（见 NEXT.md）。\n   用 height 定高、宽度自适应，
    避免不同尺寸下变形；深色模式轻微提亮，蓝底不会糊进背景。 */
 .logo .logo-mark{width:auto;height:15px;flex:none;display:block}
 html[data-theme="dark"] .logo .logo-mark{filter:brightness(1.28) saturate(1.05)}
-.intro-logo .logo-mark{width:216px;height:auto}
+.intro-logo .logo-mark{width:128px;height:auto}
 html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
-@media (max-width:640px){.intro-logo .logo-mark{width:150px;height:auto}}
+@media (max-width:640px){.intro-logo .logo-mark{width:112px;height:auto}}

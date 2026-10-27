@@ -55,12 +55,12 @@ try {
     var bg = [p[0], p[1], p[2]];
 
     // 2) 色键：到底色距离越近 → 越透明（带羽化，避免边缘出现灰边）
-    var THRESH = 46;
+    var THRESH = 34;
     for (var i = 0; i < p.length; i += 4) {
       var dr = p[i] - bg[0], dg = p[i+1] - bg[1], db = p[i+2] - bg[2];
       var dist = Math.sqrt(dr*dr + dg*dg + db*db);
       // 底纸有细微纹理，硬切到 20 才开始给不透明度，避免整张画布留一层半透明噪点
-      var a = dist <= 20 ? 0 : (dist >= THRESH ? 255 : Math.round((dist - 20) / (THRESH - 20) * 255));
+      var a = dist <= 30 ? 0 : (dist >= THRESH ? 255 : Math.round((dist - 30) / (THRESH - 30) * 255));
       p[i+3] = Math.min(p[i+3], a);
     }
     g.putImageData(d, 0, 0);
