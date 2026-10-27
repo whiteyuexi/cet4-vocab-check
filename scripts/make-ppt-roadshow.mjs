@@ -33,7 +33,7 @@ pptx.company = '广东亚视演艺职业学院 · 信息工程学院';
 pptx.title = '词汇账户余额查询 · 路演';
 
 let page = 0;
-const TOTAL = 12;
+const TOTAL = 13;
 
 /* ---------- 版式框架 ---------- */
 function slide(opts = {}) {
@@ -303,6 +303,31 @@ function pic(s, file, x, y, w, h) {
   band(s, [['8 + 1', '个工具（含动作）'], ['3 轮', '工具调用上限'], ['0', '逐题作答上传'], ['∞', '本地方案不限次']]);
   s.addNotes('AI 这一页要防止两种误解：一是"随便接了个模型"，二是"AI 在瞎编数字"。'
     + '所以我们讲三点：模型不做算术（数字全来自工具）、三档通路（谁付费说清楚）、双向联动（图能问、答能点）。');
+}
+
+/* ============================ AI 技术清单（路演版新增） ============================ */
+{
+  const s = slide({ kicker: 'AI 技术清单' });
+  title(s, '我们用了哪些 AI 技术：五条，都能落到代码', { sz: 38 });
+  const tech = [
+    ['Function Calling Agent', '模型决定调哪个工具：8 个工具、最多 3 轮、每轮重新取数。数字全部来自工具返回。'],
+    ['轻量 RAG 检索', '本地 9,204 条英中例句 + 倒排索引，作为工具被按需检索（不是向量库）。'],
+    ['结构化输出驱动界面', '模型返回动作 → 前端渲染按钮 → 点击真执行；参数经前后端双白名单校验。'],
+    ['上下文注入 + 单一数据源', '图表把"你在看的那一格"带进提问；后端不重算统计，数字结构上不可能漂。'],
+    ['三级降级 + 多厂商适配', '后端 Agent → 直连厂商 → 本地规则引擎；支持 DeepSeek/通义/智谱/Ollama。'],
+  ];
+  tech.forEach((t, i) => {
+    const y = 1.95 + i * 0.92;
+    s.addShape(pptx.ShapeType.roundRect, { x: M, y, w: 0.42, h: 0.72, rectRadius: 0.1, fill: { color: C.orange } });
+    s.addText(String(i + 1), { x: M, y: y + 0.16, w: 0.42, h: 0.4, fontFace: FM, fontSize: 15, bold: true, color: C.white, align: 'center' });
+    s.addText(t[0], { x: M + 0.62, y: y + 0.02, w: 4.4, h: 0.34, fontFace: F, fontSize: 13.5, bold: true, color: C.ink });
+    s.addText(t[1], { x: M + 0.62, y: y + 0.36, w: 10.6, h: 0.4, fontFace: F, fontSize: 10.5, color: C.ink2 });
+  });
+  s.addText('对应赛题方向：① AI Agent 智能助手（强）· ⑤ AI 教育与学习平台（强）· ② Agent RAG（中）· ⑧ 数据分析与可视化（中）', {
+    x: M, y: 6.62, w: CW, h: 0.36, fontFace: F, fontSize: 10, color: C.ink3,
+  });
+  s.addNotes('如果评委问"你们的 AI 到底用在哪"，这一页就是答案：五条技术，每条一句话说清落点。'
+    + '切记不要吹成向量 RAG 或通用自主 Agent——我们的边界写在下一页的"不夸大清单"里（详细版第 22 页）。');
 }
 
 /* ============================ 10 现场演示 ============================ */

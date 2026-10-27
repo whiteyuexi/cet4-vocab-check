@@ -33,7 +33,7 @@ pptx.Company = '广东亚视演艺职业学院 · 信息工程学院';
 pptx.title = '词汇账户余额查询 · 详细版';
 
 let page = 0;
-const TOTAL = 26;
+const TOTAL = 32;
 
 /* ---------- 版式助手 ---------- */
 function slide(opt = {}) {
@@ -438,6 +438,208 @@ function band(s, items) {
   s.addNotes('这条边界主动交代能加分：说明我们知道自己方法的适用条件。');
 }
 
+/* ============================ AI 技术全景 ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 技术全景' });
+  title(s, '我们到底用了哪些 AI 技术：五层，各有代码落点');
+  const layers = [
+    ['① 交互层', '多轮对话 · SSE 流式输出 · 工具调用过程可视化', 'src/app.part4.js'],
+    ['② 编排层', 'Function Calling Agent：8 个工具 · 最多 3 轮 · 每轮重新取数', 'server/agent.mjs · tools.mjs'],
+    ['③ 检索层', '轻量 RAG：本地语料倒排索引 + 可读性打分 + 工具按需检索', 'server/corpus.mjs · build-corpus.js'],
+    ['④ 输出层', '结构化输出驱动界面：模型返回动作 → 前端渲染按钮 → 点击执行', 'tools.mjs · part4 · part3'],
+    ['⑤ 治理层', '三级降级 · 只上行汇总 · 密钥隔离 · 模型输出当不可信输入', 'part4.js · build.js · check-no-key'],
+  ];
+  layers.forEach((l, i) => {
+    const y = 1.72 + i * 0.98;
+    card(s, M, y, CW, 0.86);
+    s.addText(l[0], { x: M + 0.26, y: y + 0.12, w: 1.7, h: 0.36, fontFace: F, fontSize: 13.5, bold: true, color: C.orange });
+    s.addText(l[1], { x: M + 2.1, y: y + 0.14, w: 6.9, h: 0.6, fontFace: F, fontSize: 11, color: C.ink2, lineSpacingMultiple: 1.25 });
+    s.addText(l[2], { x: M + 9.2, y: y + 0.24, w: 3.0, h: 0.4, fontFace: FM, fontSize: 9, color: C.ink3 });
+  });
+  s.addText('一句话：不是"接了个聊天框"，而是从检索、编排到输出与治理都有明确落点的五个 AI 环节。', {
+    x: M, y: 6.5, w: CW, h: 0.4, fontFace: F, fontSize: 12, bold: true, color: C.ink,
+  });
+  s.addNotes('这页是全篇 AI 部分的目录：五层技术，每层都给出代码位置，评委可当场翻仓库核对。后面 5 页逐层展开。');
+}
+
+/* ============================ 技术①：Function Calling Agent ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 技术 ①' });
+  title(s, 'Function Calling：模型决定调哪个工具，我们不猜');
+  card(s, M, 1.66, CW * 0.54, 2.5, { fill: C.softBlue, line: 'C9D8F8' });
+  s.addText('一次诊断的循环', { x: M + 0.26, y: 1.78, w: 4, h: 0.32, fontFace: F, fontSize: 12, bold: true, color: C.blue });
+  s.addText('模型 → 返回 tool_calls → 我们执行工具 → 结果回灌 → 模型再决定\n（最多 3 轮；每轮重新取数，因为数据可能已经变了）', {
+    x: M + 0.26, y: 2.12, w: CW * 0.54 - 0.52, h: 1.9, fontFace: F, fontSize: 11.5, color: C.ink2, lineSpacingMultiple: 1.45,
+  });
+  card(s, M + CW * 0.57, 1.66, CW * 0.43, 2.5);
+  s.addText('8 个工具', { x: M + CW * 0.57 + 0.26, y: 1.78, w: 3, h: 0.32, fontFace: F, fontSize: 12, bold: true, color: C.orange });
+  s.addText('整体情况 / 频段明细 / 未掌握词 / 复习计划 /\n词库列表 / 例句检索 / 批量例句 / 给出动作', {
+    x: M + CW * 0.57 + 0.26, y: 2.12, w: CW * 0.43 - 0.52, h: 1.9, fontFace: FM, fontSize: 10.5, color: C.ink2, lineSpacingMultiple: 1.7,
+  });
+  s.addText('防幻觉的三条硬规矩（写进 System Prompt，也用断言守）', {
+    x: M, y: 4.35, w: CW, h: 0.36, fontFace: F, fontSize: 12.5, bold: true, color: C.ink,
+  });
+  const rules = [
+    ['数字只来自工具', '禁止自行计算、估算或编造任何数值'],
+    ['数据不足要拒绝', '必须明说"样本太少，不能下结论"'],
+    ['不许提工具名', '用户看不到内部函数，提了只会困惑'],
+  ];
+  rules.forEach((r, i) => {
+    const x = M + i * (CW / 3 + 0.08);
+    card(s, x, 4.8, CW / 3 - 0.16, 1.1);
+    s.addText(r[0], { x: x + 0.22, y: 4.94, w: CW / 3 - 0.6, h: 0.34, fontFace: F, fontSize: 11.5, bold: true, color: C.ink });
+    s.addText(r[1], { x: x + 0.22, y: 5.3, w: CW / 3 - 0.6, h: 0.5, fontFace: F, fontSize: 10, color: C.ink2 });
+  });
+  s.addText('验证：check-online-ai.mjs 断言「回答来自模型 + 至少调到工具 + 有依据面板」（实测 tool=3 ev=1）', {
+    x: M, y: 6.15, w: CW, h: 0.36, fontFace: F, fontSize: 10.5, color: C.ink3,
+  });
+  s.addNotes('这页讲第一个也是最核心的 AI 技术：Function Calling。重点不是"我们用了 agent"，而是"模型不做算术"这条纪律怎么落到 Prompt 与断言上。');
+}
+
+/* ============================ 技术②：轻量 RAG ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 技术 ②' });
+  title(s, '轻量 RAG：本地语料检索，但不是向量库');
+  const steps = [
+    ['语料', 'Tatoeba 英中对照 78,203 句对 → 过滤 68,987 → 覆盖 5,138 个词 → 入库 9,204 条'],
+    ['构建期', '分词匹配 + 倒排索引 + 可读性打分，每个词保留最优 2 条（首句内联进单文件产物）'],
+    ['运行期', '作为工具 get_examples / get_weak_examples 被模型按需检索，不是每次全量塞进上下文'],
+    ['离线侧', '单文件版把每词首句内联（5,138 条 / 432 KB），断网答题时也能直接展示'],
+  ];
+  steps.forEach((st, i) => {
+    const y = 1.72 + i * 1.14;
+    card(s, M, y, CW, 1.0);
+    s.addText(st[0], { x: M + 0.26, y: y + 0.12, w: 1.5, h: 0.34, fontFace: F, fontSize: 13, bold: true, color: C.orange });
+    s.addText(st[1], { x: M + 1.9, y: y + 0.14, w: CW - 2.2, h: 0.7, fontFace: F, fontSize: 11, color: C.ink2 });
+  });
+  card(s, M, 6.35, CW * 0.6, 0.62, { fill: C.softOrange, line: 'F5C7B8' });
+  s.addText('主动交代：这是「倒排检索 + 工具调用」，不是 embedding 向量检索。', {
+    x: M + 0.24, y: 6.46, w: CW * 0.6 - 0.48, h: 0.36, fontFace: F, fontSize: 10.5, bold: true, color: C.ink,
+  });
+  s.addText('为什么不用向量：要拖几十 MB 权重，会毁掉「单文件 2 MB + 断网可用」。\n下一步：构建期 int8 量化向量（约 1.1 MB 内联），让语义检索与离线共存。', {
+    x: M + CW * 0.63, y: 6.2, w: CW * 0.37, h: 0.9, fontFace: F, fontSize: 9.5, color: C.ink3, lineSpacingMultiple: 1.3,
+  });
+  s.addNotes('RAG 这页最容易被追问"你们是向量 RAG 吗"。答案是否——并且要主动说清取舍，再给出下一步。');
+}
+
+/* ============================ 技术③④：结构化输出 + 上下文注入 ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 技术 ③④' });
+  title(s, '让模型「看见你在指什么」，又「不敢瞎算」');
+  const halves = [
+    ['技术③ 结构化输出驱动界面',
+      '模型调用 suggest_actions 返回动作数组\n→ 后端白名单归一化 → SSE 事件 → 前端渲染按钮\n→ 点击复用 data-act 分发器真正执行\n\n'
+      + '白名单：go / start / review / ask\n参数越界自动归一（如 target 999 → 250）\n\n'
+      + '关键认知：模型输出是不可信输入，\n绝不把字符串当路径或函数名'],
+    ['技术④ 上下文注入 + 单一数据源',
+      '反向：图表上下文（focus）进入提问\n——频段条的「问」、地图 Shift+点击、整图解读\n\n'
+      + 'Prompt 只开一个口子：「界面显示」标注的数字\n来自本机统计，可直接引用（其余禁止估算）\n\n'
+      + '单一数据源：后端工具不重算统计，直接消费\n前端已显示的数 → 两边数字不可能漂'],
+  ];
+  halves.forEach((h, i) => {
+    const x = M + i * (CW / 2 + 0.12);
+    const w = CW / 2 - 0.12;
+    card(s, x, 1.7, w, 4.5);
+    s.addText(h[0], { x: x + 0.26, y: 1.84, w: w - 0.52, h: 0.36, fontFace: F, fontSize: 13.5, bold: true, color: C.orange });
+    s.addText(h[1], {
+      x: x + 0.26, y: 2.24, w: w - 0.52, h: 3.8, fontFace: F, fontSize: 10.5, color: C.ink2, lineSpacingMultiple: 1.5,
+    });
+  });
+  s.addText('这两件事合起来，才解决「AI 分析」最尴尬的两端：听不懂你指什么 / 一本正经地编数字。', {
+    x: M, y: 6.4, w: CW, h: 0.4, fontFace: F, fontSize: 11.5, bold: true, color: C.ink,
+  });
+  s.addNotes('这页讲两处最能体现工程判断的设计：结构化动作（含注入面防护）与上下文注入（含单一数据源）。');
+}
+
+/* ============================ 技术⑤：降级与多厂商 ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 技术 ⑤' });
+  title(s, '三级降级 + 多厂商适配：任何环境下都有答案');
+  const tiers = [
+    ['① 后端 Agent', '有后端：8 工具 + 证据面板 + 可执行动作，质量最高'],
+    ['② 直连厂商', '有 Key 无后端：浏览器直接调厂商 API（仅限允许跨域的厂商）'],
+    ['③ 本地规则引擎', '都没有或断网：确定性规则给出补词计划与验收线，不依赖任何模型'],
+  ];
+  tiers.forEach((t, i) => {
+    const y = 1.72 + i * 1.05;
+    card(s, M, y, CW * 0.56, 0.92);
+    s.addText(t[0], { x: M + 0.26, y: y + 0.1, w: 2.4, h: 0.34, fontFace: F, fontSize: 12.5, bold: true, color: C.blue });
+    s.addText(t[1], { x: M + 0.26, y: y + 0.46, w: CW * 0.56 - 0.52, h: 0.4, fontFace: F, fontSize: 10.5, color: C.ink2 });
+  });
+  const x2 = M + CW * 0.6, w2 = W - M - x2;
+  card(s, x2, 1.72, w2, 3.05);
+  s.addText('多厂商适配（OpenAI 兼容协议）', { x: x2 + 0.24, y: 1.86, w: w2 - 0.48, h: 0.34, fontFace: F, fontSize: 12, bold: true, color: C.orange });
+  s.addText('DeepSeek / 通义千问 / 智谱 / 本地 Ollama\n改 .env 里 LLM_PROVIDER 一行即可切换', {
+    x: x2 + 0.24, y: 2.24, w: w2 - 0.48, h: 0.7, fontFace: FM, fontSize: 10.5, color: C.ink2, lineSpacingMultiple: 1.5,
+  });
+  s.addText('CORS 实测结论', { x: x2 + 0.24, y: 3.0, w: w2 - 0.48, h: 0.32, fontFace: F, fontSize: 11.5, bold: true, color: C.ink });
+  s.addText('DeepSeek 允许浏览器直连（file:// 也可）\nOpenAI / 智谱 默认拒绝跨域\n→ 所以「自带 Key」档推荐 DeepSeek', {
+    x: x2 + 0.24, y: 3.34, w: w2 - 0.48, h: 1.2, fontFace: F, fontSize: 10, color: C.ink2, lineSpacingMultiple: 1.45,
+  });
+  s.addText('为什么值得说这条：很多「AI 产品」离开服务器就是白屏；我们的第三级保证任何环境下都有可用结论。', {
+    x: M, y: 5.05, w: CW, h: 0.6, fontFace: F, fontSize: 11.5, color: C.ink, bold: true,
+  });
+  band(s, [['3 级', '降级链路'], ['4 家', '模型厂商'], ['0', '逐题作答上传'], ['不限次', '本地方案']]);
+  s.addNotes('降级是工程成熟度的标志。这一页也顺带解释了为什么「自带 Key」推荐 DeepSeek——那是实测出来的。');
+}
+
+/* ============================ 赛题 AI 方向对照 ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 赛题对照' });
+  title(s, '对应赛题推荐的 AI 方向：命中四条，其余明确不碰');
+  const rows = [
+    ['⑤ AI 教育与学习平台', '强命中', '诊断到 7 个频段、等级与地基约束、具体词单与验收线'],
+    ['① AI Agent 智能助手', '强命中', 'Function Calling 8 工具 · 3 轮 · 多轮对话 · 过程可见'],
+    ['② Agent RAG 知识问答', '中命中', '本地语料 9,204 句 + 倒排索引 + 工具检索（非向量）'],
+    ['⑧ AI 数据分析与可视化', '中命中', '对话驱动查询与分析；可视化由前端组件呈现，非 AI 生成图表'],
+    ['⑨ AI 安全与内容治理', '部分命中', '只做隐私防护：只上行汇总、可核对发送内容、密钥隔离'],
+  ];
+  rows.forEach((r, i) => {
+    const y = 1.72 + i * 0.86;
+    card(s, M, y, CW, 0.76);
+    s.addText(r[0], { x: M + 0.26, y: y + 0.1, w: 3.4, h: 0.34, fontFace: F, fontSize: 12, bold: true, color: C.ink });
+    s.addText(r[1], { x: M + 3.8, y: y + 0.1, w: 1.3, h: 0.34, fontFace: F, fontSize: 11, bold: true, color: r[1] === '强命中' ? C.ok : (r[1] === '中命中' ? C.blue : C.warn) });
+    s.addText(r[2], { x: M + 5.3, y: y + 0.14, w: CW - 5.6, h: 0.5, fontFace: F, fontSize: 10, color: C.ink2 });
+  });
+  s.addText('未涉及且不硬凑：③ 多模态生成 · ④ 协同办公 · ⑥ 健康生活 · ⑦ 代码辅助 · ⑩ 社交社区', {
+    x: M, y: 6.2, w: CW, h: 0.36, fontFace: F, fontSize: 10.5, color: C.ink3,
+  });
+  s.addText('我们宁愿把四条做深，也不在十类上都「沾一点」。', {
+    x: M, y: 6.6, w: CW, h: 0.36, fontFace: F, fontSize: 11.5, bold: true, color: C.orange,
+  });
+  s.addNotes('这是评委最想看的对照页。老实说哪几类没做，比硬凑十类更能得分。');
+}
+
+/* ============================ AI 治理与不夸大 ============================ */
+{
+  const s = slide({ kicker: '六 · AI 融合 ／ 治理与边界' });
+  title(s, 'AI 治理：四条护栏 + 一份不夸大清单');
+  const guards = [
+    ['隐私', '逐题作答永不出本机；每次回答下方可展开「本次发送给模型的数据」核对'],
+    ['密钥', '仓库版恒无 Key（提交前守卫脚本拦截）；评委版内联；赛后立即轮换'],
+    ['注入面', '模型输出当不可信输入：动作双白名单、参数重新推导、不执行任何字符串'],
+    ['成本', '额度绑定「完成一次有效检测」，防止 5 词词书刷额度；只有直连才扣'],
+  ];
+  guards.forEach((g, i) => {
+    const x = M + (i % 2) * (CW / 2 + 0.12);
+    const y = 1.7 + Math.floor(i / 2) * 1.28;
+    card(s, x, y, CW / 2 - 0.12, 1.14);
+    s.addShape(pptx.ShapeType.rect, { x: x + 0.02, y: y + 0.16, w: 0.07, h: 0.82, fill: { color: C.ok } });
+    s.addText(g[0], { x: x + 0.3, y: y + 0.14, w: 1.6, h: 0.34, fontFace: F, fontSize: 13, bold: true, color: C.ok });
+    s.addText(g[1], { x: x + 0.3, y: y + 0.5, w: CW / 2 - 0.72, h: 0.56, fontFace: F, fontSize: 10, color: C.ink2 });
+  });
+  card(s, M, 4.42, CW, 1.95, { fill: C.softOrange, line: 'F5C7B8' });
+  s.addText('不夸大清单（写在文档里，也写在答辩里）', { x: M + 0.3, y: 4.54, w: CW - 0.6, h: 0.34, fontFace: F, fontSize: 12.5, bold: true, color: C.orange });
+  s.addText('· 不是向量 RAG（没有 embedding、没有向量库）\n'
+    + '· 不是通用自主 Agent（工具边界固定，有限自主）\n'
+    + '· 可视化由前端组件渲染，不是 AI 画图\n'
+    + '· 不做内容安全检测 / AIGC 识别\n'
+    + '· 本地方案是确定性规则，不叫「AI 诊断」', {
+    x: M + 0.3, y: 4.9, w: CW - 0.6, h: 1.4, fontFace: F, fontSize: 10.5, color: C.ink2, lineSpacingMultiple: 1.5,
+  });
+  s.addNotes('这页的「不夸大清单」是我特别想讲的：知道自己的边界，比把每件事都说成 AI 更专业。');
+}
+
 /* ============================ 16 AI 三档 ============================ */
 {
   const s = slide({ kicker: '六 · AI 融合' });
@@ -449,34 +651,6 @@ function band(s, items) {
     ['顺序不可反', '自带 Key → 作者额度 → 本地方案；只有用作者 Key 直连才扣额度。'],
   ], { iw: 6.4, ih: 2.6, note: '面板右上角永远显示当前档位与剩余次数，不让用户猜。' });
   s.addNotes('三档设计回应一个现实问题：作者不可能给所有人无限额度，但又要保证任何人打开都有东西用。');
-}
-
-/* ============================ 17 AI Agent ============================ */
-{
-  const s = slide({ kicker: '六 · AI 融合' });
-  title(s, 'Agent 只做翻译，不做算术：8 个工具 + 3 轮上限');
-  const tools = ['get_profile 整体情况', 'get_band_profile 频段明细', 'get_weak_words 未掌握词',
-    'plan_schedule 复习计划', 'list_banks 词库列表', 'get_examples 例句检索',
-    'get_weak_examples 批量例句', 'suggest_actions 给出可执行动作'];
-  tools.forEach((t, i) => {
-    const x = M + (i % 2) * (CW / 2 + 0.12);
-    const y = 1.7 + Math.floor(i / 2) * 0.56;
-    card(s, x, y, CW / 2 - 0.12, 0.48, { fill: C.white });
-    s.addText(t, { x: x + 0.2, y: y + 0.08, w: CW / 2 - 0.5, h: 0.3, fontFace: FM, fontSize: 10.5, color: C.ink2 });
-  });
-  const rules = [
-    ['数字只来自工具', 'Prompt 明确禁止模型自行估算；数据不足时必须说"样本太少，不能下结论"。'],
-    ['单一数据源', '后端工具不重算统计，直接消费前端算好并已显示的数——两边不可能漂。'],
-    ['过程可见', '界面上逐个打出 ✓ 读取整体情况 / ✓ 读取频段数据，结论可核对。'],
-    ['只上行汇总', '覆盖率、频段掌握率、未掌握词清单；逐题作答永不出本机。'],
-  ];
-  rules.forEach((r, i) => {
-    const y = 4.2 + i * 0.66;
-    s.addText('·', { x: M, y, w: 0.22, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: C.orange });
-    s.addText(r[0], { x: M + 0.24, y, w: 2.5, h: 0.3, fontFace: F, fontSize: 12, bold: true, color: C.ink });
-    s.addText(r[1], { x: M + 2.9, y: y + 0.02, w: CW - 3.1, h: 0.32, fontFace: F, fontSize: 10.5, color: C.ink2 });
-  });
-  s.addNotes('四条规矩里最值得讲的是"单一数据源"：AI 报的数和界面上的数结构上不可能不一致，这不是 Prompt 能做到的，是数据流设计。');
 }
 
 /* ============================ 18 AI 双向联动 ============================ */
@@ -494,7 +668,7 @@ function band(s, items) {
 
 /* ============================ 19 入场页 ============================ */
 {
-  const s = slide({ kicker: '七 · 交互与工艺' });
+  const s = slide({ kicker: '八 · 交互与工艺' });
   title(s, '入场页：每次打开都是一次登场');
   imgText(s, 'ppt-intro.jpg', [
     ['1.1 秒分层到位', '展台框自左画出 → 标题逐字升起 → 规模数字滚动 → 鲸鱼绕场 → 光束扎进按钮。'],
@@ -507,7 +681,7 @@ function band(s, items) {
 
 /* ============================ 20 桌宠 ============================ */
 {
-  const s = slide({ kicker: '七 · 交互与工艺' });
+  const s = slide({ kicker: '八 · 交互与工艺' });
   title(s, '2.5D 桌宠：会看人、会挣扎、但不打扰');
   card(s, M + 0.4, 1.72, 3.0, 4.9);
   if (!pic(s, 'ppt-pet.jpg', M + 0.5, 1.82, 2.8, 4.7)) {
@@ -527,7 +701,7 @@ function band(s, items) {
 
 /* ============================ 21 暗色 + 响应式 + 无障碍 ============================ */
 {
-  const s = slide({ kicker: '七 · 交互与工艺' });
+  const s = slide({ kicker: '八 · 交互与工艺' });
   title(s, '暗色模式、响应式、无障碍：三条工程底线');
   card(s, M, 1.72, CW * 0.5, 2.5);
   if (!pic(s, 'ppt-dark.jpg', M + 0.12, 1.82, CW * 0.5 - 0.24, 2.3)) {
@@ -553,9 +727,9 @@ function band(s, items) {
 
 /* ============================ 22 工程质量 ============================ */
 {
-  const s = slide({ kicker: '八 · 工程质量', topBar: false });
+  const s = slide({ kicker: '九 · 工程质量', topBar: false });
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.dark } });
-  s.addText('八 · 工程质量', { x: M, y: 0.5, w: 8, h: 0.3, fontFace: F, fontSize: 10, bold: true, color: 'FF8A6A' });
+  s.addText('九 · 工程质量', { x: M, y: 0.5, w: 8, h: 0.3, fontFace: F, fontSize: 10, bold: true, color: 'FF8A6A' });
   s.addText('387 条断言，守着"看不见的正确性"', { x: M, y: 0.85, w: CW, h: 0.8, fontFace: F, fontSize: 30, bold: true, color: C.white });
   s.addText('抽样与区间估计没法靠肉眼验收，只能靠断言。', { x: M, y: 1.66, w: CW, h: 0.4, fontFace: F, fontSize: 12.5, color: 'A8A296' });
   const stats = [['387', '条自动化断言'], ['11', '个测试套件'], ['2.08 MB', '单文件产物'], ['0', '运行时依赖']];
@@ -587,7 +761,7 @@ function band(s, items) {
 
 /* ============================ 23 不做清单 ============================ */
 {
-  const s = slide({ kicker: '九 · 边界' });
+  const s = slide({ kicker: '十 · 边界' });
   title(s, '明确不做的四件事，以及为什么不后悔');
   const items = [
     ['不做背单词', '背单词 App 比的是内容量与复习算法（重资产）。我们比的是测量与诊断的可信度，进去就是送。'],
@@ -610,7 +784,7 @@ function band(s, items) {
 
 /* ============================ 24 已知边界 ============================ */
 {
-  const s = slide({ kicker: '九 · 边界' });
+  const s = slide({ kicker: '十 · 边界' });
   title(s, '如实写出来的限制');
   const items = [
     ['自定义词书只报"对本书掌握率"', '词书是有偏样本，不能外推成词汇量——界面上常驻提示，不藏在文档里。'],
@@ -630,7 +804,7 @@ function band(s, items) {
 
 /* ============================ 25 路线图 ============================ */
 {
-  const s = slide({ kicker: '十 · 下一步' });
+  const s = slide({ kicker: '十一 · 下一步' });
   title(s, '下一步：从"测准"走向"测全"');
   const now = [
     '分层抽样 + 自适应停测 + 三层修正 + 双口径',

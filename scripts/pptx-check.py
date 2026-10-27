@@ -41,6 +41,8 @@ for i, slide in enumerate(prs.slides, 1):
 print('-' * 60)
 print('形状总数: %d | 可编辑文字: %d 字 | 图片: %d 张 | 备注合计: %d 字'
       % (total_shapes, total_chars, total_pics, notes_chars))
-assert len(prs.slides) == 14, '页数不是 14'
+expect = int(sys.argv[2]) if len(sys.argv) > 2 else None
+if expect is not None:
+    assert len(prs.slides) == expect, '页数不是 %d（实际 %d）' % (expect, len(prs.slides))
 assert total_chars > 2000, '可编辑文字过少，可能退化成图片'
 print('结构校验通过：文字是原生可编辑对象，不是图片页。')
