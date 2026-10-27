@@ -7,7 +7,7 @@
 // 混用会截出纯白图。
 //
 // 产出（docs/screenshots/）：ppt-intro / ppt-home / ppt-groups / ppt-bands / ppt-map /
-//   ppt-test / ppt-report / ppt-ai / ppt-settings / ppt-dark
+//   ppt-test / ppt-report / ppt-next / ppt-ladder / ppt-ai / ppt-settings / ppt-daily / ppt-dark
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -125,6 +125,10 @@ try {
   await sleep(900);
   await shot(path.join(OUT, 'ppt-report.jpg'), '.rpt-hero', 12, 'document', 1.8);
   await shot(path.join(OUT, 'ppt-ladder.jpg'), 'js:document.querySelector(\'.rpt-rk\').parentElement', 18, 'document', 2);
+  /* 报告页的「下一步：先补哪一段」清单单独截一块，PPT 里那一页讲的是这张清单，
+     以前直接用了整页截图，结果截到的是还没渲染完的半空页面。 */
+  await shot(path.join(OUT, 'ppt-next.jpg'),
+    'js:(document.querySelector(\'.rpt-step\') || document.querySelector(\'.rpt-hero\')).closest(\'.card\')', 14, 'document', 2);
 
   console.log('8 AI 面板');
   await evalJs(`window.__APP__.openAIDialog('我最该补哪一段？给个具体方案')`);
@@ -134,10 +138,15 @@ try {
   await evalJs(`(function(){var b=document.querySelector('[data-act=modal-close]');if(b)b.click();return 1;})()`);
   await sleep(400);
 
-  console.log('9 设置页');
+  console.log('9 设置页（AI 与额度）');
   await evalJs(`(function(){var A=window.__APP__;A.go('settings');A.render();return 1;})()`);
   await sleep(800);
   await shot(path.join(OUT, 'ppt-settings.jpg'), 'js:document.querySelector(\'#userKeyInput\').closest(\'.card\')', 16, 'document', 2);
+
+  /* 「每日可投入时间」是另一块卡片，和 AI 额度不是同一张图——第一版直接用 AI 那张，
+     结果"每日时间"那页配的是 API Key 的截图，图文对不上。这里单独截一块。 */
+  console.log('9b 设置页（每日可投入时间）');
+  await shot(path.join(OUT, 'ppt-daily.jpg'), 'js:document.getElementById(\'dailyMinInput\').closest(\'.card\')', 16, 'document', 2);
 
   console.log('10 暗色模式');
   await evalJs(`(function(){var A=window.__APP__;A.setTheme('dark');A.go('home');A.render();return 1;})()`);

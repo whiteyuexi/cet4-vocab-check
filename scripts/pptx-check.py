@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """用 python-pptx 交叉验证生成的 pptx（与 WPS 渲染互为佐证）
-用法：py scripts/pptx-check.py "四六级词汇量检测-答辩.pptx"
+用法：py scripts/pptx-check.py "四六级词汇量检测-路演.pptx"
 """
 import sys
 import os
@@ -9,7 +9,7 @@ from pptx import Presentation
 from pptx.util import Emu
 
 path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    os.path.expanduser('~'), 'Desktop', '四六级词汇量检测-答辩.pptx')
+    os.path.expanduser('~'), 'Desktop', '四六级词汇量检测-路演.pptx')
 
 prs = Presentation(path)
 print('文件:', path)
