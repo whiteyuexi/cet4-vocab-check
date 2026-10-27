@@ -20,7 +20,7 @@
   </g>
   <defs><mask id="favNotch">
     <rect x="0" y="0" width="132" height="64" fill="#fff"/>
-    <path d="M58 15.5 L28 20 L58 24.5 Z" fill="#000"/>
-    <path d="M58 39.5 L28 44 L58 48.5 Z" fill="#000"/>
+    <path d="M47 15.2 C 30 15.8 25.2 20 25.2 20 C 25.2 20 30 24.2 47 24.8 Z" fill="#000"/>
+    <path d="M47 39.2 C 30 39.8 25.2 44 25.2 44 C 25.2 44 30 48.2 47 48.8 Z" fill="#000"/>
   </mask></defs>
 </svg>

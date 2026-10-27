@@ -1363,8 +1363,8 @@ html[data-theme="dark"] .logo{--logo-accent:#FF6A4D}
 .logo .logo-mark{width:26px;height:12.6px;flex:none;overflow:visible}
 html[data-theme="dark"] .logo{--logo-main:#7FA4FF;--logo-accent:#FF6A4D}
 /* 入场页：标题上方的标识（用户指定的位置）。宽度锁定 128px，跟着整体缩放一起淡入。 */
-.intro-logo{display:flex;justify-content:center;margin:0 0 18px;opacity:0;transform:translateY(8px);
+.intro-logo{display:flex;justify-content:center;margin:0 0 22px;opacity:0;transform:translateY(8px);
   animation:introRise .62s cubic-bezier(.2,.75,.25,1) .18s forwards}
-.intro-logo .logo-mark{width:128px;height:62px;overflow:visible}
-@media (max-width:640px){.intro-logo .logo-mark{width:96px;height:46px}}
+.intro-logo .logo-mark{width:216px;height:105px;overflow:visible}
+@media (max-width:640px){.intro-logo .logo-mark{width:150px;height:73px}}
 @media (prefers-reduced-motion:reduce){.intro-logo{animation:none;opacity:1;transform:none}}
