@@ -291,6 +291,7 @@ smoke-test.js         164 项功能测试
 btest.js              生成真实浏览器断言页
 data/                 第三方原始数据（不提交，见 data/README.md）
 docs/screenshots/     README 与 PPT 用截图
+docs/产品介绍.html      产品介绍（10 章 / 77 KB：实现细节、参数表、答辩问答）
 assets/logo/          标识素材（矢量 + AI 原图处理产物 + 多档 PNG）
 ```
 
