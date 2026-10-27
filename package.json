@@ -3,9 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "description": "四六级词汇量检测 · 基于词频分层抽样的自适应词汇量测评与 AI 诊断工具",
-  "keywords": ["cet4", "cet6", "vocabulary", "adaptive-testing", "stratified-sampling", "ai-agent"],
+  "keywords": [
+    "cet4",
+    "cet6",
+    "vocabulary",
+    "adaptive-testing",
+    "stratified-sampling",
+    "ai-agent"
+  ],
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "server": "node server/index.mjs",
     "data": "node scripts/fetch-data.mjs && node build-data.js",
@@ -20,9 +29,12 @@
     "audit": "node audit-fixes.js",
     "shots": "node shots.js",
     "shot": "node scripts/cdp-shot.mjs",
-    "all": "npm run build && npm test && npm run audit"
+    "all": "npm run build && npm test && npm run audit",
+    "ppt": "node scripts/make-pptx.mjs",
+    "ppt:shots": "node scripts/make-ppt-shots.mjs"
   },
   "devDependencies": {
-    "jsdom": "^29.0.0"
+    "jsdom": "^29.0.0",
+    "pptxgenjs": "^4.0.1"
   }
 }
