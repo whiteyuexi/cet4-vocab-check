@@ -1091,7 +1091,10 @@
       bands: bands, gainTop: gainTop, deficitTop: deficitTop, baseGap: baseGap,
       fuzzyShare: knownish ? t.f / knownish : 0,   // 「有印象」里有多少是不确定的
       refs: A.RANK_REFS,
-      perDay: 50
+      /* 报告页的「还差 X 词（约 N 天 · 每天 M 词）」也用设置里的每日时间。
+         这里曾经写死 50，等于设置页那个「每日可投入时间」在报告页完全没生效——
+         和 AI 计划里犯过的是同一个错。现在三处（报告 / AI 计划 / 回访卡）共用 A.perDayWords()。 */
+      perDay: A.perDayWords()
     };
   };
 

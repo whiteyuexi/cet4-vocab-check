@@ -316,6 +316,9 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     check('补完天数跟着「每日可投入时间」变', A.perDayWords() === 40 &&
       Math.ceil(A.revisitInfo().target.gapWords / 40) !== Math.ceil(expectGap / perDay),
       perDay + ' 词/天 → ' + Math.ceil(expectGap / perDay) + ' 天；改 60 分钟后 40 词/天');
+    // 同一个设置必须同时驱动"报告页的计划"与"回访卡的补完天数"（曾经报告页写死 50）
+    check('报告页的每日词数也读这个设置', A.levelReport().perDay === 40,
+      '报告 perDay=' + A.levelReport().perDay + '，卡片 perDay=' + A.revisitInfo().perDay);
 
     // 不足 3 天不该打扰
     A.S.settings.dailyMinutes = 30;

@@ -127,13 +127,13 @@ function band(s, items) {
   s.addText('四六级词汇量检测与诊断 · 从"测出一个数"到"知道下一步背哪些词"', {
     x: M, y: 2.95, w: 11.8, h: 0.5, fontFace: F, fontSize: 17, color: 'C9C2B4',
   });
-  const stats = [['7,175', '词条'], ['9,204', '例句'], ['412', '断言'], ['2.11 MB', '单文件'], ['33', '页详解']];
+  const stats = [['7,175', '词条'], ['9,204', '例句'], ['413', '断言'], ['2.11 MB', '单文件'], ['33', '页详解']];
   stats.forEach((it, i) => {
     s.addText(it[0], { x: M + i * 2.35, y: 4.0, w: 2.2, h: 0.5, fontFace: FM, fontSize: 22, bold: true, color: C.white });
     s.addText(it[1], { x: M + i * 2.35, y: 4.5, w: 2.2, h: 0.3, fontFace: F, fontSize: 10, color: '8A8378' });
   });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 5.35, w: 11.6, h: 0.015, fill: { color: '2E2A22' } });
-  s.addText('全部界面截图取自当前交付版本（词库 7,175 / 例句 9,204 / 断言 412 / 2.11 MB 单文件）', {
+  s.addText('全部界面截图取自当前交付版本（词库 7,175 / 例句 9,204 / 断言 413 / 2.11 MB 单文件）', {
     x: M, y: 5.5, w: 11.8, h: 0.35, fontFace: F, fontSize: 10.5, color: '8A8378',
   });
   s.addText('广东亚视演艺职业学院 · 信息工程学院　｜　单人作品', {
@@ -763,9 +763,9 @@ function band(s, items) {
   const s = slide({ kicker: '九 · 工程质量', topBar: false });
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.dark } });
   s.addText('九 · 工程质量', { x: M, y: 0.5, w: 8, h: 0.3, fontFace: F, fontSize: 10, bold: true, color: 'FF8A6A' });
-  s.addText('412 条断言，守着"看不见的正确性"', { x: M, y: 0.85, w: CW, h: 0.8, fontFace: F, fontSize: 30, bold: true, color: C.white });
+  s.addText('413 条断言，守着"看不见的正确性"', { x: M, y: 0.85, w: CW, h: 0.8, fontFace: F, fontSize: 30, bold: true, color: C.white });
   s.addText('抽样与区间估计没法靠肉眼验收，只能靠断言。', { x: M, y: 1.66, w: CW, h: 0.4, fontFace: F, fontSize: 12.5, color: 'A8A296' });
-  const stats = [['412', '条离线断言'], ['11', '个测试套件'], ['2.11 MB', '单文件产物'], ['0', '运行时依赖']];
+  const stats = [['413', '条离线断言'], ['11', '个测试套件'], ['2.11 MB', '单文件产物'], ['0', '运行时依赖']];
   const sw = (CW - 0.9) / 4;
   stats.forEach((st, i) => {
     const x = M + i * (sw + 0.3);
@@ -789,7 +789,7 @@ function band(s, items) {
     x: M, y: 6.15, w: CW, h: 0.4, fontFace: F, fontSize: 10.5, color: '8B93A3',
   });
   s.addText(page + ' / ' + TOTAL, { x: W - 1.1, y: H - 0.4, w: 1.1, h: 0.24, fontFace: FM, fontSize: 8.5, color: '8A8378', align: 'right' });
-  s.addNotes('这页是可信度的落点。数字要背：412 条离线断言（另 7 条联网）、11 个套件、2.09 MB、零运行时依赖。');
+  s.addNotes('这页是可信度的落点。数字要背：413 条离线断言（另 7 条联网）、11 个套件、2.09 MB、零运行时依赖。');
 }
 
 /* ============================ 23 不做清单 ============================ */
