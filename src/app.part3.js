@@ -570,6 +570,7 @@
 
   /* ---------- 事件 ---------- */
   A.bind = function () {
+    if (A.stripStrayText) A.stripStrayText();   // 启动时清掉任何游离文本残留
     document.addEventListener('click', function (e) {
       var navBtn = e.target.closest ? e.target.closest('[data-nav]') : null;
       if (navBtn) { A.go(navBtn.getAttribute('data-nav')); return; }

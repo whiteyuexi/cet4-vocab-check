@@ -1591,6 +1591,24 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
   }
   A.toast = toast;
 
+  /* 兜底清理：body 下不允许存在游离文本节点。
+     历史上出过两次事故——data URI 被正则截断后，残余字符串被浏览器当成正文渲染到页面上
+     （一次是 favicon 叠加了三份 data URI）。与其每次追根因，不如启动时统一清掉：
+     正常的界面文字都在具体元素里，body 的直接文本子节点一定是残留。 */
+  function stripStrayText() {
+    try {
+      Array.prototype.slice.call(document.body.childNodes).forEach(function (n) {
+        if (n.nodeType === 3 && String(n.nodeValue || '').trim()) {
+          if (window.console && console.warn) {
+            console.warn('[清理游离文本]', JSON.stringify(String(n.nodeValue).slice(0, 60)));
+          }
+          document.body.removeChild(n);
+        }
+      });
+    } catch (e) {}
+  }
+  A.stripStrayText = stripStrayText;
+
   /* 读屏播报：把作答结果写进 aria-live 区域 */
   function announce(msg) {
     var l = el('live');
@@ -3963,6 +3981,7 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
 
   /* ---------- 事件 ---------- */
   A.bind = function () {
+    if (A.stripStrayText) A.stripStrayText();   // 启动时清掉任何游离文本残留
     document.addEventListener('click', function (e) {
       var navBtn = e.target.closest ? e.target.closest('[data-nav]') : null;
       if (navBtn) { A.go(navBtn.getAttribute('data-nav')); return; }

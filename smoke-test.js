@@ -94,7 +94,15 @@ win.addEventListener('load', () => {
       check('无随机样本时不给词汇量', /数据不足/.test(doc.getElementById('view').textContent));
       A.addSample({ n: 100, k: 62, f: 18 }); A.save(); A.go('stats');
       check('有随机样本时给出估算', /3,2\d\d/.test(doc.getElementById('view').textContent), (/≈ [\d,]+ 词/.exec(doc.getElementById('view').textContent) || ['无'])[0]);
-      check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc.getElementById('view').textContent));
+      check('body 下的游离文本会被清掉', (function(){
+  var d = new JSDOM(fs.readFileSync('index.html','utf8'), { runScripts: 'dangerously' });
+  d.window.document.body.appendChild(d.window.document.createTextNode('  >3" >  '));
+  d.window.__APP__ && d.window.__APP__.bind && d.window.__APP__.bind();
+  var left = Array.prototype.filter.call(d.window.document.body.childNodes, function(n){ return n.nodeType === 3 && n.nodeValue.trim(); });
+  return left.length === 0;
+})(), '注入的残留应被移除');
+
+check('给出等级评价', /见底|吃紧|够花|稳健|厚实|满仓/.test(doc.getElementById('view').textContent));
       A.S.samples = []; A.save(); A.go('stats');
     });
 
