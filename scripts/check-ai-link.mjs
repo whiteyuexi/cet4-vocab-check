@@ -94,11 +94,16 @@ try {
     var log = document.getElementById('aiLog');
     return { open: !!document.getElementById('aiLog'),
              q: log ? log.innerText.split('\\n')[0] : '',
+             log: log ? log.innerText : '',
              hasActs: !!document.querySelector('.ai-act') };
   })())`));
   ok('点「问」能带着该段数据开场（问题里含界面数字）',
     bandDlg.open && /界面显示/.test(bandDlg.q) && /掌握率|抽到/.test(bandDlg.q), bandDlg.q.slice(0, 56));
   ok('离线诊断也会给可点击的下一步', bandDlg.hasActs === true);
+  // 回归：untestedWords() 返回下标，直接展示会变成 -454 这种数字（截图复核时抓到过）
+  ok('离线方案里的「没测过的词」是单词不是下标',
+    !/(^|\n)-\s*-?\d+\s*($|\n)/.test(bandDlg.log),
+    (bandDlg.log.match(/^- .+$/m) || [''])[0].slice(0, 24));
 
   /* ---------- 2. 正向联动：点动作按钮真的执行 ---------- */
   const acts = JSON.parse(await evalJs(`JSON.stringify(Array.prototype.map.call(

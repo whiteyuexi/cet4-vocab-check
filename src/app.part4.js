@@ -388,6 +388,7 @@
     AI_ACTIONS = [];
     PENDING_ACTIONS = null;
     renderLockBar();
+    updateQuotaBadge();          // 面板一打开就显示当前档位与剩余额度（否则是个空药丸）
     // 带图表上下文进来时，问题可以由上下文自动生成（用户只点了一下格子）
     if (!question && AI_FOCUS) question = questionFromFocus(AI_FOCUS);
     // 有授权锁时不要先去探后端：这个文件本来就是给别人用的离线形态，
@@ -715,7 +716,11 @@
     }
 
     if (untested.length) {
-      var samples = untested.slice(0, 6);
+      /* 注意：untestedWords() 返回的是**下标数组**，不是单词。
+         这里必须映射成单词再展示（曾经直接把下标列出来，界面上出现 -454、-4829 这种鬼东西）。 */
+      var samples = untested.slice(0, 6).map(function (idx) {
+        return (A.WORDS && A.WORDS[idx]) ? A.WORDS[idx].w : String(idx);
+      });
       out.push('**没测过、可以立刻开始的词**\n' + samples.map(function (w) {
         return '- ' + w;
       }).join('\n') + '\n（共 ' + untested.length + ' 个没测过，去「总览」页的词汇地图能按频段和首字母查。）');

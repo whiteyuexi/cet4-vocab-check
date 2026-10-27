@@ -264,7 +264,7 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
 .barcol .stack i{display:block;width:100%;border-radius:2px;transition:height .6s cubic-bezier(.2,.7,.3,1)}
 .barcol span{font-family:var(--mono);font-size:10px;color:var(--ink3)}
 .bandlist{display:flex;flex-direction:column;gap:3px;margin-top:12px}
-.brow{display:grid;grid-template-columns:104px 1fr 50px;gap:12px;align-items:center;padding:6px 0}
+.brow{display:grid;grid-template-columns:104px 1fr 50px 24px;gap:12px;align-items:center;padding:6px 0}
 .bl{font-size:12.5px;color:var(--ink2)}
 .bbar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;box-shadow:inset 0 1px 2px rgba(16,19,25,.06)}
 .bbar>i{display:block;height:100%;border-radius:6px;transition:width .6s cubic-bezier(.2,.7,.3,1)}
@@ -399,7 +399,7 @@ html[data-theme="dark"] .ai-sent pre{background:rgba(255,255,255,.06)}
   .bank{flex:1;justify-content:center;padding:9px 10px;font-size:12.5px}
   .groups{grid-template-columns:repeat(auto-fill,minmax(66px,1fr))}
   .witem .w{min-width:auto}
-  .brow{grid-template-columns:84px 1fr 44px;gap:8px}
+  .brow{grid-template-columns:84px 1fr 44px 24px;gap:8px}
   .bmeta{margin-left:92px}
   .hero-stat{gap:18px}
   .trio,.statgrid{gap:8px}
