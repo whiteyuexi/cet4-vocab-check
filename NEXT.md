@@ -288,6 +288,28 @@ node scripts/cdp-eval.mjs "file:///C:/Users/27295/cet4-vocab-check/shots/btest.h
 `scripts/check-offline.mjs` 直接打开**桌面上那份孤立 HTML**（旁边无 assets）做 7 项断言：
 立绘来自 `data:` URI、抓起后换表情、弹簧在跑、身体落后于抓点、影子留在地面、松手落回地面、摆角归零。
 `scripts/pet-test.mjs` 同时从 21 项加到 **26 项**，全是"行为对不对"而不是"有没有跑"。
+### 本机环境备忘：Python 是 `py` 不是 `python`（2026-10-27 更正）
+
+我先前判定"本机没有 Python"，**这是错的**——我只查了 `python` 命令。实际情况：
+
+| 项 | 值 |
+| --- | --- |
+| 解释器 | **Python 3.8.10**，用 `py` 调用（`python` / `python3` 都不在 PATH） |
+| 路径 | `C:\Users\27295\AppData\Local\Programs\Python\Python38` |
+| pip | `py -m pip`（21.1.1）；另有 `E:\Scripts\pip.exe` 指向别的环境，别直接用 |
+| 已装库 | 本轮新装 **python-pptx 1.0.2**；其余按需 `py -m pip install …` |
+| 编码坑 | Windows 控制台默认 GBK，Python 中文输出会乱码 → 脚本里 `sys.stdout.reconfigure(encoding='utf-8')`，或先设 `$env:PYTHONIOENCODING='utf-8'` |
+
+**这意味着**：GitHub 上那些现成的 PPT skill（anthropics/skills 的 pptx、JunfengRan/PPTWork、
+billLiao/PPT-Design-Skill）都是 python-pptx 路线，**现在是可以用的**，不必再自己拼 OOXML。
+本轮答辩稿仍用 pptxgenjs（JS）生成，因为已经做完并验证过了；两条路线并存：
+- `npm run ppt` → pptxgenjs（零 Python，纯 JS，构建期依赖）
+- 需要"编辑已有 pptx / 套用比赛模板 / 批量改文字"时 → 用 python-pptx（`py scripts/pptx-check.py` 是现成的读取样例）
+
+`scripts/pptx-check.py` 是**独立第二解析器**的交叉验证：用 python-pptx 打开生成的文件并统计
+形状/文字/图片/备注。当前答辩稿结果：14 页 · 297 个形状 · 3,576 字可编辑文字 · 3 张图 · 备注 872 字。
+WPS 渲染 + python-pptx 解析双重通过，说明文件结构合规。
+
 ### 两种产物的操作流程（2026-10-25 起）
 
 **仓库版**（无 Key，可提交）：

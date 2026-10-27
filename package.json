@@ -31,7 +31,8 @@
     "shot": "node scripts/cdp-shot.mjs",
     "all": "npm run build && npm test && npm run audit",
     "ppt": "node scripts/make-pptx.mjs",
-    "ppt:shots": "node scripts/make-ppt-shots.mjs"
+    "ppt:shots": "node scripts/make-ppt-shots.mjs",
+    "ppt:check": "py scripts/pptx-check.py"
   },
   "devDependencies": {
     "jsdom": "^29.0.0",
