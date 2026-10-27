@@ -14,7 +14,7 @@ import PptxGenJS from 'pptxgenjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SHOTS = path.join(ROOT, 'docs', 'screenshots');
-const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '四六级词汇量检测-路演.pptx');
+const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '词汇账户余额查询-路演.pptx');
 
 /* 令牌 */
 const C = {
@@ -28,9 +28,9 @@ const W = 13.333, H = 7.5, M = 0.9, CW = W - M * 2;
 const pptx = new PptxGenJS();
 pptx.defineLayout({ name: 'RS', width: W, height: H });
 pptx.layout = 'RS';
-pptx.author = '四六级词汇量检测';
+pptx.author = '词汇账户余额查询';
 pptx.company = '广东亚视演艺职业学院 · 信息工程学院';
-pptx.title = '四六级词汇量检测 · 路演';
+pptx.title = '词汇账户余额查询 · 路演';
 
 let page = 0;
 const TOTAL = 12;
@@ -100,7 +100,7 @@ function pic(s, file, x, y, w, h) {
   const s = slide({ kicker: '筑视界 · 码绘交互 ／ Web 前端开发创意技能大赛' });
   s.addShape(pptx.ShapeType.rect, { x: W - M - 0.42, y: 1.2, w: 0.42, h: 0.42, fill: { color: C.orange } });
   title(s, '测准，\n然后告诉你该背哪些词', { y: 1.15, sz: 56, h: 2.2 });
-  sub(s, '四六级词汇量检测 —— 一台词汇量测量仪，不是一个背单词 App', 3.35);
+  sub(s, '词汇账户余额查询 —— 一台词汇量测量仪，不是一个背单词 App', 3.35);
   band(s, [['7,175', '词条，全带音标'], ['9,204', '英中对照例句'], ['387', '条自动化断言'], ['2.08 MB', '单文件 · 断网可用']]);
   s.addNotes('开场 20 秒：先说结论——我们做的不是背单词 App，是一台词汇量测量仪。'
     + '它测出来的不是一个数字，而是"带误差的词汇量 + 差在哪几段 + 接下来背哪些词"。'

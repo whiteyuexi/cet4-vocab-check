@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="基于大学英语四、六级大纲词汇表的互动式词汇量自测工具（四级 4540 词 / 六级 5716 词）">
-<title>英语四六级词汇量检测 · CET-4 / CET-6 Vocabulary Checker</title>
+<title>词汇账户余额查询 · 四六级词汇量检测与诊断</title>
 <style>
 /*__CSS__*/
 </style>
@@ -12,15 +12,16 @@
 <body>
 <!-- 入场页：每次打开都出现，点「进入」才进主界面。
      ?intro=0 可跳过（自动化测试用）；prefers-reduced-motion 下保留静态面板，仍然要点击进入 -->
-<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="四六级词汇量检测 · 入场">
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="词汇账户余额查询 · 入场">
   <div class="intro-bg" aria-hidden="true"><i></i><i></i></div>
   <div class="intro-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div class="intro-stage">
     <p class="intro-kicker"><span>筑视界 · 码绘交互</span><b>/</b><span>Web 前端开发创意技能大赛</span></p>
     <h1 class="intro-title">
-      <span><i style="--i:0">词</i></span><span><i style="--i:1">汇</i></span><span><i style="--i:2">量</i></span><em><span><i style="--i:3">检</i></span></em><em><span><i style="--i:4">测</i></span></em>
+      <span><i style="--i:0">词</i></span><span><i style="--i:1">汇</i></span><span><i style="--i:2">账</i></span><span><i style="--i:3">户</i></span><br>
+      <em><span><i style="--i:4">余</i></span></em><em><span><i style="--i:5">额</i></span></em><em><span><i style="--i:6">查</i></span></em><em><span><i style="--i:7">询</i></span></em>
     </h1>
-    <p class="intro-sub">CET-4 / CET-6 VOCABULARY PROFILER</p>
+    <p class="intro-sub">四六级词汇量检测与诊断 · CET-4 / CET-6 VOCABULARY PROFILER</p>
     <div class="intro-stats">
       <span><b data-intro-num="words">0</b>词库</span>
       <span><b data-intro-num="sent">0</b>例句</span>
@@ -39,7 +40,7 @@
 
 <header class="topbar">
   <div class="topbar-in">
-    <div class="logo"><span class="dot">V</span><span>四六级词汇量检测</span></div>
+    <div class="logo"><span class="dot">V</span><span>词汇账户<em class="logo-sub">余额查询</em></span></div>
     <div class="spacer"></div>
     <div class="tb-stat" id="tbStat"></div>
     <button class="who-btn" id="aiBtn" data-act="ai-open" title="AI 诊断（大模型需要作者提供的密码）">
@@ -118,6 +119,7 @@
 <script>window.PET_ART = /*__PETART__*/;</script>
 <!-- AI 授权：有密码锁时这里是密文（没有明文 Key）；没有锁时是 null -->
 <script>window.AI_LOCK = /*__AILOCK__*/;</script>`r`n<!-- 作者 Key：只有 build.js --with-key 才会内联（评委演示版）；仓库版恒为 null -->`r`n<script>window.AI_AUTHOR_KEY = /*__AUTHORKEY__*/;</script>
+<script>window.CORPUS_STATS = /*__CORPUS__*/;</script>
 <script>window.WORDS = /*__WORDS__*/;</script>
 <script>window.SENTENCES = /*__SENTENCES__*/;</script>
 <script>

@@ -5,7 +5,7 @@
 // 这个库产出的是标准 OOXML，每个文本框、色块、表格在 WPS/PowerPoint 里都能直接改。
 //
 // 用法：node scripts/make-pptx.mjs [输出路径]
-//   默认 → ~/Desktop/四六级词汇量检测-答辩.pptx
+//   默认 → ~/Desktop/词汇账户余额查询-答辩.pptx
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,7 @@ import PptxGenJS from 'pptxgenjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SHOTS = path.join(ROOT, 'docs', 'screenshots');
-const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '四六级词汇量检测-答辩.pptx');
+const OUT = process.argv[2] || path.join(os.homedir(), 'Desktop', '词汇账户余额查询-答辩.pptx');
 
 /* ---------- 设计令牌（与产品一致） ---------- */
 const C = {
@@ -32,9 +32,9 @@ const W = 13.333, H = 7.5, M = 0.82, CW = W - M * 2;
 const pptx = new PptxGenJS();
 pptx.defineLayout({ name: 'CET16x9', width: W, height: H });
 pptx.layout = 'CET16x9';
-pptx.author = '四六级词汇量检测';
+pptx.author = '词汇账户余额查询';
 pptx.company = '广东亚视演艺职业学院 · 信息工程学院';
-pptx.title = '四六级词汇量检测 · 答辩';
+pptx.title = '词汇账户余额查询 · 答辩';
 pptx.subject = '筑视界·码绘交互 Web 前端开发创意技能大赛';
 
 /* ---------- 版式助手 ---------- */
@@ -62,7 +62,7 @@ function head(s, title, sub, dark) {
   }
 }
 function foot(s, page, total, dark) {
-  s.addText('四六级词汇量检测 · CET Vocabulary Checker', {
+  s.addText('词汇账户余额查询 · CET Vocabulary Checker', {
     x: M, y: H - 0.58, w: CW * 0.7, h: 0.28, fontFace: F, fontSize: 9.5,
     color: dark ? '8B93A3' : C.ink3,
   });
@@ -109,7 +109,7 @@ const shot = n => path.join(SHOTS, n);
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.dk }, transparency: 30 });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 1.5, w: 0.66, h: 0.055, fill: { color: C.teal } });
   txt(s, '筑视界 · 码绘交互 ／ Web 前端开发创意技能大赛', { x: M, y: 1.7, w: 11, h: 0.35, fontSize: 12, bold: true, color: C.brandLight });
-  s.addText('四六级词汇量检测', { x: M, y: 2.12, w: 11.8, h: 1.0, fontFace: F, fontSize: 52, bold: true, color: C.white });
+  s.addText('词汇账户余额查询', { x: M, y: 2.12, w: 11.8, h: 1.0, fontFace: F, fontSize: 52, bold: true, color: C.white });
   s.addText('把一个数字，做成一份能执行的诊断', { x: M, y: 3.08, w: 11.8, h: 0.6, fontFace: F, fontSize: 24, color: 'C9D4EA' });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 4.15, w: 11.7, h: 0.015, fill: { color: '2A3346' } });
   const stats = [['7,175', '词库词条'], ['9,204', '英中例句'], ['387', '自动化断言'], ['2.08 MB', '单文件交付']];

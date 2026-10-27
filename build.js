@@ -22,8 +22,13 @@ const wordsJson = JSON.stringify(words);
 // 例句：为控制单文件体积，每个词只内联第一条（完整语料留在 sentences.json 供后端检索）
 let sentencesJson = '{}';
 let sentCount = 0;
+// 语料真实规模（词条数 / 句子总数）：内联时每词只留一句，所以不能靠产物反推，
+// 必须在这里算好并注入，否则界面上的"例句"数会和文档对不上（曾经差出 1,072）
+let corpusStats = { words: 0, sentences: 0 };
 try {
   const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'sentences.json'), 'utf8'));
+  corpusStats.words = Object.keys(raw).length;
+  Object.keys(raw).forEach(function (k) { corpusStats.sentences += (raw[k] || []).length; });
   const slim = {};
   Object.keys(raw).forEach(function (k) {
     const s = raw[k] && raw[k][0];
@@ -91,6 +96,7 @@ html = html.replace('/*__AILOCK__*/', function () { return aiLock ? JSON.stringi
 html = html.replace('/*__AUTHORKEY__*/', function () { return authorKey ? JSON.stringify(authorKey) : 'null'; });
 html = html.replace('/*__WORDS__*/', function () { return wordsJson; });
 html = html.replace('/*__SENTENCES__*/', function () { return sentencesJson; });
+html = html.replace('/*__CORPUS__*/', function () { return JSON.stringify(corpusStats); });
 html = html.replace('/*__JS__*/', function () { return js; });
 // 刻意不写入生成时间：产物必须可复现，否则每次构建都会让 index.html 产生假改动
 html = html.replace('</head>', '<!-- 四六级词汇量检测 · 词库 ' + words.length + ' 词 · 内联例句 ' + sentCount + ' 条 -->\n</head>');
@@ -103,7 +109,7 @@ const c6n = core => pick(core).filter(function (w) { return (w.b & 2) && !(w.b &
 console.log('词条总数:', words.length, '（核心', pick(true).length, '/ 拓展', words.filter(function (w) { return w.x; }).length, '）');
 console.log('默认词库: 四级', c4(true), '| 六级全量', c4(true) + c6n(true), '（= 四级 + 六级新增', c6n(true) + '）');
 console.log('含拓展派生词: 四级', c4(false), '| 六级全量', c4(false) + c6n(false), '| 六级新增', c6n(false));
-console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）');
+console.log('内联例句:', sentCount, '条（' + (sentencesJson.length / 1024).toFixed(0) + ' KB）· 语料共 ' + corpusStats.sentences + ' 句 / ' + corpusStats.words + ' 词');
 console.log('作者 Key:', authorKey ? '已内联（演示版，勿提交仓库）' : '未内联（仓库版）');
 console.log('AI 授权锁:', aiLock ? ('已内联（' + aiLock.it + ' 次 PBKDF2，密码解锁）') : '未启用（有后端则用大模型，否则离线规则诊断）');
 console.log('桌宠立绘:', Object.keys(petArt).length, '张内联（' + (Object.values(petArt).reduce((s, v) => s + v.length, 0) / 1024).toFixed(0) + ' KB，情绪立绘离线可用）');

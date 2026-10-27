@@ -455,7 +455,7 @@
     if (R.gainTop.length) {
       L.push('优先补：' + R.gainTop.map(function (g) { return g.name + '（' + g.deficit + ' 词）'; }).join('、'));
     }
-    L.push('（由「四六级词汇量检测」生成，数据仅存本机）');
+    L.push('（由「词汇账户余额查询」生成，数据仅存本机）');
     return L.join('\n');
   };
 

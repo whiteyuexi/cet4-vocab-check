@@ -322,10 +322,15 @@
     // 数字滚动：用真实词库规模，不写死
     var words = (window.WORDS && window.WORDS.length) || 0;
     // 例句是按词索引的对象（{ word: [句子...] }），不是数组：直接取 .length 会得到 NaN
+    /* 例句数取构建期注入的语料统计（9,204 句 / 5,138 词）。
+       不要自己数 window.SENTENCES：构建期把每条压成 [英文, 中文]，
+       所以 Object.keys(...).length 是"有例句的词数"（5,138），
+       而按数组长度数会得到 2×5,138 = 10,276 —— 两种都不对。 */
     var sent = 0;
-    if (window.SENTENCES) {
-      try { sent = Object.keys(window.SENTENCES).length; } catch (e) { sent = 0; }
-    }
+    try {
+      if (window.CORPUS_STATS && window.CORPUS_STATS.sentences) sent = window.CORPUS_STATS.sentences;
+      else if (window.SENTENCES) sent = Object.keys(window.SENTENCES).length;
+    } catch (e) { sent = 0; }
     setTimeout(function () {
       introNum(document.querySelector('[data-intro-num=words]'), words, 1100);
       introNum(document.querySelector('[data-intro-num=sent]'), sent, 1200);
