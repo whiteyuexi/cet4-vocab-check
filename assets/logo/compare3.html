@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>描边加粗对照</title>
+<style>
+ body{background:#FAF8F4;font:13px/1.5 -apple-system,"Segoe UI","PingFang SC";margin:0;padding:22px;color:#12130F}
+ .grid{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-end}
+ .col{text-align:center}
+ .col h4{font-size:11px;color:#6B7280;margin:0 0 8px;font-weight:600;letter-spacing:.05em}
+ .sizes{display:flex;align-items:flex-end;gap:14px;justify-content:center}
+ .sizes div{text-align:center}
+ .sizes span{display:block;font:9.5px/1 Consolas,monospace;color:#8A8378;margin-top:4px}
+ .bar{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:660;font-size:15px;
+      background:#fff;border:1px solid rgba(16,19,25,.08);border-radius:11px;padding:7px 12px;margin-bottom:12px}
+ .dark{background:#0F1116;border-radius:12px;padding:16px;margin-top:10px}
+</style></head>
+<body>
+<div class="grid" id="grid"></div>
+<script>
+const GAUGE = `
+  <circle cx="47.5" cy="32" r="18.25" fill="none" stroke="#2A5BE0" stroke-width="8.5"/>
+  <path d="M47.5 13.75 A8.25 8.25 0 0 1 54.62 22.19 L47.5 32 Z" fill="#FF4D2E"/>
+  <line x1="47.5" y1="32" x2="55.6" y2="21.4" stroke="#FF4D2E" stroke-width="3.4" stroke-linecap="round"/>
+  <circle cx="47.5" cy="32" r="4.3" fill="#FF4D2E"/>`;
+
+const mk = (sw, weight, size, x) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <text x="${x}" y="53.5" text-anchor="middle" font-family="'Arial Black','Segoe UI Black',Arial,sans-serif"
+        font-size="${size}" font-weight="${weight}" fill="#2A5BE0" stroke="#2A5BE0"
+        stroke-width="${sw}" stroke-linejoin="round" paint-order="stroke fill">3</text>${GAUGE}</svg>`;
+
+const variants = [
+  ['G 描边 1.2', mk(1.2, 900, 56, 20.5)],
+  ['H 描边 1.9', mk(1.9, 900, 56, 20.5)],
+  ['I 描边 2.6', mk(2.6, 900, 56, 20.5)],
+];
+const grid = document.getElementById('grid');
+for (const [name, svg] of variants) {
+  const col = document.createElement('div');
+  col.className = 'col';
+  col.innerHTML = '<h4>' + name + '</h4>' +
+    '<div class="bar"><i style="display:block;width:26px;height:26px">' + svg.replace('<svg ', '<svg width="26" height="26" ') + '</i><span>词汇账户</span></div>' +
+    '<div class="sizes">' +
+      [16, 20, 24, 32, 64, 128].map(s => '<div><i style="display:block;width:' + s + 'px;height:' + s + 'px">' +
+        svg.replace('<svg ', '<svg width="' + s + '" height="' + s + '" ') + '</i><span>' + s + '</span></div>').join('') +
+    '</div>' +
+    '<div class="dark"><i style="display:block;width:64px;height:64px">' + svg.replace('<svg ', '<svg width="64" height="64" ') + '</i></div>';
+  grid.appendChild(col);
+}
+</script>
+</body></html>

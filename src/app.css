@@ -91,8 +91,7 @@ code,.kbd{font-family:var(--mono);font-size:12px;background:var(--glass-2);borde
 .topbar-in{max-width:1000px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:12px}
 .logo{display:flex;align-items:center;gap:9px;font-weight:660;font-size:15px;letter-spacing:-.012em}
 .logo .dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(160deg,#3E6BE8,#1E43B8);color:#fff;
-  display:grid;place-items:center;font-size:10.5px;font-weight:700;letter-spacing:0;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 4px 12px rgba(42,91,224,.3)}
+  display:flex;align-items:center;justify-content:center;font:700 13px/1 var(--mono);flex:none}
 .topbar .spacer{flex:1}
 .tb-stat{font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums;
   background:var(--glass-2);border:1px solid var(--line);padding:4px 10px;border-radius:20px}
@@ -1352,3 +1351,14 @@ html[data-theme="dark"] .g-step.warn{background:rgba(224,177,92,.1)}
   font-size:10px;font-weight:650;letter-spacing:.02em;vertical-align:1px;
   color:var(--accent);background:var(--accent-soft);border:1px solid rgba(42,91,224,.22)}
 html[data-theme="dark"] .logo .logo-sub{color:#A8C2FF;border-color:rgba(127,164,255,.3)}
+
+/* 顶栏标识「30」：3 与环用 currentColor（跟随主题文字色），扇形与指针用强调橙。
+   为什么用内联 SVG 而不是图片：26px 下矢量不糊，深色模式免第二套资源，单文件也不增体积。 */
+.logo .logo-mark{width:26px;height:24.5px;flex:none;overflow:visible}
+html[data-theme="dark"] .logo{--logo-accent:#FF6A4D}
+
+/* 顶栏标识「30」：主形跟主题色（浅色=品牌蓝 / 深色=提亮蓝），扇形与指针固定强调橙。
+   26px 是真实使用尺寸，所以造型按"小尺寸可读"优先设计（腰部收窄 + 板间留 3px 空隙）。 */
+.logo{--logo-main:#2A5BE0;--logo-accent:#FF4D2E}
+.logo .logo-mark{width:26px;height:12.6px;flex:none;overflow:visible}
+html[data-theme="dark"] .logo{--logo-main:#7FA4FF;--logo-accent:#FF6A4D}

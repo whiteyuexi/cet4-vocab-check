@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- favicon：米白圆角方块 + 标识。深色标签栏上也认得出。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="词汇账户余额查询">
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#FAF8F4"/>
+  <g transform="translate(2 3) scale(0.88)">
+    <text x="17.5" y="50.5" text-anchor="middle"
+          font-family="'Arial Black','Segoe UI Black',Arial,Helvetica,sans-serif"
+          font-size="50" font-weight="900"
+          fill="#2A5BE0" stroke="#2A5BE0" stroke-width="2.2"
+          stroke-linejoin="round" paint-order="stroke fill">3</text>
+    <circle cx="47.5" cy="32" r="14.2" fill="none" stroke="#2A5BE0" stroke-width="7.4"/>
+    <path d="M47.5 14.1 A17.9 17.9 0 0 1 65.0 28.3 L57.8 29.8 A10.5 10.5 0 0 0 47.5 21.5 Z" fill="#FF4D2E"/>
+    <line x1="47.5" y1="32" x2="56.4" y2="21.8" stroke="#FF4D2E" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="47.5" cy="32" r="3.6" fill="#FF4D2E"/>
+  </g>
+</svg>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>30 标识 · 尺寸检验</title>
+<style>
+ body{background:#FAF8F4;font:13px/1.6 -apple-system,"Segoe UI","PingFang SC",sans-serif;color:#12130F;margin:0;padding:26px}
+ h4{font-size:11px;color:#6B7280;margin:20px 0 8px;font-weight:600;letter-spacing:.05em}
+ .row{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap}
+ .item{text-align:center}
+ .item span{display:block;font:9.5px/1 Consolas,monospace;color:#8A8378;margin-top:5px}
+ .bar{display:inline-flex;align-items:center;gap:9px;font-weight:660;font-size:15px;letter-spacing:-.012em;
+      background:rgba(255,255,255,.75);border:1px solid rgba(16,19,25,.08);border-radius:12px;padding:8px 14px}
+ .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:650;
+       color:#2A5BE0;background:rgba(42,91,224,.1);border:1px solid rgba(42,91,224,.22)}
+ .dark{background:#0F1116;color:#F2F4F8;padding:20px;border-radius:14px;margin-top:6px}
+ .dark .bar{background:rgba(30,34,44,.65);border-color:rgba(255,255,255,.1)}
+ .dark .pill{color:#A8C2FF;background:rgba(127,164,255,.16);border-color:rgba(127,164,255,.3)}
+ .cream{background:#FAF8F4;border:1px solid rgba(16,19,25,.08);border-radius:14px;padding:18px;display:inline-block}
+ .blue{background:#2A5BE0;border-radius:14px;padding:18px;display:inline-block}
+</style></head>
+<body>
+<h4>顶栏真实尺寸</h4>
+<div class="row">
+  <div class="bar"><img src="mark.svg" style="height:25px" alt=""><span>词汇账户<em class="pill" style="font-style:normal">余额查询</em></span></div>
+  <div class="bar"><img src="mark.svg" style="height:22px" alt=""><span>词汇账户</span></div>
+  <div class="bar"><img src="mark.svg" style="height:20px" alt=""><span>词汇账户</span></div>
+</div>
+
+<h4>放大检查</h4>
+<div class="row">
+  <div class="item"><img src="mark.svg" width="70" alt=""><span>70</span></div>
+  <div class="item"><img src="mark.svg" width="140" alt=""><span>140</span></div>
+  <div class="item"><img src="mark.svg" width="280" alt=""><span>280</span></div>
+</div>
+
+<h4>极端尺寸（favicon 16 / 20 / 24 / 32）</h4>
+<div class="row">
+  <div class="item"><img src="mark.svg" width="16" alt=""><span>16</span></div>
+  <div class="item"><img src="mark.svg" width="20" alt=""><span>20</span></div>
+  <div class="item"><img src="mark.svg" width="24" alt=""><span>24</span></div>
+  <div class="item"><img src="mark.svg" width="32" alt=""><span>32</span></div>
+</div>
+
+<h4>深色底</h4>
+<div class="dark">
+  <div class="row">
+    <div class="bar"><img src="mark.svg" style="height:25px" alt=""><span>词汇账户<em class="pill" style="font-style:normal">余额查询</em></span></div>
+    <div class="item"><img src="mark.svg" width="70" alt=""><span>70 on dark</span></div>
+  </div>
+</div>
+
+<h4>米白方块 / 蓝底</h4>
+<div class="row">
+  <div class="cream"><img src="mark.svg" width="64" alt=""></div>
+  <div class="blue"><img src="mark.svg" width="64" alt="" style="filter:brightness(0) invert(1)"></div>
+</div>
+</body></html>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 单色版（深色墨），用于浅底印刷 / 传真 / 单色场景。橙色元素并入同一色，靠形状区分。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68 64" width="68" height="64" role="img" aria-label="30">
+  <text x="17.5" y="50.5" text-anchor="middle"
+        font-family="'Arial Black','Segoe UI Black',Arial,Helvetica,sans-serif"
+        font-size="50" font-weight="900"
+        fill="#12130F" stroke="#12130F" stroke-width="2.2"
+        stroke-linejoin="round" paint-order="stroke fill">3</text>
+  <circle cx="47.5" cy="32" r="14.2" fill="none" stroke="#12130F" stroke-width="7.4"/>
+  <path d="M47.5 14.1 A17.9 17.9 0 0 1 65.0 28.3 L57.8 29.8 A10.5 10.5 0 0 0 47.5 21.5 Z" fill="#12130F"/>
+  <line x1="47.5" y1="32" x2="56.4" y2="21.8" stroke="#12130F" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="47.5" cy="32" r="3.6" fill="#12130F"/>
+</svg>
