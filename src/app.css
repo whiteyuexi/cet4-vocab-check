@@ -387,6 +387,16 @@ html[data-theme="dark"] .ai-sent pre{background:rgba(255,255,255,.06)}
 @media(max-width:600px){
   .wrap{padding:0 16px 100px}
   .topbar-in{padding:12px 16px}
+  /* 手机顶栏：品牌名从 4 字（词汇账户）改成 7 字（四六级词汇量检测）后，
+     390px 下品牌会被挤成一列竖直的字（每行一个字），顶栏涨到 200px 高。
+     做法是"先让位、再省略"：AI 入口收成图标、统计数字隐藏，品牌名尽量给足宽度。 */
+  .logo{min-width:0;flex:0 1 auto;white-space:nowrap}
+  .logo>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .tb-stat{display:none}
+  #aiBtn span{display:none}          /* 只留 ✨ 图标，title 里仍有完整说明 */
+  #aiBtn{padding:6px 8px}
+  #whoBtn span{display:none}         /* 只留人形图标：把宽度让给产品名 */
+  .who-btn{padding:6px 9px}
   .hero{padding:24px 20px;border-radius:20px}
   .hero h1 b{font-size:42px}
   .hero.intro h1{font-size:24px}
@@ -735,6 +745,24 @@ html[data-theme="dark"] .nav-pill{border-color:rgba(127,164,255,.3);
 html[data-theme="dark"] .welcome{background:linear-gradient(150deg,rgba(127,164,255,.10),var(--glass) 62%);
   border-color:rgba(127,164,255,.2)}
 html[data-theme="dark"] .welcome-in{background:rgba(255,255,255,.06)}
+
+/* 回访卡：首页 hero 之后的一条不遮挡卡片。
+   不用弹窗是刻意的——它要在"用户回来看一眼"时提供结论，而不是拦住用户。
+   左侧一条品牌色竖线 + 右上角收起按钮，视觉上像"便签"不像"广告"。 */
+.revisit{display:flex;align-items:flex-start;gap:12px;margin-top:16px;padding:14px 16px;
+  border-radius:16px;background:var(--glass);border:1px solid var(--line);
+  border-left:3px solid var(--accent);box-shadow:var(--lift-sm)}
+.revisit-main{flex:1;min-width:0}
+.revisit-h{font-size:13.5px;color:var(--ink);display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.revisit-b{margin-top:6px;font-size:12.5px;line-height:1.75;color:var(--ink2);
+  display:flex;flex-direction:column;gap:4px}
+.revisit-b b{color:var(--ink)}
+.revisit-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.revisit-x{flex:none;width:26px;height:26px;border-radius:9px;border:1px solid var(--line);
+  background:transparent;color:var(--ink3);font-size:16px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .18s,color .18s}
+.revisit-x:hover{background:var(--glass-2);color:var(--ink)}
+html[data-theme="dark"] .revisit{border-left-color:var(--accent)}
 
 /* 档案面板 */
 .who-list{display:flex;flex-direction:column;gap:8px}

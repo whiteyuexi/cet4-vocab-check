@@ -259,6 +259,120 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     A.S.samples = []; A.S.session = null; A.S.status = {}; A.save();
   });
 
+  // ---------- 回访卡：打开首页时的一句话分析（不遮挡、可永久关闭、不烧额度） ----------
+  step('回访卡', () => {
+    A.S.status = {}; A.S.samples = []; A.S.session = null; A.S.rounds = []; A.S.lastResult = null;
+    A.S.settings.bank = 'c4'; A.S.settings.mode = 'self';
+    A.S.settings.revisitOff = false;
+    A._revisitHidden = false; A._revisitForce = false;
+    A.save(); A.go('home');
+    check('没有数据时不显示回访卡', !q('#revisitCard'), q('#revisitCard') ? '出现了' : '没有');
+
+    // 造一份 5 天前、最高频段偏弱的抽样
+    const old = Date.now() - 5 * 86400000;
+    A.S.samples = [];
+    A.addSample({
+      n: 64, k: 40, f: 8, ts: old,
+      bands: { 1: { N: 1000, n: 20, k: 8, f: 2 }, 2: { N: 1000, n: 22, k: 18, f: 2 }, 3: { N: 1000, n: 22, k: 18, f: 2 } }
+    });
+    A.save(); A.go('home');
+    const info = A.revisitInfo();
+    check('有抽样数据且满 3 天才显示', !!q('#revisitCard') && !!info && info.days === 5,
+      info ? info.days + ' 天前' : 'no info');
+    check('卡片报出区间与目标频段', /±/.test(q('#revisitCard').textContent) &&
+      new RegExp(A.BAND_NAMES[info.target.band]).test(q('#revisitCard').textContent),
+      q('#revisitCard').textContent.replace(/\s+/g, ' ').slice(0, 46));
+    // 缺口词数必须和"段内总量 × (1-掌握率)"一致，不能是随手写的文案
+    const expectGap = Math.round((1 - info.target.p) * info.target.N);
+    check('缺口词数与频段数据一致', q('#revisitCard').textContent.includes(String(expectGap)) &&
+      info.target.gapWords === expectGap, '约 ' + info.target.gapWords + ' 词');
+    // 高频段还有洞时优先补高频段：这份数据里 20k 段的 p 更低，但目标段必须是高频段
+    const lowest = A.bandProfile().rows.filter(r => r.p !== null && r.n >= 3)
+      .sort((a, b) => a.p - b.p)[0];
+    check('目标段优先高频段而不是全库最弱段', info.target.band >= 1 && info.target.band <= 3 &&
+      info.weak && info.weak.band === lowest.band,
+      '最弱 ' + A.BAND_NAMES[info.weak.band] + '（' + Math.round(info.weak.p * 100) + '%）→ 目标 ' +
+      A.BAND_NAMES[info.target.band] + '（' + Math.round(info.target.p * 100) + '%）');
+    // 上面那组数据里最弱段恰好就是高频段，规则没被真正考验；再造一组"冷门段更弱"的
+    A.S.samples = [];
+    A.addSample({ n: 60, k: 40, f: 6, ts: old,
+      bands: { 1: { N: 1000, n: 20, k: 17, f: 1 }, 2: { N: 1000, n: 20, k: 17, f: 1 }, 0: { N: 1321, n: 20, k: 4, f: 2 } } });
+    A.save(); A.go('home');
+    const cold = A.revisitInfo();
+    check('冷门段更弱时仍先补高频段', cold.weak.band === 0 && cold.target.band === 1,
+      '最弱 ' + A.BAND_NAMES[cold.weak.band] + '（' + Math.round(cold.weak.p * 100) + '%）→ 目标 ' +
+      A.BAND_NAMES[cold.target.band] + '（' + Math.round(cold.target.p * 100) + '%）');
+    check('并如实说明"冷门段最弱但不先补"', /偏冷门/.test(q('#revisitCard').textContent),
+      q('#revisitCard').textContent.match(/全库最弱的是[^。]*。/)?.[0] || '没有这句话');
+    // 换回原来那组，后面的断言继续用它
+    A.S.samples = [];
+    A.addSample({
+      n: 64, k: 40, f: 8, ts: old,
+      bands: { 1: { N: 1000, n: 20, k: 8, f: 2 }, 2: { N: 1000, n: 22, k: 18, f: 2 }, 3: { N: 1000, n: 22, k: 18, f: 2 } }
+    });
+    A.save(); A.go('home');
+    const perDay = A.perDayWords();
+    A.S.settings.dailyMinutes = 60; A.save(); A.go('home');
+    check('补完天数跟着「每日可投入时间」变', A.perDayWords() === 40 &&
+      Math.ceil(A.revisitInfo().target.gapWords / 40) !== Math.ceil(expectGap / perDay),
+      perDay + ' 词/天 → ' + Math.ceil(expectGap / perDay) + ' 天；改 60 分钟后 40 词/天');
+
+    // 不足 3 天不该打扰
+    A.S.settings.dailyMinutes = 30;
+    A.S.samples = [];
+    A.addSample({ n: 64, k: 40, f: 8, bands: { 1: { N: 1000, n: 20, k: 8, f: 2 } } });
+    A.save(); A.go('home');
+    check('刚测完（0 天）不打扰', !q('#revisitCard'));
+
+    // 收起：只影响本次会话，不落盘
+    A.S.samples = [];
+    A.addSample({ n: 64, k: 40, f: 8, ts: old, bands: { 1: { N: 1000, n: 20, k: 8, f: 2 } } });
+    A.save(); A.go('home');
+    click('[data-act="revisit-hide"]');
+    check('点×收起后本次不再显示', !q('#revisitCard') && A._revisitHidden === true);
+    check('收起不写进存储', !JSON.parse(win.localStorage.getItem('cet4vocab_v1')).settings.revisitOff);
+    A._revisitHidden = false; A.go('home');
+    check('重新渲染后卡片回来', !!q('#revisitCard'));
+
+    // 以后不再提醒：落盘，并且能在设置里重新打开
+    click('[data-act="revisit-off"]');
+    check('点「以后不再提醒」后不再显示', !q('#revisitCard') &&
+      JSON.parse(win.localStorage.getItem('cet4vocab_v1')).settings.revisitOff === true);
+    A.go('settings');
+    const tg = q('[data-act="revisit-toggle"]');
+    check('设置页有回访开关且状态是关', !!tg && tg.getAttribute('aria-checked') === 'false',
+      tg ? tg.getAttribute('aria-checked') : 'none');
+    click('[data-act="revisit-toggle"]');
+    A.go('home');
+    check('设置里重新打开后卡片恢复', !!q('#revisitCard') && A.S.settings.revisitOff === false);
+
+    // 按钮要接到真实行为
+    const band = A.revisitInfo().target.band;
+    click('[data-act="revisit-review"]');
+    check('「开始补这一段」真的开了复测会话', !!A.S.session && A.S.session.kind === 'list' &&
+      A.S.session.label.indexOf(A.BAND_NAMES[band]) >= 0,
+      A.S.session ? A.S.session.label : '没有会话');
+    A.S.session = null; A.go('home');
+    click('[data-act="revisit-report"]');
+    check('「看完整报告」真的切到报告页', /等级|报告/.test(doc.getElementById('view').textContent),
+      doc.getElementById('view').textContent.replace(/\s+/g, ' ').slice(0, 24));
+
+    // 预览：绕过天数门槛，让评委在没有历史时也能看到这张卡
+    A.go('home');
+    A.S.samples = []; A.S.rounds = []; A.save();
+    A.go('settings');
+    click('[data-act="revisit-preview"]');
+    const demoCard = q('#revisitCard');
+    check('设置页「预览这张卡」在没有数据时也能展示', !!demoCard && /示例/.test(demoCard.textContent),
+      demoCard ? demoCard.textContent.replace(/\s+/g, ' ').slice(0, 30) : '没有卡片');
+    check('示例卡片上的按钮是真实可走的下一步',
+      !!q('#revisitCard [data-act="start"]'), q('#revisitCard [data-act="start"]') ? '有摸底入口' : '没有');
+    A._revisitForce = false;
+    A.S.status = {}; A.S.samples = []; A.S.rounds = []; A.S.session = null;
+    A.S.settings.revisitOff = false; A.S.settings.dailyMinutes = 30;
+    A.save(); A.go('home');
+  });
+
   // ---------- 好用程度：下一步建议与成绩导出 ----------
   step('结果页的下一步与导出', () => {
     A.S.status = {}; A.S.samples = []; A.S.session = null;

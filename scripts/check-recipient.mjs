@@ -209,12 +209,20 @@ try {
     clientW: document.documentElement.clientWidth,
     cta: (function(){var b=document.querySelector('.hero-cta button');if(!b)return null;
       var r=b.getBoundingClientRect();return {w:Math.round(r.width),right:Math.round(r.right)};})(),
-    pet: getComputedStyle(document.getElementById('pet')).display
+    pet: getComputedStyle(document.getElementById('pet')).display,
+    topbar: (function(){var t=document.querySelector('.topbar');return t?{h:Math.round(t.getBoundingClientRect().height)}:{h:0};})(),
+    logo: (function(){var l=document.querySelector('.logo');return l?{w:Math.round(l.getBoundingClientRect().width)}:{w:0};})()
   })`));
   ok('手机宽度无横向溢出', mob.scrollW <= mob.clientW + 1, mob.scrollW + '/' + mob.clientW);
   ok('手机上主按钮可点且在屏内', !!mob.cta && mob.cta.w > 80 && mob.cta.right <= mob.clientW + 1,
     mob.cta ? mob.cta.w + 'px right=' + mob.cta.right : 'null');
   ok('窄屏自动收起桌宠（不挡内容）', mob.pet === 'none', mob.pet);
+  /* 顶栏回归：品牌名改成 7 字后，390px 下曾被挤成"一列竖直的字"，顶栏涨到 200px。
+     判据用「顶栏高度」而不是某个类名——高度是用户真正看到的东西。 */
+  ok('手机顶栏是单行（高度正常）', mob.topbar.h <= 80 && mob.topbar.h > 20,
+    '顶栏高 ' + mob.topbar.h + 'px');
+  ok('手机顶部品牌名没有被折成一列', mob.logo.w >= 60 && mob.logo.w <= mob.clientW * 0.75,
+    '品牌宽 ' + mob.logo.w + 'px / 屏 ' + mob.clientW + 'px');
 
   /* ---------- 汇总 ---------- */
   console.log('');

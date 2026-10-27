@@ -652,10 +652,15 @@
   /* 某格里的「缺口词」（未测 + 模糊 + 不认识），给地图的「点一下复测」用 */
   A.mapCellWords = function (band, letter) {
     var out = [], pool = activePool();
+    /* letter 传 'all' 表示"整段、不限首字母"。
+       这里曾经漏了这个判断：'all' 会被当成一个真首字母去比首字母，永远对不上，
+       于是 reviewCell(band,'all') 一直返回空 → AI 建议里的「复测某段」点了只弹一句
+       "这块没有需要复测的词"。回访卡接上同一条通路时才暴露出来。 */
+    var anyLetter = !letter || letter === 'all';
     for (var n = 0; n < pool.length; n++) {
       var i = pool[n];
       if (A.bandOf(i) !== band) continue;
-      if (String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
+      if (!anyLetter && String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
       var s = A.getSt(i);
       if (s === undefined || s === 0 || s === 1) out.push(i);
     }
@@ -757,7 +762,7 @@
   A.addSample = function (o) {
     if (!S.samples) S.samples = [];
     S.samples.push({
-      ts: Date.now(), n: o.n, k: o.k, f: o.f,
+      ts: o.ts || Date.now(), n: o.n, k: o.k, f: o.f,
       pre: o.pre || 0, bank: o.bank || bankKey(),
       mode: o.mode || 'self', bands: o.bands || null
     });
@@ -1272,6 +1277,154 @@
   A.needFor = needFor;
   A.minsText = minsText;
 
+  /* ================= 回访卡：打开首页时的一句话分析 =================
+     为什么是卡片不是弹窗（取舍写在 NEXT.md）：
+       · 不遮挡——首页 hero 已经在说"你有多大词汇量"，这里补的是"下一步动哪里"；
+       · 可永久关闭 + 有天数门槛——离"打卡催命"远一点，产品只开处方不卖药；
+       · 内容全部本地算——区间、最弱段、补完天数都是算出来的，不调 AI、不烧额度。
+     评委场景的特殊处理：全新浏览器没有历史，卡片本来不会出现，
+     所以设置页留了「预览这张卡」，用示例数据展示形状（点一下就能讲给评委听）。 */
+  var REVISIT_GAP_DAYS = 3;         // 距上次检测不足 3 天不打扰
+  A.REVISIT_GAP_DAYS = REVISIT_GAP_DAYS;
+  A._revisitHidden = false;         // 本次会话里点过「收起」→ 刷新后还会出现（故意不落盘）
+  A._revisitForce = false;          // 设置页「预览这张卡」用：绕过天数门槛与关闭状态
+
+  /* 每天能背多少词 = 每日可投入时间 ÷ 每词约 1.5 分钟（与设置页文案一致）。
+     抽成公共函数是因为"计划里的词数"和"回访卡里的词数"必须是同一个数。 */
+  A.perDayWords = function () {
+    var dm = (S.settings && S.settings.dailyMinutes) || 30;
+    return Math.max(5, Math.min(200, Math.round(dm / 1.5)));
+  };
+
+  /* 回访卡要用到的全部数据。没有可用估算就返回 null（首次打开、只有分组检测数据）。 */
+  A.revisitInfo = function () {
+    var es = A.estimateNow();
+    if (!es || (es.kind !== 'sample' && es.kind !== 'full')) return null;
+    var strict = !!S.settings.strict;
+    var now = Date.now();
+    var info = {
+      kind: es.kind,
+      ts: es.ts || now,
+      days: Math.max(0, Math.floor((now - (es.ts || now)) / 86400000)),
+      vocab: strict ? es.strictVocab : es.looseVocab,
+      other: strict ? es.looseVocab : es.strictVocab,
+      half: Math.round(es.kind === 'sample' ? ((strict ? es.strictHi - es.strictLo : es.hi - es.lo) / 2) : 0),
+      n: es.n || 0,
+      perDay: A.perDayWords(),
+      weak: null,
+      prev: null, delta: null, deltaWithinNoise: false
+    };
+    /* 最弱段只在"样本 ≥3 词"的段里挑：抽到 1 个词全错就宣布最弱，是假结论。
+       再分两个概念：
+         weak   = 全库掌握率最低的一段（卡片里如实说"最弱"）
+         target = 真正该先补的一段 —— 高频三段（1k/1k-2k/2k-3k）里只要还有洞就优先它们，
+                  因为补冷门段对阅读的帮助远不如补高频段。这样"文字说的"和"按钮做的"是同一件事。 */
+    var rows = A.bandProfile().rows.filter(function (r) { return r.p !== null && r.n >= 3; })
+      .sort(function (a, b) { return a.p - b.p; });
+    var weak = rows[0] || null;
+    var warm = rows.filter(function (r) { return r.band >= 1 && r.band <= 3; })
+      .sort(function (a, b) { return a.p - b.p; })[0];
+    var pick = (warm && warm.p < 0.9) ? warm : weak;
+    if (pick) {
+      var shape = function (r) {
+        var o = { band: r.band, p: r.p, N: r.N, n: r.n };
+        o.gapWords = Math.max(1, Math.round((1 - r.p) * r.N));
+        return o;
+      };
+      info.weak = weak ? shape(weak) : null;
+      info.target = shape(pick);
+      info.daysToFill = Math.max(1, Math.ceil(info.target.gapWords / info.perDay));
+    }
+    /* 有已归档的上一轮就报变化；差值落在抽样误差内时如实说"还看不出来"——
+       这正是这个工具和"打分网站"的区别：不把噪声说成进步。 */
+    var rounds = S.rounds || [];
+    var prev = rounds.length ? rounds[rounds.length - 1] : null;
+    if (prev && typeof prev.loose === 'number' && prev.finishedAt) {
+      info.prev = { vocab: prev.loose, days: Math.max(0, Math.floor((now - prev.finishedAt) / 86400000)) };
+      info.delta = info.vocab - prev.loose;
+      info.deltaWithinNoise = info.half > 0 && Math.abs(info.delta) < info.half;
+    }
+    return info;
+  };
+
+  /* 现在要不要显示：所有条件集中在这一处，方便断言与调试 */
+  A.revisitShow = function () {
+    if (A._revisitForce) return true;
+    if (A._revisitHidden) return false;
+    if (S.settings && S.settings.revisitOff) return false;
+    if (S.session && S.session.queue && S.session.queue.length) return false;   // 未完成的检测由"继续检测"那条负责
+    var info = A.revisitInfo();
+    if (!info) return false;
+    return info.days >= REVISIT_GAP_DAYS;
+  };
+
+  A.revisitCardHTML = function () {
+    if (!A.revisitShow()) return '';
+    var info = A.revisitInfo();
+    var demo = !info;
+    var head, body, acts;
+    if (demo) {
+      head = '上次 ≈ 4,449 词（±436）· 5 天前';
+      body = '<div>最高频 1k 段只有 <b>69%</b>，是当前最弱的一段——按这个掌握率推算，' +
+          '全段 1,000 词里约 <b>320</b> 个还没拿下。</div>' +
+        '<div>按每天 30 分钟（约 20 词）算，补完这一段约 <b>16 天</b>。</div>' +
+        '<div class="tiny" style="margin-top:6px;color:var(--ink3)">（示例数据：做一次摸底之后，这里会换成你自己的数字）</div>';
+      acts = '<button class="btn sm primary" data-act="start" data-kind="probe" data-target="400">先做一次快速摸底</button>';
+    } else {
+      head = (info.kind === 'full' ? '实测 ' : '上次 ') + info.vocab.toLocaleString('en-US') + ' 词' +
+        (info.half ? '（±' + info.half + '）' : '') + ' · ' +
+        (info.days === 0 ? '今天' : info.days + ' 天前');
+      var lines = [];
+      if (info.target) {
+        var tg = info.target;
+        var tgName = A.BAND_NAMES[tg.band] || ('频段 ' + tg.band);
+        lines.push('最该先补的是 <b>' + esc(tgName) + '</b> 段：掌握 <b>' + Math.round(tg.p * 100) + '%</b>' +
+          '（该段抽到 ' + tg.n + ' 词' + (tg.n < 10 ? '，样本偏少，结论偏粗' : '') + '）——' +
+          '按这个比例推算，全段 ' + tg.N + ' 词里约 <b>' + tg.gapWords + '</b> 个还没拿下。' +
+          /* 这一段话必须跟着频段走：曾经把"最高频段的洞最影响阅读"写死，
+             结果目标段是 10k-20k 时，卡片在自相矛盾。 */
+          (tg.band === 1
+            ? '最高频段在真题里出现最密，先补它收益最大。'
+            : tg.band === 2 || tg.band === 3
+              ? '这一段出现频率仍然很高，补它比补冷门段划算。'
+              : '这一段偏冷门——先补高频段更划算。'));
+        if (info.weak && info.weak.band !== tg.band) {
+          lines.push('全库最弱的是 <b>' + esc(A.BAND_NAMES[info.weak.band] || ('频段 ' + info.weak.band)) +
+            '</b> 段（' + Math.round(info.weak.p * 100) + '%），但它偏冷门，收益不如先补上面这一段。');
+        }
+        lines.push('按每天 ' + info.perDay + ' 词算，补完这一段约 <b>' + info.daysToFill + ' 天</b>（可在设置里改）。');
+      } else {
+        lines.push('这次抽样覆盖的频段还不够分散，看不出哪一段最弱——再测一轮就能定位。');
+      }
+      if (info.prev) {
+        var d = info.delta;
+        var sign = d > 0 ? '+' : '';
+        lines.push('与上一轮（' + info.prev.days + ' 天前 ' + info.prev.vocab.toLocaleString('en-US') + ' 词）相比 ' +
+          '<b>' + sign + d.toLocaleString('en-US') + ' 词</b>：' +
+          (info.deltaWithinNoise
+            ? '这个差值还在 ±' + info.half + ' 的抽样误差以内，<b>先别当成进步</b>——想比得出来就再测一轮把区间压小。'
+            : '已经超出 ±' + info.half + ' 的抽样误差，可以算真实变化。'));
+      }
+      body = lines.map(function (x) { return '<div>' + x + '</div>'; }).join('');
+      acts = (info.target
+          ? '<button class="btn sm primary" data-act="revisit-review">开始补这一段</button>'
+          : '') +
+        '<button class="btn sm" data-act="revisit-report">看完整报告</button>' +
+        (info.target ? '<button class="btn sm ghost" data-act="revisit-ask">让 AI 细说</button>' : '');
+    }
+    return '<div class="revisit" id="revisitCard">' +
+      '<div class="revisit-main">' +
+        '<div class="revisit-h"><b>' + head + '</b>' +
+          '<span class="pill' + (demo ? '' : ' brand') + '" style="margin-left:8px">' + (demo ? '示例' : '回访') + '</span></div>' +
+        '<div class="revisit-b">' + body + '</div>' +
+        '<div class="revisit-acts">' + acts +
+          '<button class="btn sm ghost" data-act="revisit-off" title="以后不再自动显示这张卡（设置里可重新打开）">以后不再提醒</button>' +
+        '</div>' +
+      '</div>' +
+      '<button class="revisit-x" data-act="revisit-hide" aria-label="收起这条回访卡" title="收起（刷新后还会出现）">×</button>' +
+      '</div>';
+  };
+
   /* ---------- 首页 ---------- */
   A.viewHome = function () {
     var pool = activePool();
@@ -1355,6 +1508,9 @@
       h += '<div>认识<b>' + t.k + '</b></div><div>模糊<b>' + t.f + '</b></div><div>不认识<b>' + t.u + '</b></div><div>未检测<b>' + t.rest + '</b></div>';
       h += '</div></div></div></div>';
     }
+
+    // 回访卡：不遮挡，放在 hero 之后；有未完成的检测时它自己会隐藏
+    h += A.revisitCardHTML();
 
     if (S.session && S.session.queue && S.session.queue.length) {
       var left = S.session.queue.length - S.session.pos;

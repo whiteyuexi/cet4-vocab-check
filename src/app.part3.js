@@ -485,6 +485,20 @@
       '（按每词约 1.5 分钟估算）。可填 5–180 之间的任意整数。' +
       '</div>';
 
+    /* 回访提醒：打开首页时用上次结果给一句话分析。
+       刻意做成"卡片 + 可永久关闭"而不是开机弹窗——理由写在 NEXT.md（不遮挡、不催打卡）。 */
+    h += '<div class="sec-title">回访提醒<span class="line"></span></div>';
+    h += '<div class="card tiny" style="line-height:1.9">' +
+      '<div class="switch"><div class="st"><b>打开首页时给一句话分析</b>' +
+        '<small>用上次的检测结果说明"哪一段最弱、多久能补完"；距上次检测满 ' + A.REVISIT_GAP_DAYS +
+        ' 天才出现，不遮挡、不联网、不消耗 AI 额度</small></div>' +
+      '<button class="toggle' + (S.settings.revisitOff ? '' : ' on') + '" role="switch" aria-checked="' +
+        (S.settings.revisitOff ? 'false' : 'true') + '" aria-label="回访提醒" data-act="revisit-toggle"></button></div>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">' +
+      '<button class="btn sm" data-act="revisit-preview">预览这张卡</button>' +
+      '<span style="color:var(--ink3)">没有历史数据时显示的是示例，测过一次就换成你自己的数字</span>' +
+      '</div></div>';
+
     h += '<div class="sec-title">素材来源<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.95">' +
       '桌宠立绘：<b>DS鲸鱼娘</b> · Sutera-Diffusus · ' +
@@ -622,6 +636,38 @@
           A.startSession('list', { list: lstB, label: '复测「' + A.BAND_NAMES[rbBand] + '」段 · ' + lstB.length + ' 词' });
           break;
         case 'ai-open': A.openAIDialog(); break;
+        /* ---------- 回访卡 ---------- */
+        case 'revisit-hide':
+          // 只收起，不落盘：关掉浏览器再打开，该提醒还在（用户只是"这次不想看"）
+          A._revisitHidden = true; A.render();
+          break;
+        case 'revisit-off':
+          S.settings.revisitOff = true; A._revisitHidden = false;
+          A.save(); A.render();
+          A.toast('已关闭回访提醒，可在「设置 → 回访提醒」重新打开');
+          break;
+        case 'revisit-toggle':
+          S.settings.revisitOff = !S.settings.revisitOff;
+          A._revisitHidden = false;
+          A.save(); A.render();
+          A.toast(S.settings.revisitOff ? '已关闭回访提醒' : '已开启：距上次检测满 ' + A.REVISIT_GAP_DAYS + ' 天会显示');
+          break;
+        case 'revisit-preview':
+          A._revisitForce = true; A.go('home');
+          A.toast('这是回访卡的样子' + (A.revisitInfo() ? '（用你的真实数据）' : '（示例数据，测一次后会换成你的数字）'));
+          break;
+        case 'revisit-review': {
+          var rv = A.revisitInfo();
+          if (!rv || !rv.target) { A.toast('还没有足够的抽样数据，先做一次摸底'); break; }
+          A.reviewCell(rv.target.band, 'all');
+          break;
+        }
+        case 'revisit-report': A.go('report'); break;
+        case 'revisit-ask': {
+          var rv2 = A.revisitInfo();
+          A.openAIDialog(null, A.focusForBand(rv2 && rv2.target ? rv2.target.band : 1));
+          break;
+        }
         case 'ai-band': A.openAIDialog(null, A.focusForBand(parseInt(t.getAttribute('data-band'), 10))); break;
         case 'ai-map': A.openAIDialog(null, A.focusForMap()); break;
         case 'ai-do': A.aiRunAction(t.getAttribute('data-aid')); break;
