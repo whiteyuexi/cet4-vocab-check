@@ -281,10 +281,17 @@ scripts/
   make-pet-art-inline.mjs  立绘重编码（384×384 WebP）
   cdp-shot.mjs / cdp-eval.mjs  DevTools 协议截图与求值
   html2pdf.mjs        技术文档 HTML → PDF（并报页数）
+  make-logo-from-font.mjs  标识：字体字形轮廓 + 仪表盘 → SVG
+  make-logo-assets.mjs     标识：SVG → 多档 PNG
+  process-ai-logo.mjs      AI 原图：抠底 + 裁边 + 六档导出
+  make-readme-shots.mjs    README 截图批拍
+  make-ppt-shots.mjs       PPT 实拍批拍
+  make-pptx.mjs / make-ppt-roadshow.mjs / make-ppt-detail.mjs  三套 PPT
 smoke-test.js         164 项功能测试
 btest.js              生成真实浏览器断言页
 data/                 第三方原始数据（不提交，见 data/README.md）
-docs/screenshots/     README 用截图
+docs/screenshots/     README 与 PPT 用截图
+assets/logo/          标识素材（矢量 + AI 原图处理产物 + 多档 PNG）
 ```
 
 ## 质量数据
@@ -313,6 +320,30 @@ docs/screenshots/     README 用截图
 
 请注意：`mahavivo/english-wordlists` 未声明 license，本项目以「按需拉取、标注来源」的方式使用；
 若用于商业用途请先取得原作者授权。本项目代码以 MIT 发布，该许可不覆盖第三方数据。
+
+## 标识与品牌
+
+标识是「30」：**3** 是起点，**0** 是仪表盘。
+
+> **为什么是 30**：作者高考英语考了 30 分。这个数字是起点，不是目标——
+> 正因如此，这个项目做的不是"再背一遍单词"，而是"先把差在哪测准、再告诉你背哪些"。
+
+**0 的构造**：外环 + 右上橙色扇区 + 轴心指针 = 一块仪表/表盘。
+它同时说了两件事：这是个**测量工具**；而"30 分"那个分数，也是表盘上的一个读数。
+
+**实现方式**（都在 `assets/logo/`）：
+| 文件 | 用途 |
+| --- | --- |
+| `mark-font.svg` | **线上使用的标识**：「3」取自 Arial Black 的字形轮廓（已转路径，不依赖系统字体）＋按原图实测比例重绘的仪表盘 |
+| `mark-web.svg` | 分段式「3」的四版实验记录（含每版为何读成 Ξ / Ǝ / Ε 的结论） |
+| `mark.svg` `mark-mono-dark.svg` `favicon.svg` | 早期手绘矢量版 / 单色版 / 正方形 favicon |
+| `ai/` | 作者提供的 AI 原图处理后产物（抠底 + 裁边 + 64–1024 六档透明 PNG） |
+| `png/` | 从 SVG 渲染的多档位 PNG（PPT / 视频 / 商店图标用） |
+
+顶栏、入场页、favicon 都用**内联 SVG 或内联 data URI**，所以单文件交付时不增加外部依赖。
+
+脚本：`npm run logo:font`（字体轮廓版）、`npm run logo:assets`（导出 PNG）、
+`npm run logo:ai`（处理 AI 原图）。
 
 ## 界面形象与第三方素材
 
