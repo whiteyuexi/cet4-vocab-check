@@ -175,7 +175,7 @@ function pic(s, file, x, y, w, h) {
     s.addText(st[2], { x, y: 3.78, w: cw - 0.1, h: 1.3, fontFace: F, fontSize: 12, color: C.ink2, lineSpacingMultiple: 1.4 });
     if (i < 3) s.addText('›', { x: x + cw - 0.02, y: 2.9, w: 0.28, h: 0.5, fontFace: F, fontSize: 22, bold: true, color: C.orange, align: 'center' });
   });
-  s.addText('第 4 步是大多数产品缺的那一步：它们只安排复习，不验证进步。', {
+  s.addText('第 4 步是大多数产品缺的那一步：它们只安排复习，不验证进步。隔几天再打开，首页有一张「回访卡」把上次的结论接着说下去。', {
     x: M, y: 5.5, w: CW, h: 0.4, fontFace: F, fontSize: 13.5, color: C.ink2,
   });
   s.addNotes('四步一句带过，重点停在第四步：多数产品只安排复习、不验证。'

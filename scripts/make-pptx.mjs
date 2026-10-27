@@ -194,10 +194,12 @@ const shot = n => path.join(SHOTS, n);
     if (i < 3) s.addText('→', { x: x + cw + 0.02, y: 3.5, w: 0.32, h: 0.4, fontFace: F, fontSize: 18, bold: true, color: C.brand, align: 'center' });
   });
   s.addShape(pptx.ShapeType.roundRect, { x: M, y: 5.5, w: CW, h: 0.78, rectRadius: 0.06, fill: { color: C.softBlue }, line: { color: C.line2 } });
-  txt(s, '与「背单词 App」的根本差别：那些产品比的是内容与复习算法（重资产赛道）；我们比的是测量与诊断的可信度。',
-    { x: M + 0.28, y: 5.66, w: CW - 0.56, h: 0.5, fontSize: 12, color: C.ink2 });
+  txt(s, '闭环不是画在 PPT 上的：隔几天再打开，首页会出现「回访卡」——最该先补哪一段、按你每天的时间要几天、涨跌有没有超出抽样误差。' +
+    '同一个「每日可投入时间」同时驱动报告、AI 计划与这张卡。',
+    { x: M + 0.28, y: 5.58, w: CW - 0.56, h: 0.62, fontSize: 11.5, color: C.ink2, lineSpacingMultiple: 1.25 });
   foot(s, 4, TOTAL, false);
-  s.addNotes('四步闭环是全场的骨架，后面每一页都在展开其中一步。讲的时候可以点一下：第 4 步"复测"是多数产品没有的。');
+  s.addNotes('四步闭环是全场的骨架，后面每一页都在展开其中一步。讲的时候可以点一下：第 4 步"复测"是多数产品没有的。'
+    + '如果评委问"这些结论用户下次还看得到吗"，就答：会——隔几天再打开首页有一张回访卡把上次的结论说出来，不弹窗、可永久关闭。');
 }
 
 /* ============================ 5 测准 ============================ */

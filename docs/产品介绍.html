@@ -66,7 +66,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-si
 
 <div class="toc">
   <a href="#p1">一、产品定义：我们卖的是"处方"</a><br>
-  <a href="#p2">二、核心链路：检测 → 诊断 → 规划 → 复测</a><br>
+  <a href="#p2">二、核心链路：检测 → 诊断 → 规划 → 复测（含 2.9 每日可投入时间、2.13 回访卡）</a><br>
   <a href="#p3">三、AI 的三层形态与三档通路</a><br>
   <a href="#p4">四、UI 设计规范（令牌 / 排版 / 动效 / 断点）</a><br>
   <a href="#p5">五、逐页详解（含每个控件的行为）</a><br>
@@ -117,7 +117,8 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-si
 <table>
 <tr><td class="k">主要形态</td><td><b>单个 HTML 文件，2.11 MB，双击即开</b>：词库、例句、立绘、样式、脚本全部内联；不装环境、不联网、不需要同目录资源</td></tr>
 <tr><td class="k">两版产物</td><td><b>仓库版</b>（不含任何 API Key，可公开）/ <b>评委版</b>（内联作者 Key，完成检测可换 AI 深度诊断）</td></tr>
-<tr><td class="k">离线可验证</td><td>「空目录 + 全新浏览器配置 + 屏蔽全部 http/https」下 18 项断言全过：答题、进度、档案、手机布局都正常</td></tr>
+<tr><td class="k">离线可验证</td><td>「空目录 + 全新浏览器配置 + 屏蔽全部 http/https」下 20 项断言全过：答题、进度、档案、手机布局、手机顶栏单行都正常</td></tr>
+<tr><td class="k">回访闭环</td><td>隔几天再打开，首页用上次结果给一句话分析（哪一段最弱 / 补完几天 / 是否真的进步）；不弹窗、不打卡、可永久关闭（§2.13）</td></tr>
 <tr><td class="k">移动端</td><td>响应式，&lt;820px 自动收起桌宠与侧栏；390×844 实测无横向溢出、主按钮在屏内</td></tr>
 </table>
 
@@ -204,14 +205,31 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-si
 
 <!-- ============================================================ -->
 
-<h3>2.9 每日可投入时间怎么变成"每天背多少词"</h3>
-<p>设置里可以选 15 / 30 / 60 分钟，也可以<b>自己填 5–180 之间的任意分钟数</b>。本地方案据此换算：</p>
+<h3>2.9 每日可投入时间：一栏设置，四处文案</h3>
+<p>设置页里这一栏（15 / 30 / 60 预设 + <b>可自己填 5–180 之间的任意分钟数</b>）只有一个用途：
+把"我有多少时间"换算成"每天能背多少词"，然后<b>喂给四处会报天数的文案</b>。
+它<b>不影响出题</b>（题量由目标精度决定）、<b>不设闹钟、不打卡、不催</b>。</p>
 <table>
-<tr><td class="k">换算规则</td><td><code>每天词数 = round(分钟 ÷ 1.5)</code>，并夹在 5–200 之间（每词按约 1.5 分钟计）</td></tr>
-<tr><td class="k">举例</td><td>15 分钟 → 10 词/天　30 → 20　45 → 30　60 → 40　90 → 60</td></tr>
-<tr><td class="k">为什么这么做</td><td>只给三档等于逼用户选一个不合适的；而每个人通勤、自习时间都不一样。改成可填之后，方案里的"每天 N 词"才真的对得上他的生活</td></tr>
+<tr><th style="width:190px">换算</th><th>规则</th></tr>
+<tr><td class="k">公式</td><td><code>每天词数 = round(分钟 ÷ 1.5)</code>，夹在 5–200（每词按约 1.5 分钟计）；代码里只有一处：<code>A.perDayWords()</code></td></tr>
+<tr><td class="k">举例</td><td>15 分钟 → 10 词/天　30 → 20　45 → 30　60 → 40　90 → 60　180 → 120</td></tr>
 <tr><td class="k">防呆</td><td>非数字或 ≤0 给 toast 提示；超范围夹到 5–180，避免把 0 或 9999 带进计划换算</td></tr>
 </table>
+<p><b>它到底改了哪四处</b>（把这四处的天数改对，是这一栏存在的全部意义）：</p>
+<table>
+<tr><th style="width:150px">位置</th><th>文案形态</th><th style="width:150px">数据来源</th></tr>
+<tr><td class="k">报告页顶部</td><td>到「A 优秀」还差 1,038 词（约 <b>52 天</b> · 每天 <b>20 词</b>）</td><td>等级缺口 ÷ 每天词数</td></tr>
+<tr><td class="k">报告页分段建议</td><td>最高频 1k 段还差 350 词 · 掌握率 61% · 每天 20 词约需 <b>18 天</b></td><td>该段缺口 × 词频权重</td></tr>
+<tr><td class="k">AI 本地方案</td><td>第 1–4 天：每天 <b>20</b> 词，只补最弱段……按每天 20 词算，两周能覆盖约 280 词</td><td>两周计划里的词数上限</td></tr>
+<tr><td class="k">回访卡（§2.13）</td><td>按每天 20 词算，补完这一段约 <b>18 天</b>（可在设置里改）</td><td>目标段缺口 ÷ 每天词数</td></tr>
+</table>
+<div class="box warn" data-lbl="踩过的坑：设置改了但文案不变">
+<p>这两处都<b>曾经把「每天 50 词」写死在代码里</b>，于是设置页这一栏看起来能改、实际没生效：
+先在 AI 计划里发现并修掉，后来做回访卡时又发现<b>报告页的 <code>perDay</code> 还是硬编码</b>
+——同一个错误犯了两次，因为两次都是"另起一处计算"而不是复用同一个函数。</p>
+<p>现在四处全部走 <code>A.perDayWords()</code>，并有一条断言锁死：把每日时间改成 60 分钟（=40 词/天）后，
+<b>报告页与回访卡的 perDay 必须同时变成 40</b>。</p>
+</div>
 
 <h2 id="p210"><span class="n">2.10</span>实现细节：抽样与估计的真实参数</h2>
 <p>以下都是代码里的实际取值，不是示意。</p>
@@ -346,6 +364,34 @@ function packStates() {
 <tr><td class="mono">&lt; 85%</td><td class="mono">A（优秀）</td><td>还能评优秀，但上不了卓越</td></tr>
 </table>
 <p class="small">实现方式是"按比例算出的等级"与"封顶等级"取较差的那个，并在报告里注明"已被地基约束封顶"。</p>
+<h2 id="p213"><span class="n">2.13</span>回访卡：第二次打开时，首页接上上次的结论</h2>
+<p>测完就结束的产品，用户下次打开还是面对同一个数字。回访卡把这句"上次的数字"变成"今天该动哪一段"——
+但<b>刻意没有做成弹窗</b>，理由见下面的取舍表。</p>
+<table>
+<tr><th style="width:170px">为什么不是弹窗</th><th>具体后果</th></tr>
+<tr><td class="k">评委根本看不见</td><td>全新浏览器没有任何历史：弹窗要么不出现（白做），要么弹一个空的（更糟）。所以设置页另配「预览这张卡」，用示例数据展示形状</td></tr>
+<tr><td class="k">内容撑不起遮罩</td><td>首页 hero 已经报词汇量 + 95% 区间 + 逐词四态，弹窗只能复述</td></tr>
+<tr><td class="k">会烧掉 AI 额度</td><td>作者额度"完成一轮检测换一次"，每次打开都调 AI，第二次打开就没了；退回本地规则又成了"套公式"</td></tr>
+<tr><td class="k">两层遮罩</td><td>入场页已经是一层，再叠弹窗在 390px 手机上尤其明显</td></tr>
+</table>
+<p><b>触发与克制</b>（都写进代码，也写成断言）：</p>
+<table>
+<tr><td class="k">出现条件</td><td>至少有 1 次随机抽样 / 整库实测结果，且距上次检测<b>满 3 天</b></td></tr>
+<tr><td class="k">让位</td><td>有未完成的检测时自动隐藏，交给首页原有的"继续检测"条</td></tr>
+<tr><td class="k">关闭</td><td>「×」= 收起本次（不落盘，刷新后还在）；「以后不再提醒」= 永久关闭，设置页可重开</td></tr>
+<tr><td class="k">成本</td><td>三行结论<b>全部本地算</b>，不联网、不消耗 AI 额度</td></tr>
+</table>
+<p><b>三行结论各自怎么来的</b>（每一句都能追到数据）：</p>
+<table>
+<tr><th style="width:170px">这一行</th><th>算法</th></tr>
+<tr><td class="k">最该先补哪一段</td><td>先取最近一次分层抽样的各段掌握率（样本 ≥3 词的段才参与）。<code>weak</code> = 全库最低的一段；<code>target</code> = <b>高频三段（1k / 1k-2k / 2k-3k）里只要还有洞就优先它们</b>的那一段。缺口词数 = (1−掌握率) × 该段总词数</td></tr>
+<tr><td class="k">为什么两个概念</td><td>否则会出现"文字说最弱是冷门段、按钮却去补冷门段"的自相矛盾。冷门段更弱时卡片会明说：<i>「全库最弱的是 10k-20k（56%），但它偏冷门，收益不如先补上面这一段」</i>——<b>文字说的和按钮做的是同一件事</b></td></tr>
+<tr><td class="k">补完要几天</td><td>目标段缺口 ÷ <code>A.perDayWords()</code>（即 §2.9 的那一栏）</td></tr>
+<tr><td class="k">比上一轮进步了吗</td><td>与已归档的上一轮词汇量相减；<b>差值落在 ±抽样误差内时直接写"先别当成进步"</b>——不把噪声说成进步，是这个工具和"打分网站"的区别</td></tr>
+</table>
+<p><b>三个按钮都是已有动作的别名</b>，不新增路由：复测该段（走词汇地图同一套 <code>reviewCell</code>）、
+看完整报告、让 AI 细说（带该段真实数字开场）。</p>
+
 <h2 id="p3"><span class="n">三</span>AI 的三层形态与三档通路</h2>
 
 
@@ -618,6 +664,8 @@ for (let round = 0; round &lt; 3; round++) {                 // MAX_TOOL_ROUNDS 
 <tr><td class="k">Hero 三种形态</td><td>① <b>没测过</b>：大标题 + 两个 CTA（快速摸底 / 更准一点）<br>
 ② <b>有估计值</b>：56px 大数字 + "±N 词"区间 + 四个小指标（认识/模糊/不认识/未测）+ 下一步计划<br>
 ③ <b>只测过分组</b>：提示"那不是随机抽样，算不出词汇量，补一次摸底就行"</td></tr>
+<tr><td class="k">回访卡</td><td>距上次检测满 3 天时，在 hero 下面出现一条<b>不遮挡</b>的卡：最该先补哪一段 + 补完几天 + 比上一轮是否真的进步。
+可「×」收起（本次）或「以后不再提醒」（永久，设置可重开）；有未完成的检测时自动让位给"继续检测"。详见 §2.13</td></tr>
 <tr><td class="k">检测方式卡</td><td>三种精度档（±400 / ±250 / ±150），每档标注"约 N 题 · N 分钟"</td></tr>
 <tr><td class="k">分组进度</td><td>10 组网格（每组 100 词），颜色表示完成度；点任意一组开始</td></tr>
 <tr><td class="k">折叠说明</td><td>"测试标准 + 快捷键"默认折叠（<code>&lt;details&gt;</code>），不抢主路径</td></tr>
@@ -656,13 +704,14 @@ for (let round = 0; round &lt; 3; round++) {                 // MAX_TOOL_ROUNDS 
 <tr><td class="k">历史</td><td>多轮对比：背了又忘 / 新学会 / 掉档，附轮次时间与覆盖率</td></tr>
 </table>
 
-<h3>5.8 设置页（五个分区）</h3>
+<h3>5.8 设置页（六个分区）</h3>
 <table>
 <tr><td class="k">答题设置</td><td>作答方式（自评/四选一）、自动下一题、自动跳转延迟滑块、单词发音、包含拓展派生词、严格的估算口径</td></tr>
 <tr><td class="k">外观</td><td>深色模式开关（跟随记忆）</td></tr>
 <tr><td class="k">数据管理</td><td>切换/新建使用者、<b>桌宠跑丢了？叫回右下角</b>、导出作答备份(JSON)、导出未掌握词表(CSV)、导入备份、清空作答记录、恢复出厂设置</td></tr>
 <tr><td class="k">AI 与额度</td><td>当前档位徽标 + 作者额度计数（已授予/已用/剩余）；自带 Key 输入框 + 「保存并测试」（真发一次请求，不做假绿灯）+ 清除 + 接入指南</td></tr>
 <tr><td class="k">每日可投入时间</td><td>15 / 30 / 60 三个预设 + <b>可自定义任意分钟（5–180）</b>；<br>本地方案据此换算"每天背多少词"（按每词约 1.5 分钟）：30 分钟 → 20 词/天、45 → 30、90 → 60</td></tr>
+<tr><td class="k">回访提醒</td><td>开关「打开首页时给一句话分析」（默认开）+ <b>「预览这张卡」</b>：没有历史数据时用示例数据展示回访卡的形状，方便现场演示（§2.13）</td></tr>
 <tr><td class="k">素材来源</td><td>立绘 MIT 署名（作者、许可、分发路径）、例句语料来源、算法原创声明</td></tr>
 </table>
 
@@ -785,7 +834,7 @@ for (let round = 0; round &lt; 3; round++) {                 // MAX_TOOL_ROUNDS 
 <pre><code>src/
   app.part1.js   状态/档案/词库/抽样与估计/等级/地图/路由    ~1,150 行
   app.part2.js   答题引擎（队列、判分、计时、发音）            ~430 行
-  app.part3.js   结果页/总览/设置/事件分发                    ~860 行
+  app.part3.js   结果页/总览/设置/事件分发                    ~920 行
   app.part4.js   AI 面板（工具链可视化、三档通路、动作）        ~900 行
   app.part5.js   桌宠（2.5D、行为、悬空物理、守卫）            ~800 行
   app.part6.js   等级报告页与多轮对比                          ~500 行
@@ -797,12 +846,12 @@ server/          Node 原生 http + Agent 循环 + 工具层 + 语料检索  ~37
 <h3>9.2 测试矩阵（11 个套件 / 413 条离线断言）</h3>
 <table>
 <tr><th style="width:210px">套件</th><th style="width:80px">条数</th><th>覆盖什么</th></tr>
-<tr><td class="k">smoke-test.js（jsdom）</td><td>165</td><td>抽样、区间估计、等级、多轮、地图、档案、导出</td></tr>
-<tr><td class="k">btest.js（真实浏览器）</td><td>54</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口</td></tr>
+<tr><td class="k">smoke-test.js（jsdom）</td><td>187</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、<b>回访卡</b>（19 条）</td></tr>
+<tr><td class="k">scripts/run-btest.mjs（真实浏览器）</td><td>55</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口；自动读结果、有 FAIL 即非 0 退出</td></tr>
 <tr><td class="k">scripts/pet-test.mjs</td><td>40</td><td>拖动/重力/悬空物理/气泡版式/活动范围/自愈/叫回</td></tr>
 <tr><td class="k">scripts/check-intro.mjs</td><td>43</td><td>入场页分层浮现、退场干净、旁路、减少动效、手机布局</td></tr>
 <tr><td class="k">scripts/check-offline.mjs</td><td>7</td><td>孤立单文件（旁边无 assets）也能正常用</td></tr>
-<tr><td class="k">scripts/check-recipient.mjs</td><td>18</td><td>空目录 + 全新配置 + 断网 + 双视口</td></tr>
+<tr><td class="k">scripts/check-recipient.mjs</td><td>20</td><td>空目录 + 全新配置 + 断网 + 双视口（含手机顶栏单行、品牌不被折成一列）</td></tr>
 <tr><td class="k">scripts/check-ai-tiers.mjs</td><td>23</td><td>三档通路、额度授予/扣减/下限保护</td></tr>
 <tr><td class="k">scripts/check-ai-link.mjs</td><td>15</td><td>图表→AI 上下文、动作白名单、点击真的执行</td></tr>
 <tr><td class="k">scripts/check-book.mjs</td><td>17</td><td>词书解析/预览/切换/持久化/删除回退</td></tr>
@@ -837,7 +886,7 @@ node build.js --with-key   # 评委版：内联作者 Key，只发评委，绝�
 <tr><td class="k">入场页</td><td class="mono">node scripts/check-intro.mjs</td><td>43 / 43</td></tr>
 <tr><td class="k">桌宠</td><td class="mono">npm run test:pet</td><td>40 / 40</td></tr>
 <tr><td class="k">离线单文件</td><td class="mono">node scripts/check-offline.mjs</td><td>7 / 7</td></tr>
-<tr><td class="k">收件人环境</td><td class="mono">node scripts/check-recipient.mjs</td><td>18 / 18（空目录 + 全新配置 + 断网）</td></tr>
+<tr><td class="k">收件人环境</td><td class="mono">node scripts/check-recipient.mjs</td><td>20 / 20（空目录 + 全新配置 + 断网 + 手机顶栏）</td></tr>
 <tr><td class="k">真实浏览器</td><td class="mono">npm run test:browser</td><td>54 / 54</td></tr>
 <tr><td class="k">桌面同步</td><td>复制 index.html 到桌面并比对 SHA256</td><td>两份哈希一致</td></tr>
 <tr><td class="k">文档同步</td><td>截图 / PPT / PDF 重新生成</td><td>看截图里顶栏是新标识、PPT 页数对</td></tr>
