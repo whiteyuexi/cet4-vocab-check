@@ -383,7 +383,7 @@ README 里已注明。批量替换规则：先替换长的复合串（`…-详�
 | 文案像 AI 写的 | 通篇「不是X，而是Y」、「才敢把区间写出来」、「一等公民」、「根本差别」、「两张皮」 |
 
 **做法**：删掉答辩稿，把生成器合并成一个 `scripts/make-deck.mjs`：一份内容表 + 两种渲法
-（roadshow 22 页 / detail 29 页），详细稿 = 路演稿 + 附录页，讲同一个故事的两个版本。
+（roadshow 29 页 / detail 36 页），详细稿 = 路演稿 + 附录页，讲同一个故事的两个版本。
 旧的 `make-pptx.mjs / make-ppt-roadshow.mjs / make-ppt-detail.mjs / make-ppt-taste.mjs`
 全部删除（历史留在 git 里）。
 
