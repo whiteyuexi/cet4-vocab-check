@@ -398,7 +398,7 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     list.forEach(row => {
       A.switchProfile(row.id);
       const R = A.levelReport();
-      const expect = A.DEMO_LEVELS.filter(L => row.name === A.DEMO_PREFIX + L.name)[0];
+      const expect = A.DEMO_LEVELS.filter(L => row.name === A.DEMO_PREFIX + L.k + ' ' + L.name)[0];
       const ok = R.ready && R.rank && R.rank.k === expect.k;
       if (!ok) allMatch = false;
       detail.push(row.name.replace(A.DEMO_PREFIX, '') + '→' + (R.rank ? R.rank.k : '-') + '(' + Math.round(R.ratio * 100) + '%)');

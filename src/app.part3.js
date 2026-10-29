@@ -283,7 +283,9 @@
     var rows = A.profileSummaries().map(function (p) {
       return '<div class="who-row' + (p.active ? ' on' : '') + '">' +
         '<span class="who-nm">' + esc(p.name) + (p.active ? '<em>当前</em>' : '') + '</span>' +
-        '<span class="who-meta">' + (p.tested ? ('已测 ' + p.tested + ' 词 · 认识 ' + p.known) : '还没有作答') + '</span>' +
+        '<span class="who-meta">' + (p.tested
+          ? ('已测 ' + p.tested + ' 词 · 词汇量 ≈ ' + p.loose + ' 词')
+          : '还没有作答') + '</span>' +
         '<span class="who-acts">' +
           (p.active ? '' : '<button class="btn sm" data-act="switch-profile" data-id="' + p.id + '">切换</button>') +
           '<button class="btn sm ghost" data-act="rename-profile" data-id="' + p.id + '">改名</button>' +
@@ -297,6 +299,9 @@
       '<div class="who-list">' + rows + '</div>' +
       '<div class="who-new"><input id="newWho" maxlength="12" placeholder="新使用者的名字" aria-label="新使用者名字">' +
       '<button class="btn primary" data-act="create-profile">新建并切过去</button></div>' +
+      '<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn sm" data-act="demo-levels">一键生成六个等级的示例账号（S / A / B+ / B / C / D）</button>' +
+      '</div>' +
       '<div class="tiny" style="margin-top:14px;line-height:1.85;border-top:1px dashed var(--line2);padding-top:12px">' +
       '<b>把文件发给别人会怎样：</b>作答数据存在浏览器里，<b>不跟着 index.html 走</b>。' +
       '对方在自己电脑上打开，看到的是一份干净的空档案。</div>' +

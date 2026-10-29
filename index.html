@@ -1884,7 +1884,7 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
 
     var made = [];
     A.DEMO_LEVELS.forEach(function (L) {
-      var name = DEMO_PREFIX + L.name;
+      var name = DEMO_PREFIX + L.k + ' ' + L.name;          // 例：示例 · S 卓越
       var id = null, list = A.profileList();
       for (var m = 0; m < list.length; m++) if (list[m].name === name) id = list[m].id;
       if (id) A.switchProfile(id); else A.createProfile(name);
@@ -1940,19 +1940,27 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
   A.needsWelcome = function () { return !S.welcomed; };
 
   /* 每个档案的进度摘要：直接读各自的存储，不切换、不影响当前状态 */
+  /* 面板上要能一眼看出"这个账号词汇量多少"，所以多算一个 loose：认识 + 模糊×0.5。
+     直接读各自的存档算，不切换当前档案。 */
   A.profileSummaries = function () {
     var m = meta();
     return m.list.map(function (r) {
-      var tested = 0, known = 0;
+      var tested = 0, known = 0, fuzzy = 0;
       try {
         var raw = localStorage.getItem(dataKey(r));
         if (raw) {
           var o = JSON.parse(raw);
           var st = (o && o.status) || {};
-          for (var k in st) if (st.hasOwnProperty(k)) { tested++; if (st[k] === 2) known++; }
+          for (var k in st) if (st.hasOwnProperty(k)) {
+            tested++;
+            if (st[k] === 2) known++; else if (st[k] === 1) fuzzy++;
+          }
         }
       } catch (e) {}
-      return { id: r.id, name: r.name, tested: tested, known: known, active: r.id === m.active };
+      /* loose = 折中口径词汇量（认识 + 模糊×0.5）。面板上直接显示它，
+         切账号时一眼就能看出"这个账号是多少词"。 */
+      return { id: r.id, name: r.name, tested: tested, known: known, fuzzy: fuzzy,
+        loose: Math.round(known + 0.5 * fuzzy), active: r.id === m.active };
     });
   };
 
@@ -4005,7 +4013,9 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
     var rows = A.profileSummaries().map(function (p) {
       return '<div class="who-row' + (p.active ? ' on' : '') + '">' +
         '<span class="who-nm">' + esc(p.name) + (p.active ? '<em>当前</em>' : '') + '</span>' +
-        '<span class="who-meta">' + (p.tested ? ('已测 ' + p.tested + ' 词 · 认识 ' + p.known) : '还没有作答') + '</span>' +
+        '<span class="who-meta">' + (p.tested
+          ? ('已测 ' + p.tested + ' 词 · 词汇量 ≈ ' + p.loose + ' 词')
+          : '还没有作答') + '</span>' +
         '<span class="who-acts">' +
           (p.active ? '' : '<button class="btn sm" data-act="switch-profile" data-id="' + p.id + '">切换</button>') +
           '<button class="btn sm ghost" data-act="rename-profile" data-id="' + p.id + '">改名</button>' +
@@ -4019,6 +4029,9 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
       '<div class="who-list">' + rows + '</div>' +
       '<div class="who-new"><input id="newWho" maxlength="12" placeholder="新使用者的名字" aria-label="新使用者名字">' +
       '<button class="btn primary" data-act="create-profile">新建并切过去</button></div>' +
+      '<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn sm" data-act="demo-levels">一键生成六个等级的示例账号（S / A / B+ / B / C / D）</button>' +
+      '</div>' +
       '<div class="tiny" style="margin-top:14px;line-height:1.85;border-top:1px dashed var(--line2);padding-top:12px">' +
       '<b>把文件发给别人会怎样：</b>作答数据存在浏览器里，<b>不跟着 index.html 走</b>。' +
       '对方在自己电脑上打开，看到的是一份干净的空档案。</div>' +

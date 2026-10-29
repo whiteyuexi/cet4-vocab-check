@@ -312,7 +312,7 @@
 
     var made = [];
     A.DEMO_LEVELS.forEach(function (L) {
-      var name = DEMO_PREFIX + L.name;
+      var name = DEMO_PREFIX + L.k + ' ' + L.name;          // 例：示例 · S 卓越
       var id = null, list = A.profileList();
       for (var m = 0; m < list.length; m++) if (list[m].name === name) id = list[m].id;
       if (id) A.switchProfile(id); else A.createProfile(name);
@@ -368,19 +368,27 @@
   A.needsWelcome = function () { return !S.welcomed; };
 
   /* 每个档案的进度摘要：直接读各自的存储，不切换、不影响当前状态 */
+  /* 面板上要能一眼看出"这个账号词汇量多少"，所以多算一个 loose：认识 + 模糊×0.5。
+     直接读各自的存档算，不切换当前档案。 */
   A.profileSummaries = function () {
     var m = meta();
     return m.list.map(function (r) {
-      var tested = 0, known = 0;
+      var tested = 0, known = 0, fuzzy = 0;
       try {
         var raw = localStorage.getItem(dataKey(r));
         if (raw) {
           var o = JSON.parse(raw);
           var st = (o && o.status) || {};
-          for (var k in st) if (st.hasOwnProperty(k)) { tested++; if (st[k] === 2) known++; }
+          for (var k in st) if (st.hasOwnProperty(k)) {
+            tested++;
+            if (st[k] === 2) known++; else if (st[k] === 1) fuzzy++;
+          }
         }
       } catch (e) {}
-      return { id: r.id, name: r.name, tested: tested, known: known, active: r.id === m.active };
+      /* loose = 折中口径词汇量（认识 + 模糊×0.5）。面板上直接显示它，
+         切账号时一眼就能看出"这个账号是多少词"。 */
+      return { id: r.id, name: r.name, tested: tested, known: known, fuzzy: fuzzy,
+        loose: Math.round(known + 0.5 * fuzzy), active: r.id === m.active };
     });
   };
 
