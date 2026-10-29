@@ -402,6 +402,40 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     A.go('home');
   });
 
+  // ---------- 一个词听两种口音（四六级听力是英音美音混合） ----------
+  step('双口音发音', () => {
+    A.S.status = {}; A.S.samples = []; A.S.session = null; A.S.settings.mode = 'self';
+    A.S.settings.sound = true; A.S.settings.accent = 'uk'; A.S.settings.autoBothAccents = false;
+    A.save();
+    A.startSession('list', { list: A.activePool().slice(0, 3), label: '发音测试' });
+    if (A.S.session) A.judge(2);
+    A.go('test');
+
+    const btns = qa('[data-act="speak-accent"]');
+    check('答题页有三个口音按钮（英 / 美 / 英+美）', btns.length === 3,
+      btns.map(b => b.textContent.trim()).join(' / '));
+    check('按钮分别标了 uk / us / both',
+      btns.map(b => b.getAttribute('data-accent')).join(',') === 'uk,us,both',
+      btns.map(b => b.getAttribute('data-accent')).join(','));
+
+    // speakAll 要能按给定顺序连读（jsdom 没有语音引擎，这里只验证不抛错 + 参数被接受）
+    check('speakAll 可连读两种口音且不抛错', (() => {
+      try { A.speakAll('vocabulary', ['uk', 'us']); return true; } catch (e) { return false; }
+    })());
+    check('口音按钮只接受合法口音（乱传就退回默认）', (() => {
+      try { A.speakAll('vocabulary', ['xx']); return A.accentCfg().k === 'uk'; } catch (e) { return false; }
+    })());
+
+    // 设置项：揭示后自动连读
+    A.go('settings');
+    const card = doc.getElementById('view').textContent;
+    check('设置页有「揭示后连读两种口音」开关', /揭示后连读两种口音/.test(card));
+    A.S.settings.autoBothAccents = true; A.save();
+    check('开关值会落盘', JSON.parse(win.localStorage.getItem('cet4vocab_v1')).settings.autoBothAccents === true);
+    A.S.settings.autoBothAccents = false; A.S.session = null; A.S.status = {};
+    A.save(); A.go('home');
+  });
+
   // ---------- 等级演示档案：六个等级各一个（给评委看数据用） ----------
   step('等级演示档案', () => {
     A.S.status = {}; A.S.samples = []; A.S.session = null; A.S.rounds = []; A.save();

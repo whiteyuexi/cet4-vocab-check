@@ -132,7 +132,9 @@
       aiQuota: { granted: 0, used: 0 },
       userKey: null,                            // 用户自带的 API Key 配置（只存本机，导出备份时剔除）
       welcomed: false,                          // 是否已过了"怎么称呼"那一步
-      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4', dailyMinutes: 30 },
+      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4', dailyMinutes: 30,
+        accent: 'uk',              // 发音口音：uk 英式（默认）/ us 美式
+        autoBothAccents: false },  // 揭示后连读两种口音（四六级听力是混合口音）
       theme: 'light',
       tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };
@@ -1278,28 +1280,56 @@
     return A.ACCENTS[0];
   }
   A.accentCfg = accentCfg;
-  var voice = null;
+  /* 每个口音各自的音色：一个词想听两种读法时，不能共用一个 voice */
+  var VOICE_BY = { us: null, uk: null };
+  function pickVoiceFor(cfg) {
+    var vs = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+    for (var i = 0; i < vs.length; i++) if (cfg.re.test(vs[i].lang)) return vs[i];
+    for (var j = 0; j < vs.length; j++) if (/^en/i.test(vs[j].lang)) return vs[j];   // 没有对应口音就退到任意英语音色
+    return null;
+  }
   function pickVoice() {
     if (!window.speechSynthesis) return;
-    var cfg = accentCfg();
-    var vs = window.speechSynthesis.getVoices() || [];
-    voice = null;
-    for (var i = 0; i < vs.length; i++) if (cfg.re.test(vs[i].lang)) { voice = vs[i]; return; }
-    for (var j = 0; j < vs.length; j++) if (/^en/i.test(vs[j].lang)) { voice = vs[j]; return; }   // 没有对应口音就退到任意英语音色
+    for (var i = 0; i < A.ACCENTS.length; i++) VOICE_BY[A.ACCENTS[i].k] = pickVoiceFor(A.ACCENTS[i]);
   }
   if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
   /* 切换口音后要重新选音色，否则会继续用上一个口音的 voice */
   A.repickVoice = function () { pickVoice(); };
+
+  function cfgOf(k) {
+    for (var i = 0; i < A.ACCENTS.length; i++) if (A.ACCENTS[i].k === k) return A.ACCENTS[i];
+    return accentCfg();
+  }
+  /* 按指定口音念一个词（不传就用设置里的默认口音） */
+  function speakAccent(text, k) {
+    if (!window.speechSynthesis) return false;
+    var cfg = cfgOf(k);
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = cfg.lang; u.rate = 0.88;
+    var v = VOICE_BY[cfg.k];
+    if (v && cfg.re.test(v.lang)) u.voice = v;
+    window.speechSynthesis.speak(u);
+    return true;
+  }
+  /* 连读多种口音：只 cancel 一次，然后按顺序排队（浏览器会把它们串起来念）
+     四六级听力是英音美音混合，一个词听两遍是最省事的适应方式。 */
+  function speakAll(text, ks) {
+    if (!S.settings.sound) { toast('发音已在设置中关闭'); return; }
+    if (!window.speechSynthesis) { toast('当前浏览器不支持语音朗读'); return; }
+    try {
+      window.speechSynthesis.cancel();
+      (ks && ks.length ? ks : [S.settings.accent || DEFAULT_ACCENT]).forEach(function (k) {
+        speakAccent(text, k);
+      });
+    } catch (e) { toast('发音失败'); }
+  }
+  A.speakAll = speakAll;
   function speak(text) {
     if (!S.settings.sound) { toast('发音已在设置中关闭'); return; }
     if (!window.speechSynthesis) { toast('当前浏览器不支持语音朗读'); return; }
     try {
-      var cfg = accentCfg();
       window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = cfg.lang; u.rate = 0.88;
-      if (voice && cfg.re.test(voice.lang)) u.voice = voice;
-      window.speechSynthesis.speak(u);
+      speakAccent(text, S.settings.accent || DEFAULT_ACCENT);
     } catch (e) { toast('发音失败'); }
   }
   A.speak = speak;

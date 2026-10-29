@@ -76,7 +76,7 @@ pre code{background:none;color:inherit;padding:0}
 <div class="kv">
   <div><b>7,175</b><span>词条（全部带音标）</span></div>
   <div><b>9,204</b><span>英中对照例句</span></div>
-  <div><b>433</b><span>条离线断言</span></div>
+  <div><b>439</b><span>条离线断言</span></div>
   <div><b>2.11 MB</b><span>单文件产物</span></div>
   <div><b>0</b><span>运行时外部依赖</span></div>
 </div>
@@ -108,7 +108,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">自动化测试</td><td>12 个套件 / 433 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>12 个套件 / 439 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
 </table>
 
 <h3>1.3 三个亮点</h3>
@@ -442,7 +442,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <tr><td class="k">暗色与主题</td><td>整套设计令牌双主题；主题切换的过渡曾把底色锁住，已修复并加断言</td></tr>
 <tr><td class="k">无障碍</td><td>入场页/模态期间给底层加 <code>inert</code>、完整焦点管理、<code>prefers-reduced-motion</code> 支持；对比度实测辅助文字 4.83:1、开关轨道 5.72:1</td></tr>
 <tr><td class="k">移动端</td><td>390 px 实测无横向溢出、主按钮在屏内、顶栏保持单行</td></tr>
-<tr><td class="k">发音</td><td>Web Speech API 朗读单词，<b>口音可切换（en-GB / en-US，默认英式）</b>；四六级听力本身是英音与美音混合，词库音标采用教材通用的英式标注，界面上直接说明这层关系并建议两种都听</td></tr>
+<tr><td class="k">发音</td><td>Web Speech API 朗读单词，<b>口音可切换（en-GB / en-US，默认英式）</b>；答题页另给「英」「美」「英+美」三个按钮，一个词可当场听两种读法，设置里可开「揭示后连读两种口音」——四六级听力本身是英音美音混合，词库音标采用教材通用的英式标注，界面上直接说明这层关系</td></tr>
 </table>
 
 <!-- ============================================================ -->
@@ -467,10 +467,10 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <h2 id="c6">6 测试与部署</h2>
 
 
-<h3>6.1 测试体系（12 个套件 / 433 条离线断言）</h3>
+<h3>6.1 测试体系（12 个套件 / 439 条离线断言）</h3>
 <table>
 <tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
-<tr><td class="k">smoke-test.js（jsdom）</td><td>201</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
+<tr><td class="k">smoke-test.js（jsdom）</td><td>207</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
 <tr><td class="k">scripts/run-btest.mjs（真实 Chrome）</td><td>55</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口；自动读结果，有 FAIL 即非 0 退出</td></tr>
 <tr><td class="k">scripts/pet-test.mjs</td><td>40</td><td>拖动/重力/悬空物理/气泡版式/活动范围/自愈</td></tr>
 <tr><td class="k">scripts/check-intro.mjs</td><td>43</td><td>入场页分层浮现、退场干净、旁路、减少动效、手机布局</td></tr>
@@ -637,7 +637,7 @@ PORT=8787</code></pre>
 <tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
 </table>
 
-<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 433 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 439 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
 实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
 
 </div>

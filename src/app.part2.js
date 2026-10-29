@@ -102,6 +102,7 @@
     RUN.picked = -1;
     A.save();
     A.render();
+    if (A.S.settings.autoBothAccents && A.S.settings.sound) A.speakAll(A.WORDS[i].w, ['uk', 'us']);
     A.announce(A.WORDS[i].w + '：已标记为' + (v === 2 ? '认识' : v === 1 ? '模糊' : '不认识'));
     if (A.S.settings.autoNext) {
       clearTimer();
@@ -125,7 +126,10 @@
     RUN.revealed = true;
     A.save();
     A.render();
-    if (!o.ok) A.speak(A.WORDS[sess.queue[sess.pos]].w);
+    if (!o.ok) {
+      var wPicked = A.WORDS[sess.queue[sess.pos]].w;
+      if (A.S.settings.autoBothAccents) A.speakAll(wPicked, ['uk', 'us']); else A.speak(wPicked);
+    }
     clearTimer();
     RUN.timer = setTimeout(function () { A.nextQ(); }, o.ok ? 750 : 1600);
   };
@@ -318,7 +322,14 @@
     h += '<div class="qcard">';
     h += '<div class="qword">' + esc(w.w) + '</div>';
     if (w.p) h += '<div class="qphon">/' + esc(w.p) + '/</div>';
-    h += '<div><button class="spk" data-act="speak" data-w="' + esc(w.w) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>听发音</button></div>';
+    /* 发音：默认口音 + 英/美各一个按钮 + 连读。四六级听力是英音美音混合，
+       同一个词点两下就能听出差别，比来回改设置省事。 */
+    h += '<div class="spk-row">' +
+      '<button class="spk" data-act="speak" data-w="' + esc(w.w) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>听发音</button>' +
+      '<button class="spk acc" data-act="speak-accent" data-accent="uk" data-w="' + esc(w.w) + '" title="英式读音">英</button>' +
+      '<button class="spk acc" data-act="speak-accent" data-accent="us" data-w="' + esc(w.w) + '" title="美式读音">美</button>' +
+      '<button class="spk acc both" data-act="speak-accent" data-accent="both" data-w="' + esc(w.w) + '" title="先英式、再美式各读一遍">英+美</button>' +
+      '</div>';
 
     if (mode === 'choice') {
       if (RUN.optsPos !== pos || !RUN.opts) { RUN.opts = buildOptions(i); RUN.optsPos = pos; RUN.picked = -1; }

@@ -1410,3 +1410,12 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
   color: #6B4A0E; font-size: 12.5px; line-height: 1.75;
 }
 html[data-theme="dark"] .ai-note { background: rgba(224,177,92,.12); border-color: rgba(224,177,92,.3); color: #E8C583; }
+
+/* 发音按钮组：听发音 + 英 / 美 / 英+美 */
+.spk-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.spk.acc {
+  min-width: 44px; padding: 0 10px; height: 32px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .02em;
+}
+.spk.acc.both { min-width: 56px; font-size: 12px; }
+.spk.acc:hover { border-color: var(--accent); color: var(--accent); }

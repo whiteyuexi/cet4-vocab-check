@@ -401,6 +401,7 @@
     /* 口音：词库音标是教材通用的英式标注，而系统语音默认多为美式，所以给个开关，
        并把这个差别写在界面上，而不是让用户自己发现"读的和标的不一样"。 */
     var acc = A.accentCfg ? A.accentCfg() : { k: 'us', name: '美式' };
+    h += sw('autoBothAccents', '揭示后连读两种口音', '作答后先英式、再美式各读一遍。四六级听力是混合口音，一个词听两种读法最省事');
     h += '<div class="switch" style="align-items:flex-start"><div class="st"><b>发音口音</b>' +
       '<small>当前：<b>' + esc(acc.name) + '</b>。四六级听力<b>英音与美音混合</b>（英音历史占比更高，近年也在加入其他口音），' +
       '词库音标是教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː）。建议两种都切着听一遍</small></div>' +
@@ -632,6 +633,14 @@
         case 'quit-keep': A.closeModal(); A.go('home'); break;
         case 'quit-drop': A.closeModal(); A.abandonSession(); break;
         case 'speak': A.speak(t.getAttribute('data-w') || ''); break;
+        case 'speak-accent': {
+          var sacc = t.getAttribute('data-accent') || 'us';
+          var sword = t.getAttribute('data-w') || '';
+          if (sacc === 'both') A.speakAll(sword, ['uk', 'us']);
+          else if (A.ACCENTS.some(function (a) { return a.k === sacc; })) A.speakAll(sword, [sacc]);
+          else A.speak(sword);
+          break;
+        }
         case 'modal-close': A.closeModal(); break;
         case 'modal-bg': if (e.target === t) A.closeModal(); break;
         case 'set-bank':
