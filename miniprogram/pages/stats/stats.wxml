@@ -1,27 +1,40 @@
-<!-- 总览：掌握情况 + 七段剖面 + 检测记录 -->
+<!-- 总览：掌握情况 + 七段剖面 + 词汇地图 + 检测记录 -->
 <view class="page">
 
   <view class="card">
-    <view class="t1 sect">掌握情况</view>
-    <view class="gap-line">
-      <view class="gap-i"><view class="t3">已测</view><view class="num gap-v">{{tested}}</view></view>
-      <view class="gap-i"><view class="t3">未测</view><view class="num gap-v">{{untested}}</view></view>
-      <view class="gap-i"><view class="t3">覆盖</view><view class="num gap-v">{{coveragePct}}%</view></view>
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">OVERVIEW</view>
+        <view class="sect-title">掌握情况</view>
+      </view>
+      <view class="sect-more" bindtap="onReport">看报告 →</view>
     </view>
-    <view class="bar"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
-    <view class="state-row">
-      <view class="st"><text class="dot ok"></text>认识 {{k}}</view>
-      <view class="st"><text class="dot warn"></text>模糊 {{f}}</view>
-      <view class="st"><text class="dot bad"></text>不认识 {{u}}</view>
+
+    <view class="ov-top">
+      <view class="ov-ring">
+        <view class="ov-ring-v num">{{coveragePct}}<text class="ov-ring-u">%</text></view>
+        <view class="ov-ring-k">已覆盖</view>
+      </view>
+      <view class="ov-stat">
+        <view class="ov-row"><text class="dot ok"></text>认识 <text class="num bold">{{k}}</text></view>
+        <view class="ov-row"><text class="dot warn"></text>模糊 <text class="num bold">{{f}}</text></view>
+        <view class="ov-row"><text class="dot bad"></text>不认识 <text class="num bold">{{u}}</text></view>
+        <view class="ov-row"><text class="dot none"></text>未测 <text class="num bold">{{untested}}</text></view>
+      </view>
     </view>
-    <view class="t3" style="margin-top:12rpx">{{sourceNote}}</view>
+
+    <view class="bar" style="margin-top:18rpx"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
+    <view class="t3" style="margin-top:10rpx">已测 {{tested}} / {{total}} 词 · {{sourceNote}}</view>
   </view>
 
-  <!-- 七段剖面：点一条就开这一段的复测 -->
+  <!-- 七段剖面 -->
   <view class="card">
-    <view class="row-head">
-      <view class="t1">词频分布</view>
-      <view class="t3">点任意一段 → 复测该段缺口词</view>
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">BY BAND</view>
+        <view class="sect-title">词频分布</view>
+      </view>
+      <view class="sect-more">点一条 → 复测该段</view>
     </view>
 
     <view wx:if="{{!bands.length}}" class="empty">还没有数据，先去做一次快速摸底</view>
@@ -33,17 +46,49 @@
       </view>
       <view class="bar"><view class="bar-in bar-{{item.tone}}" style="width:{{item.w}}%"></view></view>
       <view class="brow-foot t3">
-        全段 {{item.N}} 词 · 测过 {{item.n}} 词
-        <text wx:if="{{item.p !== null}}"> · 缺口约 {{item.gap}} 词</text>
+        全段 {{item.N}} 词 · 测过 {{item.n}} 词<text wx:if="{{item.p !== null}}"> · 缺口约 {{item.gap}} 词</text>
       </view>
+    </view>
+  </view>
+
+  <!-- 词汇地图：7 段 × 26 字母，点格子复测 -->
+  <view class="card">
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">MAP</view>
+        <view class="sect-title">词汇地图</view>
+      </view>
+      <view class="sect-more">{{cellsCount}} 格 · 点格子复测</view>
+    </view>
+    <view class="t3">纵轴越靠上越常用，横轴是首字母；颜色深＝掌握率低，淡＝没测过。左右可滑动。</view>
+
+    <scroll-view scroll-x class="map-scroll" wx:if="{{mapRows.length}}">
+      <view class="map">
+        <view wx:for="{{mapRows}}" wx:key="band" wx:for-item="row" class="map-row">
+          <view class="map-lbl">{{row.name}}</view>
+          <view wx:for="{{row.cells}}" wx:for-item="c" wx:key="letter"
+                class="map-c map-{{c.tone}}" data-band="{{c.band}}" data-letter="{{c.letter}}" bindtap="onCell">{{c.letter}}</view>
+        </view>
+      </view>
+    </scroll-view>
+    <view wx:else class="empty">还没有已测词，先测一轮地图才会亮起来</view>
+
+    <view class="map-legend">
+      <view class="lg"><text class="dot none"></text>没测过</view>
+      <view class="lg"><text class="dot ok"></text>≥80%</view>
+      <view class="lg"><text class="dot warn"></text>50–80%</view>
+      <view class="lg"><text class="dot bad"></text>&lt;50%</view>
     </view>
   </view>
 
   <!-- 检测记录 -->
   <view class="card">
-    <view class="row-head">
-      <view class="t1">检测记录</view>
-      <view class="t3">按每天 {{perDay}} 词折算计划</view>
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">HISTORY</view>
+        <view class="sect-title">检测记录</view>
+      </view>
+      <view class="sect-more">按每天 {{perDay}} 词折算计划</view>
     </view>
     <view wx:if="{{!rounds.length}}" class="empty">还没有归档的轮次。整库测完一轮后会出现在这里。</view>
     <view wx:for="{{rounds}}" wx:key="n" class="rec">
@@ -53,7 +98,5 @@
       </view>
       <view class="rec-r num">{{item.vocab}} 词</view>
     </view>
-    <view class="btn btn-ghost" style="margin-top:20rpx" bindtap="onReport">看本轮报告与补词方案</view>
   </view>
-
 </view>

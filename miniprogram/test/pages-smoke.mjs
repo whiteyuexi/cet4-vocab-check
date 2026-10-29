@@ -76,23 +76,26 @@ eng.S.settings.autoNext = false;
 eng.save();
 
 console.log('=== 一、页面模块加载 ===');
-let indexPage, quizPage, reportPage, statsPage, settingsPage;
+let indexPage, quizPage, reportPage, statsPage, settingsPage, aiPage;
 ok('pages/index/index.js 加载', () => { indexPage = loadPage('../pages/index/index.js'); });
 ok('pages/quiz/quiz.js 加载', () => { quizPage = loadPage('../pages/quiz/quiz.js'); });
 ok('pages/report/report.js 加载', () => { reportPage = loadPage('../pages/report/report.js'); });
 ok('pages/stats/stats.js 加载', () => { statsPage = loadPage('../pages/stats/stats.js'); });
 ok('pages/settings/settings.js 加载', () => { settingsPage = loadPage('../pages/settings/settings.js'); });
+ok('pages/ai/ai.js 加载', () => { aiPage = loadPage('../pages/ai/ai.js'); });
 
 console.log('=== 二、首页渲染 ===');
 ok('onShow 不抛错且填出数据', () => {
   indexPage.onShow();
   assert.ok(indexPage.data.ready, 'ready 未置 true');
   assert.ok(indexPage.data.groups.length > 0, '分组为空');
-  assert.ok(typeof indexPage.data.need250 === 'number' && indexPage.data.need250 > 0, 'need250 异常: ' + indexPage.data.need250);
-  assert.ok(indexPage.data.mins250.indexOf('分钟') > -1, 'mins250 文案异常');
+  assert.ok(indexPage.data.precision.length === 3, '精度三档缺失: ' + indexPage.data.precision.length);
+  assert.ok(indexPage.data.pickNeed > 0 && indexPage.data.pickMins.indexOf('分钟') > -1,
+    '精度换算异常: ' + indexPage.data.pickNeed + ' 题 / ' + indexPage.data.pickMins);
   assert.strictEqual(indexPage.data.groups.length, Math.ceil(engineMod.engine.curPoolSize() / eng.GROUP_SIZE) >= 1 ? indexPage.data.groups.length : -1);
-  console.log('   余额=' + indexPage.data.vocabText + ' 状态=' + indexPage.data.kind +
-    ' 分组=' + indexPage.data.groups.length + ' 摸底题量=' + indexPage.data.need250 + ' (' + indexPage.data.mins250 + ')');
+  console.log('   词汇量=' + indexPage.data.vocabText + ' 状态=' + indexPage.data.kind +
+    ' 分组=' + indexPage.data.groups.length + ' 精度档=' +
+    indexPage.data.precision.map(function (x) { return '±' + x.target; }).join('/'));
 });
 
 console.log('=== 三、快速摸底 → 答题 → 自动结算 ===');
@@ -298,6 +301,52 @@ ok('回访卡的「开始补这一段」能起复测', () => {
   eng.save();
   nav.length = 0;
   indexPage.onCardReview();
+  assert.ok(eng.S.session && eng.S.session.queue.length > 0, '没有生成会话');
+  assert.deepStrictEqual(nav, ['/pages/quiz/quiz']);
+  console.log('   ' + eng.S.session.label);
+  eng.S.session = null; eng.save();
+});
+
+/* ---------- AI 诊断页（本地方案） ---------- */
+console.log('=== 十、AI 诊断（本地方案，不联网） ===');
+ok('AI 页 onShow 给出依据与结论', () => {
+  aiPage.onShow();
+  assert.strictEqual(aiPage.data.empty, false, '有数据却判定为空');
+  assert.ok(aiPage.data.blocks.length >= 3, '结论块不足: ' + aiPage.data.blocks.length);
+  const heads = aiPage.data.blocks.map(function (b) { return b.h; }).join('|');
+  assert.ok(heads.indexOf('依据') > -1, '缺少"依据"块');
+  assert.ok(heads.indexOf('先补哪一段') > -1, '缺少"先补哪一段"块');
+  console.log('   ' + heads);
+});
+ok('AI 页"先补哪一段"按缺口×权重，不是取最弱段', () => {
+  const blk = aiPage.data.blocks.filter(function (b) { return b.h === '先补哪一段'; })[0];
+  const line = blk.lines[0];
+  const gaps = require('../utils/diagnose.js').bandGaps(eng);
+  assert.ok(line.indexOf(gaps[0].name) > -1, '首选段与权重排序不一致：' + line.slice(0, 40));
+  assert.ok(/缺口 × 词频权重/.test(line), '没有说明排序依据');
+  console.log('   ' + line.slice(0, 70));
+});
+ok('AI 页可按话题切换（可信/背了又忘）', () => {
+  aiPage.onAsk({ currentTarget: { dataset: { q: '这个数字可信吗' } } });
+  assert.ok(aiPage.data.blocks.some(function (b) { return /凭什么可信/.test(b.h); }), '没有可信度块');
+  aiPage.onAsk({ currentTarget: { dataset: { q: '背了又忘怎么办' } } });
+  assert.ok(aiPage.data.blocks.some(function (b) { return /背了又忘/.test(b.h); }), '没有遗忘块');
+});
+
+/* ---------- 词汇地图（总览页） ---------- */
+console.log('=== 十一、词汇地图 ===');
+ok('总览页渲染出 7 段 × 26 字母', () => {
+  statsPage.onShow();
+  assert.strictEqual(statsPage.data.mapRows.length, 7, '段数不对: ' + statsPage.data.mapRows.length);
+  assert.strictEqual(statsPage.data.mapRows[0].cells.length, 26, '字母列不足 26');
+  const withWords = statsPage.data.mapRows[0].cells.filter(function (c) { return c.N > 0; }).length;
+  assert.ok(withWords > 0, '最高频段没有任何格子有词');
+  console.log('   ' + statsPage.data.mapRows.length + ' 行 × 26 列，最高频段 ' + withWords + ' 格有词');
+});
+ok('点地图格子能起复测', () => {
+  nav.length = 0;
+  const cell = statsPage.data.mapRows[0].cells.filter(function (c) { return c.N > 0; })[0];
+  statsPage.onCell({ currentTarget: { dataset: { band: cell.band, letter: cell.letter } } });
   assert.ok(eng.S.session && eng.S.session.queue.length > 0, '没有生成会话');
   assert.deepStrictEqual(nav, ['/pages/quiz/quiz']);
   console.log('   ' + eng.S.session.label);

@@ -1,53 +1,69 @@
-<!-- 首页：词汇量卡 + 入口 + 分组 -->
+<!-- 首页：词汇量卡 + 步进入口 + 分组进度 + 回访卡 -->
 <view class="page">
 
-  <!-- 品牌 -->
+  <!-- 品牌行（导航栏已有标题，这里只做身份 + 副标，不重复长标题） -->
   <view class="brand">
-    <view class="mark">词</view>
-    <view class="brand-txt">
-      <view class="t1">四六级词汇量检测</view>
-      <view class="t2">把词汇量测准，并说清差在哪</view>
+    <view class="brand-mark">30</view>
+    <view class="grow">
+      <view class="brand-name">四六级词汇量检测</view>
+      <view class="brand-sub">把词汇量测准，并说清差在哪</view>
     </view>
+    <view class="chip chip-plain" bindtap="onStats">{{bankName}}</view>
   </view>
 
-  <!-- 词汇量卡 -->
-  <view class="card hero">
+  <!-- hero：有数据看数字，没数据看引导。空数据时不再画一个空大数字（之前那条黑杠就是这么来的） -->
+  <view class="hero">
     <view class="hero-top">
-      <view class="hero-label">当前词汇量</view>
-      <view wx:if="{{rep.ready}}" class="chip chip-{{rankTone === 'ok' ? 'ok' : (rankTone === 'warn' ? 'warn' : 'bad')}}">{{rankK}} · {{rankName}}</view>
-      <view wx:else class="chip chip-plain">未测完</view>
+      <view class="hero-label">{{kind === 'none' ? '还没测过' : '当前词汇量（折中口径）'}}</view>
+      <view wx:if="{{rep.ready}}" class="chip">{{rankK}} · {{rankName}}</view>
+      <view wx:elif="{{kind !== 'none'}}" class="chip">已测 {{coveragePct}}%</view>
     </view>
 
-    <view class="hero-num num">{{vocabText}}<text class="unit" wx:if="{{kind !== 'none'}}">词</text></view>
-
-    <view wx:if="{{kind === 'sample'}}" class="hero-sub">
-      95% 区间 {{rangeText}} · 当前精度 {{precisionText}} · 抽样 {{est.n}} 题
-    </view>
-    <view wx:elif="{{kind === 'full'}}" class="hero-sub">
-      全库实测 · 无抽样误差 · 覆盖 {{coveragePct}}%
-    </view>
-    <view wx:else class="hero-sub">还没有数据，先做一次快速摸底</view>
-
-    <view class="hero-meta">
-      <view class="mi">
-        <view class="mi-k">折中口径</view>
-        <view class="mi-v num">{{looseText}}</view>
+    <block wx:if="{{kind === 'none'}}">
+      <view class="hero-empty">3 分钟，先知道自己有多少词</view>
+      <view class="hero-sub">随机抽 100 词，答完就有一个「数字 + 误差范围」，不是让你从头背到尾。</view>
+    </block>
+    <block wx:else>
+      <view class="hero-num">
+        <text class="v">{{vocabText}}</text>
+        <text class="u">词</text>
       </view>
-      <view class="mi">
-        <view class="mi-k">严格口径</view>
-        <view class="mi-v num">{{strictText}}</view>
+      <view wx:if="{{kind === 'sample'}}" class="hero-sub">95% 区间 {{rangeText}} · 当前精度 {{precisionText}} · 抽样 {{est.n}} 题</view>
+      <view wx:else class="hero-sub">全库实测 · 无抽样误差 · 覆盖 {{coveragePct}}%</view>
+      <view class="hero-meta">
+        <view class="mi">
+          <view class="mi-k">折中口径</view>
+          <view class="mi-v num">{{looseText}}</view>
+        </view>
+        <view class="mi">
+          <view class="mi-k">严格口径</view>
+          <view class="mi-v num">{{strictText}}</view>
+        </view>
+        <view class="mi">
+          <view class="mi-k">已测</view>
+          <view class="mi-v num">{{testedShort}}</view>
+        </view>
       </view>
-      <view class="mi">
-        <view class="mi-k">已测</view>
-        <view class="mi-v num">{{testedText}}</view>
-      </view>
-    </view>
+      <view class="bar hero-bar"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
+      <view class="hero-foot">{{bankName}} · 覆盖 {{coveragePct}}%<text wx:if="{{nextName && toNext > 0}}"> · 再掌握 {{toNext}} 词到「{{nextName}}」</text></view>
+    </block>
 
-    <view class="bar hero-bar"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
-    <view class="t3 hero-foot">{{bankName}} · 覆盖 {{coveragePct}}%<text wx:if="{{toNext > 0}}"> · 再掌握 {{toNext}} 词到「{{nextName}}」</text></view>
+    <view class="hero-acts">
+      <view class="btn btn-hero" bindtap="onQuick">快速摸底</view>
+      <view class="btn btn-hero-ghost" bindtap="onAll">全量检测</view>
+    </view>
   </view>
 
-  <!-- 回访卡：距上次检测满 3 天才出现，不遮挡、可永久关闭 -->
+  <!-- 继续检测 -->
+  <view wx:if="{{resume}}" class="card card-tight resume" bindtap="onResume">
+    <view class="resume-l">
+      <view class="t2 bold">{{resume.label}}</view>
+      <view class="t3">{{resume.text}}</view>
+    </view>
+    <view class="resume-r">继续 →</view>
+  </view>
+
+  <!-- 回访卡：距上次检测满 3 天才出现 -->
   <view wx:if="{{cardShow}}" class="card card-tight revisit">
     <view class="rv-top">
       <view class="rv-head">
@@ -61,58 +77,69 @@
     </view>
     <view class="rv-acts">
       <view class="btn btn-primary btn-sm rv-a" bindtap="onCardReview">开始补这一段</view>
-      <view class="btn btn-sm rv-a" bindtap="onReport">看完整报告</view>
+      <view class="btn btn-sm rv-a" bindtap="onReport">看报告</view>
       <view class="btn btn-ghost btn-sm rv-a" bindtap="onStats">看总览</view>
     </view>
     <view class="rv-off" catchtap="onCardOff">以后不再提醒</view>
   </view>
 
-  <!-- 继续检测 -->
-  <view wx:if="{{resume}}" class="card card-tight resume" bindtap="onResume">
-    <view class="resume-l">
-      <view class="t2">{{resume.label}}</view>
-      <view class="t3">{{resume.text}}</view>
-    </view>
-    <view class="resume-r">继续 →</view>
-  </view>
-
-  <!-- 入口 -->
+  <!-- 检测入口 -->
   <view class="card">
-    <view class="t1 sect">开始检测</view>
-    <view class="row-note t3">不预设题量：边测边算区间宽度，达到目标精度就提示收工。</view>
-
-    <view class="entry btn btn-primary" bindtap="onQuick">
-      <view class="entry-l">
-        <view class="entry-t">快速摸底</view>
-        <view class="entry-d">目标 ±250 词 · 约 {{need250}} 题 · {{mins250}}</view>
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">START</view>
+        <view class="sect-title">开始检测</view>
       </view>
-      <view class="entry-go">→</view>
+      <view class="sect-more" bindtap="onAi">AI 诊断 →</view>
     </view>
 
-    <view class="entry btn" bindtap="onAll">
-      <view class="entry-l">
-        <view class="entry-t">全量检测</view>
-        <view class="entry-d">{{poolSize}} 词全部过一遍 · {{minsAll}} · 测完给等级</view>
+    <!-- 精度选择：网页版的三档搬过来了 -->
+    <view class="pick">
+      <view wx:for="{{precision}}" wx:key="target" class="pick-i {{item.on ? 'on' : ''}}" data-target="{{item.target}}" bindtap="onPickPrecision">
+        <view class="pick-v">±{{item.target}}</view>
+        <view class="pick-d">{{item.need}} 题 · {{item.mins}}</view>
       </view>
-      <view class="entry-go">→</view>
+    </view>
+    <view class="t3" style="margin:12rpx 0 4rpx">快速摸底按上面选的目标精度抽题；边测边算区间，达标就可以收工。</view>
+
+    <view class="row-entry" bindtap="onQuick">
+      <view class="re-ic">快</view>
+      <view class="re-l">
+        <view class="re-t">快速摸底 · 目标 ±{{pickTarget}} 词</view>
+        <view class="re-d">约 {{pickNeed}} 题 · {{pickMins}} · 答完自动给结果</view>
+      </view>
+      <view class="re-go">→</view>
     </view>
 
-    <view wx:if="{{canRetest}}" class="entry btn" bindtap="onRetest">
-      <view class="entry-l">
-        <view class="entry-t">↻ 开始第 {{roundNo + 1}} 轮</view>
-        <view class="entry-d">本轮已测完 · 换一轮做逐词对比</view>
+    <view class="row-entry" bindtap="onAll">
+      <view class="re-ic ghost">全</view>
+      <view class="re-l">
+        <view class="re-t">全量检测 · {{poolSize}} 词</view>
+        <view class="re-d">{{minsAll}} · 测完给等级与补词清单</view>
       </view>
-      <view class="entry-go">→</view>
+      <view class="re-go">→</view>
+    </view>
+
+    <view wx:if="{{canRetest}}" class="row-entry" bindtap="onRetest">
+      <view class="re-ic ghost">↻</view>
+      <view class="re-l">
+        <view class="re-t">开始第 {{roundNo + 1}} 轮</view>
+        <view class="re-d">本轮已测完 · 换一轮做逐词对比</view>
+      </view>
+      <view class="re-go">→</view>
     </view>
   </view>
 
   <!-- 分组 -->
   <view class="card">
-    <view class="sect-row" bindtap="onToggleGroups">
-      <view class="t1 sect">分组检测</view>
-      <view class="t3">{{groups.length}} 组 · 每组 100 词 {{showGroups ? '收起' : '展开'}}</view>
+    <view class="sect-head" bindtap="onToggleGroups">
+      <view>
+        <view class="sect-label">GROUPS</view>
+        <view class="sect-title">分组检测</view>
+      </view>
+      <view class="sect-more">{{groups.length}} 组 · 每组 100 词 {{showGroups ? '收起' : '展开'}}</view>
     </view>
-    <view class="row-note t3">顺序由单词自身的哈希决定 —— 看起来是打乱的，但每次打开都一样，所以「第 N 组」永远指向同一批词。</view>
+    <view class="t3">顺序由单词自身的哈希决定：看起来打乱，但每次打开都一样，「第 N 组」永远是同一批词。</view>
 
     <view wx:if="{{showGroups}}" class="grid">
       <view wx:for="{{groups}}" wx:key="g" class="gcell {{item.done ? 'gdone' : (item.tested > 0 ? 'gpart' : '')}}" data-g="{{item.g}}" bindtap="onGroup">
@@ -122,8 +149,16 @@
     </view>
   </view>
 
-  <view class="footer-links">
-    <view class="t3" bindtap="onReport">查看完整报告与历轮对比 →</view>
+  <view class="card card-tight" bindtap="onReport">
+    <view class="row-entry" style="border-top:none;padding:0">
+      <view class="re-ic ghost">报</view>
+      <view class="re-l">
+        <view class="re-t">完整报告与历轮对比</view>
+        <view class="re-d">等级 · 七段剖面 · 补词清单 · 多轮差分</view>
+      </view>
+      <view class="re-go">→</view>
+    </view>
   </view>
-  <view class="t3 center tip">纯本地运行：作答只存在这台手机上，不上传服务器。</view>
+
+  <view class="foot-tip">纯本地运行：作答只存在这台手机上，不上传服务器、不需要账号。</view>
 </view>

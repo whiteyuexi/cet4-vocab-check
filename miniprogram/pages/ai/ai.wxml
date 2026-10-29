@@ -1,0 +1,47 @@
+<!-- AI 诊断（本地方案）：依据 → 先补哪段 → 怎么排 → 怎么验证 -->
+<view class="page">
+
+  <view class="card">
+    <view class="sect-head">
+      <view>
+        <view class="sect-label">DIAGNOSIS</view>
+        <view class="sect-title">AI 诊断 · 本地方案</view>
+      </view>
+      <view class="chip">离线可用</view>
+    </view>
+    <view class="t3">结论由这台设备上的数据算出：不联网、不消耗额度、不需要账号。网页版另有"自带 Key / 作者额度"两档可自由追问。</view>
+
+    <view class="quick">
+      <view wx:for="{{quick}}" wx:key="q" class="quick-i {{topic === item.topic ? 'on' : ''}}" data-q="{{item.q}}" bindtap="onAsk">{{item.q}}</view>
+    </view>
+  </view>
+
+  <view wx:for="{{blocks}}" wx:key="h" class="card">
+    <view class="blk-h">{{item.h}}</view>
+    <view wx:for="{{item.lines}}" wx:for-item="ln" wx:key="*this" class="blk-l">{{ln}}</view>
+  </view>
+
+  <view class="card card-tight">
+    <view class="row-entry" style="border-top:none;padding:0" bindtap="onReviewTop">
+      <view class="re-ic">补</view>
+      <view class="re-l">
+        <view class="re-t">直接开始补最该补的那一段</view>
+        <view class="re-d">按「缺口 × 词频权重」选出来的那一段，点一下开测</view>
+      </view>
+      <view class="re-go">→</view>
+    </view>
+  </view>
+
+  <view class="card card-tight">
+    <view class="row-entry" style="border-top:none;padding:0" bindtap="onStats">
+      <view class="re-ic ghost">图</view>
+      <view class="re-l">
+        <view class="re-t">看七段剖面与词汇地图</view>
+        <view class="re-d">哪一段、哪一格是空的，一眼能看见</view>
+      </view>
+      <view class="re-go">→</view>
+    </view>
+  </view>
+
+  <view class="foot-tip">当前每天 {{perDay}} 词（可在「设置 → 每日可投入时间」里改）。</view>
+</view>

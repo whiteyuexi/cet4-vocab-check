@@ -117,7 +117,8 @@ function engineBody(A) {
       aiQuota: { granted: 0, used: 0 },
       userKey: null,                            // 用户自带的 API Key 配置（只存本机，导出备份时剔除）
       welcomed: false,                          // 是否已过了"怎么称呼"那一步
-      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4', dailyMinutes: 30 },
+      settings: { mode: 'self', autoNext: true, autoDelay: 850, sound: true, includeExt: false, strict: false, bank: 'c4', dailyMinutes: 30,
+        accent: 'uk', autoBothAccents: false },   // 与网页版同一份默认值（parity 会逐字段核对）
       theme: 'light',
       tokens: 0            // AI 诊断累计消耗的 token（用户视角的「投喂量」）
     };

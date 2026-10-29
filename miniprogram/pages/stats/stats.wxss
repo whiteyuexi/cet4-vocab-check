@@ -1,33 +1,61 @@
-/* 总览页样式 */
-.sect { margin-bottom: 20rpx; }
-.row-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20rpx; }
-.row-head .t3 { font-size: 22rpx; }
+/* 总览页：掌握情况 + 七段剖面 + 词汇地图 + 检测记录 */
 
-.gap-line { display: flex; margin-bottom: 18rpx; }
-.gap-i { flex: 1; }
-.gap-v { font-size: 40rpx; font-weight: 700; margin-top: 4rpx; }
+/* 掌握情况：左侧环形数字 + 右侧四态 */
+.ov-top { display: flex; align-items: center; gap: 26rpx; margin-top: 14rpx; }
+.ov-ring {
+  width: 152rpx; height: 152rpx; border-radius: 50%; flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(42, 91, 224, .14), rgba(42, 91, 224, .05));
+  border: 2rpx solid rgba(42, 91, 224, .22);
+}
+.ov-ring-v { font-size: 44rpx; font-weight: 800; line-height: 1; color: #2A5BE0; }
+.ov-ring-u { font-size: 20rpx; font-weight: 700; }
+.ov-ring-k { font-size: 19rpx; color: #8B93A3; margin-top: 4rpx; }
+.ov-stat { flex: 1; min-width: 0; }
+.ov-row { display: flex; align-items: center; font-size: 24rpx; color: #575E6B; padding: 4rpx 0; }
+.ov-row .num { margin-left: 6rpx; }
 
-.state-row { display: flex; gap: 26rpx; margin-top: 16rpx; font-size: 24rpx; color: #575E6B; }
-.st { display: flex; align-items: center; }
-.dot { width: 14rpx; height: 14rpx; border-radius: 50%; margin-right: 8rpx; display: inline-block; }
+/* 小圆点 */
+.dot { width: 14rpx; height: 14rpx; border-radius: 50%; display: inline-block; margin-right: 10rpx; }
 .dot.ok { background: #0A6B4A; }
 .dot.warn { background: #D98A00; }
 .dot.bad { background: #B02E22; }
+.dot.none { background: rgba(16, 19, 25, .18); }
 
-/* 频段条 */
-.brow { padding: 18rpx 0; border-top: 1rpx solid rgba(16,19,25,.06); }
-.brow:first-of-type { border-top: none; }
+/* 七段剖面 */
+.brow { padding: 18rpx 0; border-top: 1rpx solid rgba(16, 19, 25, .06); }
+.brow:first-of-type { border-top: none; padding-top: 10rpx; }
 .brow:active { opacity: .7; }
 .brow-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10rpx; }
 .brow-name { font-size: 27rpx; font-weight: 600; }
 .brow-val { font-size: 27rpx; font-weight: 700; }
-.brow-foot { margin-top: 8rpx; font-size: 22rpx; }
+.brow-foot { margin-top: 8rpx; font-size: 21rpx; }
 .bar-ok { background: #0A6B4A; }
 .bar-warn { background: #D98A00; }
 .bar-bad { background: #B02E22; }
-.bar-none { background: rgba(16,19,25,.16); }
+.bar-none { background: rgba(16, 19, 25, .16); }
+
+/* 词汇地图：横向可滑，格子 44rpx 保证能点中 */
+.map-scroll { margin-top: 16rpx; width: 100%; white-space: nowrap; }
+.map { display: inline-block; }
+.map-row { display: flex; align-items: center; margin-bottom: 8rpx; }
+.map-lbl { width: 132rpx; flex: none; font-size: 19rpx; color: #8B93A3; }
+.map-c {
+  width: 44rpx; height: 44rpx; margin-right: 6rpx; border-radius: 8rpx; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18rpx; font-weight: 600; color: #575E6B;
+  background: rgba(16, 19, 25, .05);
+}
+.map-c:active { transform: scale(.92); }
+.map-ok { background: #0A6B4A; color: #fff; }
+.map-warn { background: #D98A00; color: #fff; }
+.map-bad { background: #B02E22; color: #fff; }
+.map-none { background: rgba(16, 19, 25, .05); color: #B0B6C2; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 22rpx; margin-top: 18rpx; }
+.lg { display: flex; align-items: center; font-size: 20rpx; color: #8B93A3; }
 
 /* 记录 */
-.rec { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-top: 1rpx solid rgba(16,19,25,.06); }
+.rec { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-top: 1rpx solid rgba(16, 19, 25, .06); }
 .rec:first-of-type { border-top: none; }
+.rec-l { flex: 1; min-width: 0; }
 .rec-r { font-size: 30rpx; font-weight: 700; }

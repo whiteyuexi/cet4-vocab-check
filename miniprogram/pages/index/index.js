@@ -63,7 +63,9 @@ Page({
     testedText: '', remaining: 0, toNext: 0, nextName: '',
     resume: null, canRetest: false, roundNo: 1,
     cardShow: false, cardLines: [], cardHead: '',
-    need250: 0, mins250: '', needAll: '', minsAll: '', poolSize: 0, bankName: '',
+    testedShort: '0',
+    precision: [], pickTarget: 250, pickNeed: 0, pickMins: '',
+    needAll: '', minsAll: '', poolSize: 0, bankName: '',
     groups: [], showGroups: true
   },
 
@@ -92,8 +94,14 @@ Page({
       ? ((info.kind === 'full' ? '实测 ' : '上次 ') + fmt(info.vocab) + ' 词' +
          (info.half ? '（±' + info.half + '）' : '') + ' · ' + (info.days === 0 ? '今天' : info.days + ' 天前'))
       : '';
-    var n250 = eng.needFor(250);
     var pool = eng.curPoolSize();
+    /* 精度三档：和网页版一致的 ±400 / ±250 / ±150，题量与耗时由引擎算 */
+    var curT = this.data.pickTarget || 250;
+    var precision = [400, 250, 150].map(function (tg) {
+      var need = eng.needFor(tg);
+      return { target: tg, need: need, mins: eng.minsText(need), on: tg === curT };
+    });
+    var pickNeed = eng.needFor(curT), pickMins = eng.minsText(pickNeed);
     this.setData({
       ready: true,
       est: est,
@@ -116,12 +124,15 @@ Page({
       resume: resume,
       canRetest: eng.canRetest(),
       roundNo: eng.roundNo(),
-      need250: n250,
-      mins250: eng.minsText(n250),
+
       minsAll: eng.minsText(pool),
       poolSize: pool,
       bankName: eng.bankName(),
       groups: groupRows(),
+      testedShort: fmt(rep.tested),
+      precision: precision,
+      pickNeed: pickNeed,
+      pickMins: pickMins,
       cardShow: cardShow,
       cardLines: info ? cardMod.lines(info, bandNameFn) : [],
       cardHead: cardHead
@@ -130,7 +141,8 @@ Page({
 
   /* ---------- 入口 ---------- */
   onQuick: function () {
-    withQuiz(function (q) { return q.start('probe', { target: 250 }); });
+    var tg = this.data.pickTarget || 250;
+    withQuiz(function (q) { return q.start('probe', { target: tg }); });
   },
   onAll: function () {
     wx.showModal({
@@ -169,6 +181,16 @@ Page({
   },
   onReport: function () {
     wx.navigateTo({ url: '/pages/report/report' });
+  },
+
+  /* ---------- 精度选择（网页版的三档搬到手机） ---------- */
+  onPickPrecision: function (e) {
+    var tg = Number(e.currentTarget.dataset.target) || 250;
+    if ([400, 250, 150].indexOf(tg) < 0) return;
+    this.setData({ pickTarget: tg }, this.refresh.bind(this));
+  },
+  onAi: function () {
+    wx.navigateTo({ url: '/pages/ai/ai' });
   },
 
   /* ---------- 回访卡 ---------- */

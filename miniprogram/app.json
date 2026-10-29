@@ -4,7 +4,8 @@
     "pages/stats/stats",
     "pages/settings/settings",
     "pages/quiz/quiz",
-    "pages/report/report"
+    "pages/report/report",
+    "pages/ai/ai"
   ],
   "window": {
     "navigationBarBackgroundColor": "#EDF0F6",
