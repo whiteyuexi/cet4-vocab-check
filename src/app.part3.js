@@ -402,8 +402,8 @@
        并把这个差别写在界面上，而不是让用户自己发现"读的和标的不一样"。 */
     var acc = A.accentCfg ? A.accentCfg() : { k: 'us', name: '美式' };
     h += '<div class="switch" style="align-items:flex-start"><div class="st"><b>发音口音</b>' +
-      '<small>当前：<b>' + esc(acc.name) + '</b>。词库音标采用教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː），' +
-      '系统语音默认多为美式，两者不完全一致时以你选的口音为准</small></div>' +
+      '<small>当前：<b>' + esc(acc.name) + '</b>。四六级听力<b>英音与美音混合</b>（英音历史占比更高，近年也在加入其他口音），' +
+      '词库音标是教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː）。建议两种都切着听一遍</small></div>' +
       '<div class="tabs" style="margin:0;width:190px">' +
       (A.ACCENTS || []).map(function (a) {
         return '<button class="' + (a.k === acc.k ? 'on' : '') + '" data-act="set-accent" data-accent="' + a.k + '">' + a.name + '</button>';

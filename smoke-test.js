@@ -384,20 +384,21 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
       btns.map(b => b.textContent.trim()).join(' / '));
 
     // 词库音标是教材通用英式标注，TTS 默认美式——两条线都写清楚，别让用户猜
-    check('默认口音是美式', A.accentCfg().k === 'us', A.accentCfg().name);
+    check('默认口音是英式（贴音标与考试主流口音）', A.accentCfg().k === 'uk' && A.DEFAULT_ACCENT === 'uk',
+      A.accentCfg().name);
     check('英式口音对应 en-GB', A.ACCENTS.filter(a => a.k === 'uk')[0].lang === 'en-GB',
       A.ACCENTS.map(a => a.k + '=' + a.lang).join(' '));
 
     // 切到英式后设置要落盘，且 speak() 不能炸（jsdom 没有 speechSynthesis，应静默降级）
-    click('[data-act="set-accent"][data-accent="uk"]');
-    check('切到英式后写进设置', A.S.settings.accent === 'uk' &&
-      JSON.parse(win.localStorage.getItem('cet4vocab_v1')).settings.accent === 'uk');
-    check('英式下 speak() 不抛错（无语音引擎时静默）', (() => {
+    click('[data-act="set-accent"][data-accent="us"]');
+    check('切到美式后写进设置', A.S.settings.accent === 'us' &&
+      JSON.parse(win.localStorage.getItem('cet4vocab_v1')).settings.accent === 'us');
+    check('无语音引擎时 speak() 不抛错（静默降级）', (() => {
       try { A.speak('vocabulary'); return true; } catch (e) { return false; }
     })());
 
-    click('[data-act="set-accent"][data-accent="us"]');
-    check('切回美式', A.S.settings.accent === 'us');
+    click('[data-act="set-accent"][data-accent="uk"]');
+    check('切回英式', A.S.settings.accent === 'uk');
     A.go('home');
   });
 

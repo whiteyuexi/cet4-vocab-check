@@ -1264,8 +1264,13 @@
     { k: 'us', name: '美式', lang: 'en-US', re: /^en[-_]US/i },
     { k: 'uk', name: '英式', lang: 'en-GB', re: /^en[-_]GB/i }
   ];
+  /* 默认口音：四六级听力是英音与美音混合（历史上英音占比更高），
+     而词库音标也是教材通用的英式标注，所以默认给英式更贴考试与音标；
+     系统缺 en-GB 语音包时会自动退到任意英语音色，不会变成无声。 */
+  var DEFAULT_ACCENT = 'uk';
+  A.DEFAULT_ACCENT = DEFAULT_ACCENT;
   function accentCfg() {
-    var k = (S.settings && S.settings.accent) || 'us';
+    var k = (S.settings && S.settings.accent) || DEFAULT_ACCENT;
     for (var i = 0; i < A.ACCENTS.length; i++) if (A.ACCENTS[i].k === k) return A.ACCENTS[i];
     return A.ACCENTS[0];
   }
