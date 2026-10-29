@@ -1403,3 +1403,10 @@ html[data-theme="dark"] .logo .logo-mark{filter:brightness(1.28) saturate(1.05)}
 .intro-logo .logo-mark{width:192px;height:auto;overflow:visible}
 html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
 @media (max-width:640px){.intro-logo .logo-mark{width:140px;height:auto}}
+/* AI 面板里的"说明态"：离线/降级都走这个，不用红字报错吓人 */
+.ai-note {
+  padding: 12px 14px; border-radius: 12px; margin-bottom: 10px;
+  background: #FBF3E4; border: 1px solid rgba(138,90,16,.28);
+  color: #6B4A0E; font-size: 12.5px; line-height: 1.75;
+}
+html[data-theme="dark"] .ai-note { background: rgba(224,177,92,.12); border-color: rgba(224,177,92,.3); color: #E8C583; }

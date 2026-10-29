@@ -391,6 +391,25 @@
     updateQuotaBadge();          // 面板一打开就显示当前档位与剩余额度（否则是个空药丸）
     // 带图表上下文进来时，问题可以由上下文自动生成（用户只点了一下格子）
     if (!question && AI_FOCUS) question = questionFromFocus(AI_FOCUS);
+    /* 没有明确问题时的默认开场。
+       以前这里什么都不做：点「AI 诊断」只弹出一个空白面板，用户以为功能坏了
+       （尤其离线时更明显）。现在有数据就自动问一句，没数据就先给引导。 */
+    var hasData = false;
+    try { hasData = A.tally(A.activePool()).tested > 0; } catch (e) { hasData = false; }
+    if (!question && !hasData) {
+      logHTML('<div class="ai-a">还没有可以分析的数据。先做一次「快速摸底」（随机抽 100 词，约 3 分钟），' +
+        '这里就会给出基于你自己数据的诊断——不联网也能用。</div>', 'bot');
+      renderAiActions([
+        { act: 'start', target: 400, label: '开一轮快速摸底' },
+        { act: 'go', route: 'stats', label: '先看总览' }
+      ]);
+      var pill0 = el('aiMode');
+      if (pill0) { pill0.textContent = '本地方案 · 等待数据'; pill0.className = 'pill warn'; }
+      return;
+    }
+    if (!question) {
+      question = '根据我现在这批数据，最该先补哪一段？接下来两周先做哪几件事？';
+    }
     // 有授权锁时不要先去探后端：这个文件本来就是给别人用的离线形态，
     // 探了也白探，还会让用户以为"在连什么"。只有无锁版本才走健康检查。
     if (AI_LOCK && !AI_LIVE) {
@@ -571,8 +590,11 @@
       }
       return pump();
     }).catch(function (e) {
-      box.innerHTML = '<div class="ai-err">大模型调用失败：' + esc(e.message) + '</div>' +
-        '<div class="ai-a" style="margin-top:8px">' + renderMD(A.localDiagnosis(question)) + '</div>';
+      /* 连不上不是错误，是"这一档不可用"：说明原因、自动回落，并把判断依据交给用户 */
+      box.innerHTML = '<div class="ai-note">大模型这一档暂时连不上（离线或网络受限），已自动回落到<b>本地方案</b>。</div>' +
+        '<div class="ai-a" style="margin-top:8px">' + renderMD(A.localDiagnosis(question)) + '</div>' +
+        '<div class="tiny" style="margin-top:8px;color:var(--ink3)">技术细节：' + esc(String(e && e.message || e).slice(0, 120)) + '</div>';
+      try { renderAiActions(A.localActions()); } catch (err) {}
     });
   }
 
@@ -685,9 +707,19 @@
     }
 
     if (weak.length) {
-      var w0 = weak[0];
+      /* 「最弱的一段」和「最该先补的一段」不是同一件事：
+         10k-20k 常常掌握率最低，但那些词一年也遇不上几次；最高频段缺几个词却每次阅读都撞上。
+         所以先动的那一段按「缺口词数 × 词频权重」挑（与报告页、回访卡同一套口径），
+         最弱段只作为"结构上有洞"的说明。 */
+      var deficits = rows.map(function (r) {
+        var w = (A.BAND_W && A.BAND_W[r.band] !== undefined) ? A.BAND_W[r.band] : 0.1;
+        return { band: r.band, p: r.p, n: r.n, N: r.N, gap: Math.max(0, Math.round((1 - r.p) * r.N)), w: w, gain: Math.max(0, Math.round((1 - r.p) * r.N)) * w };
+      }).sort(function (a, b) { return b.gain - a.gain; });
+      var pri = deficits.length ? deficits[0] : null;
+      var w0 = pri || weak[0];
       out.push('**最该先动的地方**\n' +
-        nameOf(w0.band) + ' 是你最薄的一段（' + pc(w0.p) + '）。' +
+        nameOf(w0.band) + ' 段（掌握 ' + pc(w0.p) + (pri ? ('，全段约 ' + w0.gap + ' 词还没拿下') : '') + '）。' +
+        (pri ? '这一段是「缺口 × 词频权重」算下来收益最高的：' + nameOf(w0.band) + ' 的词在真题里出现得最密，补它最划算。' : '') +
         (strong && strong.band !== w0.band
           ? '对比之下 ' + nameOf(strong.band) + ' 有 ' + pc(strong.p) + '，说明不是"整体不行"，而是**结构上有洞**——' +
             '补洞比从头背一遍划算得多。'
@@ -736,6 +768,16 @@
   };
 
   function localAnswer(box, question) {
+    /* 离线是常态（单文件交付），所以先说明"这就是本地方案"，而不是让用户以为是故障 */
+    if (!el('aiOfflineNote')) {
+      var note = document.createElement('div');
+      note.className = 'ai-msg';
+      note.id = 'aiOfflineNote';
+      note.innerHTML = '<div class="ai-note">当前没有网络或没有后端，下面是<b>本地方案</b>：' +
+        '结论全部由这台机器上的数据算出，确定性、不联网、不花钱。接上后端（或填入自己的 API Key）后，' +
+        '同一个入口会换成能自由追问的大模型 Agent。</div>';
+      var lg = el('aiLog'); if (lg) lg.appendChild(note);
+    }
     var md;
     try { md = A.localDiagnosis(question); }
     catch (e) { md = '离线诊断生成失败：' + e.message + '\n\n可以先去「总览」页看频段剖面。'; }

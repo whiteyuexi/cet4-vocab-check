@@ -76,7 +76,7 @@ pre code{background:none;color:inherit;padding:0}
 <div class="kv">
   <div><b>7,175</b><span>词条（全部带音标）</span></div>
   <div><b>9,204</b><span>英中对照例句</span></div>
-  <div><b>427</b><span>条离线断言</span></div>
+  <div><b>433</b><span>条离线断言</span></div>
   <div><b>2.11 MB</b><span>单文件产物</span></div>
   <div><b>0</b><span>运行时外部依赖</span></div>
 </div>
@@ -108,7 +108,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">自动化测试</td><td>11 个套件 / 427 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>12 个套件 / 433 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
 </table>
 
 <h3>1.3 三个亮点</h3>
@@ -467,7 +467,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <h2 id="c6">6 测试与部署</h2>
 
 
-<h3>6.1 测试体系（11 个套件 / 427 条离线断言）</h3>
+<h3>6.1 测试体系（12 个套件 / 433 条离线断言）</h3>
 <table>
 <tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
 <tr><td class="k">smoke-test.js（jsdom）</td><td>201</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
@@ -480,6 +480,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <tr><td class="k">scripts/check-ai-link.mjs</td><td>15</td><td>图表→AI 上下文、动作白名单、点击真的执行</td></tr>
 <tr><td class="k">scripts/check-book.mjs</td><td>17</td><td>词书解析/预览/切换/持久化/删除回退</td></tr>
 <tr><td class="k">scripts/check-ai-lock.mjs</td><td>6</td><td>无锁形态（可选授权功能的回归）</td></tr>
+<tr><td class="k">scripts/check-ai-offline.mjs</td><td>6</td><td>CDP 模拟断网：AI 面板给出本地方案，不空白、不报错、有可点动作</td></tr>
 <tr><td class="k">scripts/check-online-ai.mjs</td><td>7</td><td>联网主路径（需后端）：工具调用与动作</td></tr>
 </table>
 <p class="small">另有小程序侧三套一致性测试：引擎 1,302 条字段级、答题流程 34,310 条、页面冒烟 26 项，全部与网页版逐字段相等。</p>
@@ -636,7 +637,7 @@ PORT=8787</code></pre>
 <tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
 </table>
 
-<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 427 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 433 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
 实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
 
 </div>

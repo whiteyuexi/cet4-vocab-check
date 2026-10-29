@@ -59,7 +59,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-si
   <div><b>2.11 MB</b>单文件产物</div>
   <div><b>7,175</b>词条（全带音标）</div>
   <div><b>9,204</b>条例句（英中对照）</div>
-  <div><b>427</b>条离线自动化断言</div>
+  <div><b>433</b>条离线自动化断言</div>
   <div><b>11</b>个测试套件</div>
   <div><b>0</b>运行时外部依赖</div>
 </div>
@@ -843,7 +843,7 @@ for (let round = 0; round &lt; 3; round++) {                 // MAX_TOOL_ROUNDS 
   app.css        设计令牌 + 全部样式                          ~1,300 行
 server/          Node 原生 http + Agent 循环 + 工具层 + 语料检索  ~370 行</code></pre>
 
-<h3>9.2 测试矩阵（11 个套件 / 427 条离线断言）</h3>
+<h3>9.2 测试矩阵（12 个套件 / 433 条离线断言）</h3>
 <table>
 <tr><th style="width:210px">套件</th><th style="width:80px">条数</th><th>覆盖什么</th></tr>
 <tr><td class="k">smoke-test.js（jsdom）</td><td>201</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、<b>回访卡</b>（19 条）</td></tr>
@@ -856,6 +856,7 @@ server/          Node 原生 http + Agent 循环 + 工具层 + 语料检索  ~37
 <tr><td class="k">scripts/check-ai-link.mjs</td><td>15</td><td>图表→AI 上下文、动作白名单、点击真的执行</td></tr>
 <tr><td class="k">scripts/check-book.mjs</td><td>17</td><td>词书解析/预览/切换/持久化/删除回退</td></tr>
 <tr><td class="k">scripts/check-ai-lock.mjs</td><td>6</td><td>无锁形态（可选授权功能的回归）</td></tr>
+<tr><td class="k">scripts/check-ai-offline.mjs</td><td>6</td><td>CDP 模拟断网后，AI 面板仍给出本地方案（不空白、不报错）</td></tr>
 <tr><td class="k">scripts/check-online-ai.mjs</td><td>7</td><td>联网主路径（需后端）：工具调用与动作</td></tr>
 </table>
 
@@ -928,7 +929,7 @@ node build.js --with-key   # 评委版：内联作者 Key，只发评委，绝�
 </div>
 
 <footer>
-本文档描述的是当前交付版本（单文件 2.11 MB / 427 条离线断言）。
+本文档描述的是当前交付版本（单文件 2.11 MB / 433 条离线断言）。
 技术实现细节见《技术文档》，功能清单与评分点对照见《网站功能总览》，
 赛题 AI 方向对照与未来路线见《AI技术对照与下一步路线》，开发过程与缺陷复盘见报告系列 01–18。
 </footer>
