@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>技术文档 · 四六级词汇量检测</title>
+<style>
+:root{
+  --ink:#101319;--ink2:#575E6B;--ink3:#6B7280;
+  --bg:#EDF0F6;--glass:rgba(255,255,255,.74);--line:rgba(16,19,25,.09);--line2:rgba(16,19,25,.15);
+  --accent:#2A5BE0;--accent-soft:rgba(42,91,224,.09);
+  --ok:#0A6B4A;--ok-soft:#E7F5EF;--warn:#8A5A10;--warn-soft:#FBF3E4;--bad:#B02E22;--bad-soft:#FBEDEB;
+  --lift:0 1px 1px rgba(16,19,25,.03),0 20px 48px -18px rgba(16,19,25,.34),inset 0 1px 0 rgba(255,255,255,.9);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:0;font:15px/1.78 var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.page{position:relative;max-width:920px;margin:34px auto 80px;background:var(--glass);border:1px solid var(--line);
+  border-radius:20px;padding:44px 54px;box-shadow:var(--lift)}
+h1{font-size:27px;font-weight:720;letter-spacing:-.028em;margin:0 0 6px}
+.docmeta{color:var(--ink3);font-size:13px;margin-bottom:8px;font-family:var(--mono)}
+h2{font-size:19px;font-weight:690;letter-spacing:-.02em;margin:40px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line2)}
+h3{font-size:16px;font-weight:670;letter-spacing:-.012em;margin:26px 0 9px}
+h4{font-size:14.5px;font-weight:660;margin:18px 0 6px;color:var(--ink2)}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:24px}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--accent-soft);font-weight:660;color:var(--ink2);font-size:12.5px}
+td.k{font-weight:660;color:var(--ink);width:170px}
+code{font-family:var(--mono);font-size:12.5px;background:rgba(16,19,25,.05);padding:1.5px 6px;border-radius:6px;color:#2A3350}
+pre{background:#141822;color:#E7EBF8;padding:14px 17px;border-radius:13px;overflow-x:auto;font:12.5px/1.7 var(--mono);margin:14px 0}
+pre code{background:none;color:inherit;padding:0}
+.box{border:1px solid var(--line2);background:rgba(255,255,255,.6);border-radius:13px;padding:14px 17px;margin:16px 0}
+.box[data-lbl]::before{content:attr(data-lbl);display:block;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.box.warn{background:var(--warn-soft);border-color:rgba(138,90,16,.28)}
+.box.bad{background:var(--bad-soft);border-color:rgba(176,46,34,.28)}
+.box.ok{background:var(--ok-soft);border-color:rgba(10,107,74,.28)}
+.tag{display:inline-block;font-family:var(--mono);padding:2px 9px;border-radius:999px;font-size:11px;font-weight:640;white-space:nowrap}
+.tag.done{background:var(--ok-soft);color:var(--ok)}
+.tag.plan{background:var(--warn-soft);color:var(--warn)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin:18px 0}
+.kv div{background:rgba(255,255,255,.66);border:1px solid var(--line);border-radius:13px;padding:12px 15px}
+.kv b{display:block;font-family:var(--mono);font-size:20px;font-weight:640;letter-spacing:-.03em;line-height:1.3}
+.kv span{font-size:11.5px;color:var(--ink3)}
+.small{font-size:12.5px;color:var(--ink2)}
+.toc{background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:13px;padding:16px 22px;font-size:13.5px;columns:2;column-gap:30px}
+.toc a{color:var(--accent);text-decoration:none;display:block;padding:2px 0}
+@media print{
+  body{background:#fff;font-size:10pt;line-height:1.5}
+  .page{background:#fff;border:none;box-shadow:none;border-radius:0;padding:0;margin:0;max-width:none}
+  h2{margin-top:13px;page-break-after:avoid;border-bottom-color:#ccd2de}
+  h3{margin-top:9px} h4{margin-top:7px}
+  h3,h4{page-break-after:avoid}
+  pre,table,.box,.kv,.toc{page-break-inside:avoid}
+  tr{page-break-inside:avoid}
+  table{font-size:9.5pt}
+  th{background:#F2F4F8}
+  a{color:inherit;text-decoration:none}
+}
+@page{margin:12mm 13mm}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>四六级词汇量检测 · 技术文档</h1>
+<div class="docmeta">项目名称：四六级词汇量检测（CET Vocabulary Profiler）　｜　版本：v1.0　｜　文档日期：2026-10-29</div>
+<div class="docmeta">参赛赛事：筑视界·码绘交互 —— Web 前端开发创意技能大赛　｜　选题方向：AI 教育与学习平台</div>
+<div class="docmeta">作者：李壹铭　｜　广东亚视演艺职业学院 · 人工智能学院　｜　单人作品</div>
+<div class="docmeta">代码仓库：https://github.com/whiteyuexi/cet4-vocab-check</div>
+
+<div class="kv">
+  <div><b>7,175</b><span>词条（全部带音标）</span></div>
+  <div><b>9,204</b><span>英中对照例句</span></div>
+  <div><b>421</b><span>条离线断言</span></div>
+  <div><b>2.11 MB</b><span>单文件产物</span></div>
+  <div><b>0</b><span>运行时外部依赖</span></div>
+</div>
+
+<div class="toc">
+<a href="#c1">1 项目概述</a>
+<a href="#c2">2 需求分析</a>
+<a href="#c3">3 系统架构设计</a>
+<a href="#c4">4 AI 技术方案</a>
+<a href="#c5">5 核心功能实现</a>
+<a href="#c6">6 测试与部署</a>
+<a href="#c7">7 总结与展望</a>
+<a href="#ca">附录 A–D</a>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="c1">1 项目概述</h2>
+
+<h3>1.1 一句话定位</h3>
+<p>这是一个<b>词汇量测量工具</b>，不是背单词软件。用户花 3 分钟测出自己有多少词量、误差多大、薄弱在哪个词频段，
+再决定背什么。背单词这件事仍然交给用户习惯的工具——本产品只负责"测准"和"开出补词清单"。</p>
+
+<h3>1.2 交付物与完成度</h3>
+<table>
+<tr><th style="width:170px">交付物</th><th>内容</th><th style="width:80px">状态</th></tr>
+<tr><td class="k">Web 单文件产物</td><td><code>index.html</code> 2.11 MB，词库/例句/立绘/样式/脚本全部内联，双击即用、断网可用</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">评委版产物</td><td>同一份产物＋内联作者 Key，开箱即可演示在线 AI 诊断（仓库版不含任何密钥）</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>11 个套件 / 421 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
+</table>
+
+<h3>1.3 三个亮点</h3>
+<table>
+<tr><th style="width:120px">亮点</th><th>具体是什么</th><th style="width:210px">怎么验证</th></tr>
+<tr><td class="k">① 敢写误差</td><td>结果永远是"数字 + 95% 区间 + 严格/折中两套口径"，题量由用户设定的目标精度决定，而不是固定 20 题</td><td>首页大数字下方即区间；改目标精度看题量与区间宽度同时变化</td></tr>
+<tr><td class="k">② 结论可执行</td><td>输出到"先补哪一段、哪些词、每天几个、几天补完"，并按「缺口 × 词频权重」排序</td><td>报告页补词清单；每条可直接开始复测</td></tr>
+<tr><td class="k">③ 离线可用且 AI 不编数字</td><td>单文件零依赖、断网可用；有 AI 时 AI 只解释数据，所有数字来自工具返回值</td><td>屏蔽网络后跑 20 项断言；AI 面板看工具调用标签与依据面板</td></tr>
+</table>
+
+<h3>1.4 技术栈</h3>
+<table>
+<tr><td class="k">前端</td><td>原生 HTML / CSS / JavaScript（ES5 语法，无框架、无构建期依赖注入），单文件交付</td></tr>
+<tr><td class="k">后端（可选）</td><td>Node.js 原生 <code>http</code> + SSE，无 Web 框架、无第三方运行时依赖</td></tr>
+<tr><td class="k">数据</td><td>词库 JSON（7,175 词）、Tatoeba 英中语料（9,204 句），构建期裁剪后内联</td></tr>
+<tr><td class="k">AI</td><td>OpenAI 兼容协议（DeepSeek / 通义千问 / 智谱 GLM）＋ 本地 Ollama ＋ 确定性规则引擎兜底</td></tr>
+<tr><td class="k">构建/测试</td><td>Node 18+；jsdom 做页面级测试，Chrome DevTools Protocol 做真实浏览器断言，python-pptx 做 PPT 结构交叉校验</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="c2">2 需求分析</h2>
+
+<h3>2.1 用户画像与场景</h3>
+<table>
+<tr><th style="width:190px">用户</th><th>场景与核心诉求</th></tr>
+<tr><td class="k">备考四六级的学生</td><td>想快速知道"我现在什么水平、差在哪、先补什么"，不愿意先做 1000 道题</td></tr>
+<tr><td class="k">需要验证复习效果的人</td><td>背了两周，想知道涨的这点分是真进步还是抽样噪声</td></tr>
+<tr><td class="k">英语教师 / 班干部</td><td>给学生做词汇摸底，需要能导出、不联网、数据不外泄</td></tr>
+<tr><td class="k">共用电脑的用户</td><td>实验室或宿舍同一台机器多人使用，数据必须互相隔离</td></tr>
+</table>
+
+<h3>2.2 功能需求</h3>
+<table>
+<tr><th style="width:56px">编号</th><th>需求</th><th style="width:86px">状态</th></tr>
+<tr><td>F1</td><td>四/六级双词库检测（4,540 / 5,716 词），共用一份作答记录</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F2</td><td>五种检测入口：快速摸底、高精度、完整检测、分组检测、薄弱词复测</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F3</td><td>结果给出词汇量 + 95% 区间 + 两套口径 + 区间随题量收窄</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F4</td><td>七段词频剖面与「缺口 × 词频权重」优先级排序</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F5</td><td>等级评估（S/A/B+/B/C/D）＋ 高频段地基封顶</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F6</td><td>多轮检测与逐词差分（真学会 / 背了又忘 / 掉档）</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F7</td><td>词汇地图：七段 × 26 字母 = 182 格，点格子直接复测</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F8</td><td>AI 诊断：三档通路、工具调用、建议可点、图表可反向提问</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F9</td><td>自定义词书导入（txt / csv / 粘贴），并明确"不换算成词汇量"的边界</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F10</td><td>使用者档案：同机多人数据隔离，可切换/改名/删除</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F11</td><td>导出：未掌握词表 CSV、作答备份 JSON、报告文本、打印 PDF</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F12</td><td>回访卡：隔几天再打开，用上次结果给出三段结论</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F13</td><td>每日可投入时间：分钟 → 每天词数 → 四处文案统一</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F14</td><td>一键生成六个等级的示例账号（演示用）</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F15</td><td>语音朗读单词（依赖系统语音引擎）</td><td><span class="tag done">完成</span></td></tr>
+</table>
+
+<h3>2.3 非功能需求</h3>
+<table>
+<tr><th style="width:150px">维度</th><th>要求</th><th style="width:170px">达成方式</th></tr>
+<tr><td class="k">离线可用</td><td>断网、无外部资源、无同目录依赖也能完整使用</td><td>单文件内联一切；断网跑 20 项断言</td></tr>
+<tr><td class="k">隐私</td><td>逐题作答不出本机，只把汇总数据交给可选的大模型</td><td>localStorage 存储；上行字段白名单</td></tr>
+<tr><td class="k">性能</td><td>首屏 &lt; 300 ms（本机），交互不卡顿</td><td>无框架、无虚拟 DOM；动效只动 transform/opacity</td></tr>
+<tr><td class="k">可访问性</td><td>键盘可操作、对比度达标、尊重减少动效</td><td>焦点管理 + inert + 实测 4.83:1 / 5.72:1</td></tr>
+<tr><td class="k">可维护</td><td>改一处生效一处，回归可自动验证</td><td>421 条断言 + 11 个套件；产物可复现</td></tr>
+<tr><td class="k">移动端</td><td>390 px 宽可用</td><td>响应式；实测无横向溢出、顶栏单行</td></tr>
+</table>
+
+<h3>2.4 明确不做的边界</h3>
+<table>
+<tr><td class="k">不做背单词</td><td>没有复习队列、没有打卡、没有提醒推送——那是另一条重资产赛道</td></tr>
+<tr><td class="k">不做账号与云同步</td><td>没有登录、没有服务器存档；换设备靠导出/导入 JSON</td></tr>
+<tr><td class="k">不做向量库 RAG</td><td>embedding + 向量库会引入几十 MB 权重，直接毁掉"单文件、断网可用"</td></tr>
+<tr><td class="k">不从自定义词书外推词汇量</td><td>自定义词书是有偏样本，只报"对这本书的掌握率"，界面上常驻提示</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="c3">3 系统架构设计</h2>
+
+<h3>3.1 整体架构</h3>
+<pre><code>┌────────────────────────── 单个 index.html（2.11 MB） ──────────────────────────┐
+│                                                                              │
+│  数据层    词库 7,175 词 · 例句 9,204 句 · 桌宠立绘 10 张（全部内联）           │
+│     │                                                                        │
+│  引擎层    estimate() · stratEstimate() · bandProfile() · vocabMap()          │
+│            levelReport() · roundSnapshot()/roundDiff() · perDayWords()        │
+│     │                                                                        │
+│  应用层    答题控制器（会话/进度/收工判定）· 报告生成 · 词书解析 · 回访卡规则    │
+│     │                                                                        │
+│  视图层    首页 / 检测 / 分组 / 总览 / 报告 / 设置 + 入场页 + 桌宠 + 视效层     │
+│     │                                                                        │
+│  AI 通道   ① 自带 Key 直连  ② 作者额度（可选）  ③ 本地确定性规则引擎          │
+└──────────────────────────────────────────────────────────────────────────────┘
+             │ 可选、非必需
+             ▼
+   server/（Node 原生 http + SSE）──► 大模型（OpenAI 兼容 / Ollama）
+             ├─ agent.mjs        工具调用循环（最多 3 轮）
+             ├─ tools.mjs        8 个只读工具 + 1 个动作工具
+             └─ corpus.mjs       9,204 句语料的倒排索引与可读性排序</code></pre>
+
+<h3>3.2 模块划分</h3>
+<table>
+<tr><th style="width:150px">文件</th><th style="width:80px">规模</th><th>职责</th></tr>
+<tr><td class="k">src/app.part1.js</td><td>1,492 行</td><td>状态与存储、词库与频段、抽样与估计、等级报告、回访卡、演示档案、使用者档案</td></tr>
+<tr><td class="k">src/app.part2.js</td><td>431 行</td><td>答题引擎：题面、作答判定、撤销、跳过、收工、结算</td></tr>
+<tr><td class="k">src/app.part3.js</td><td>922 行</td><td>结果页、总览、报告、设置、事件分发</td></tr>
+<tr><td class="k">src/app.part4.js</td><td>936 行</td><td>AI 面板、三档通路、工具调用可视化、动作白名单</td></tr>
+<tr><td class="k">src/app.part5.js</td><td>816 行</td><td>2.5D 桌宠：行为、悬空物理、守卫、气泡</td></tr>
+<tr><td class="k">src/app.part6.js</td><td>542 行</td><td>等级报告页与多轮对比</td></tr>
+<tr><td class="k">src/app.part7.js</td><td>378 行</td><td>入场页与视效层</td></tr>
+<tr><td class="k">src/app.part8.js</td><td>330 行</td><td>自定义词书解析 / 预览 / 保存</td></tr>
+<tr><td class="k">build.js</td><td>—</td><td>把 CSS/JS/词库/例句/立绘按固定顺序拼进 <code>index.template.html</code></td></tr>
+<tr><td class="k">server/</td><td>约 400 行</td><td>可选后端：静态托管 + Agent 循环 + 工具层 + 语料检索</td></tr>
+</table>
+
+<h3>3.3 数据模型与存储</h3>
+<table>
+<tr><td class="k">作答状态</td><td>按词下标存 1 个字节：0 不认识 / 1 模糊 / 2 认识 / 缺失即未测</td></tr>
+<tr><td class="k">轮次归档</td><td>聚合快照（词汇量、双口径、七段、等级）＋ 逐词 2 bit 位图（7,175 词约 1.8 KB），最多保留 12 轮</td></tr>
+<tr><td class="k">词表指纹</td><td>FNV-1a，形如 <code>7175:xxxx</code>；指纹不一致时只做聚合对比，不硬算逐词差异</td></tr>
+<tr><td class="k">存储键</td><td><code>cet4vocab_profiles</code>（档案表）、<code>cet4vocab_v1</code>（首个档案，兼容旧数据）、<code>cet4vocab_v1::&lt;id&gt;</code>（其余档案）</td></tr>
+<tr><td class="k">容量估算</td><td>单轮约 1.8 KB 位图 + 少量聚合字段；localStorage 5 MB 可存上千轮，实际限制在 12 轮</td></tr>
+</table>
+
+<h3>3.4 构建与两种产物</h3>
+<pre><code>node build.js              # 仓库版：不含任何密钥，可公开
+node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在线 AI
+# 产物不写入构建时间戳，同样源码构建出同样文件（可用 SHA256 比对）</code></pre>
+<p class="small">提交前必须有一步 <code>node scripts/check-no-key.mjs</code>：扫描产物与文档，确认没有明文 Key 泄漏。
+仓库里 <code>private/ai-key.json</code> 与 <code>.env*</code> 均被 gitignore。</p>
+
+<h3>3.5 关键设计决策</h3>
+<table>
+<tr><th style="width:190px">决策</th><th>理由</th></tr>
+<tr><td class="k">单文件交付</td><td>学生真实环境是"发个文件就能用"，不装环境、不被墙、不怕链接失效；代价是词库要裁剪、体积要控在 2 MB 出头</td></tr>
+<tr><td class="k">零运行时依赖</td><td>不引框架，避免"三年后依赖装不上"；统计与渲染都是手写，代码可读、可审计</td></tr>
+<tr><td class="k">AI 可选而非必需</td><td>大模型要花钱、可能没网；把它做成"增强项"，没有它功能不残缺</td></tr>
+<tr><td class="k">数字由本机算</td><td>模型的算术不可靠；所有统计量在浏览器内算完，模型只解释与排序</td></tr>
+<tr><td class="k">同一套引擎多端复用</td><td>小程序版直接复用同一份引擎逻辑，用一致性测试保证逐字段相等，避免"两端数值不一样"</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="c4">4 AI 技术方案</h2>
+
+<h3>4.1 选型理由：AI 放在哪里、不放在哪里</h3>
+<p>AI 在这类教育工具里最容易犯两个错：一是替用户算数（算出好看但不准的数字），二是把它当必需品（没网就废）。
+本项目的取舍是：<b>统计与判定全部由确定性代码完成，AI 只负责把已经算好的数据翻译成行动建议</b>。</p>
+<table>
+<tr><th style="width:200px">环节</th><th style="width:110px">由谁负责</th><th>理由</th></tr>
+<tr><td class="k">抽样、区间估计、等级判定</td><td>确定性代码</td><td>可复现、可断言；同一份数据永远得出同一个数</td></tr>
+<tr><td class="k">题目排序、分组边界</td><td>确定性代码</td><td>FNV-1a 定序，保证不同设备抽到同一批词</td></tr>
+<tr><td class="k">"我该先补哪一段"的排序</td><td>确定性代码给出候选</td><td>缺口 × 词频权重是硬规则，模型不参与打分</td></tr>
+<tr><td class="k">解释、追问、把结论组织成计划</td><td><b>大模型</b></td><td>这类任务没有唯一答案，正适合语言模型</td></tr>
+<tr><td class="k">没有模型时的同等能力</td><td>本地规则引擎</td><td>保证"永远可用"，且在数据不足时敢说"下不了结论"</td></tr>
+</table>
+
+<h3>4.2 集成方式：三种形态与三档通路</h3>
+<table>
+<tr><th style="width:150px">档位</th><th>触发条件</th><th>能力</th></tr>
+<tr><td class="k">① 自带 Key</td><td>用户在设置里填了自己的 API Key</td><td>直连厂商、不限次数；Key 只存本机，导出备份时剔除</td></tr>
+<tr><td class="k">② 作者额度</td><td>完成一次有效检测换取 1 次深度诊断（仅评委版内联了作者 Key）</td><td>在线大模型；额度用尽自动降级</td></tr>
+<tr><td class="k">③ 本地方案</td><td>以上都不满足、或没有后端</td><td>确定性规则诊断，不联网、不限次、按真实数据出结论</td></tr>
+</table>
+<pre><code>A.aiTier = function () {
+  if (A.S.userKey &amp;&amp; A.S.userKey.key) return 'user';        // 用户自己付费，优先
+  if (AUTHOR_KEY &amp;&amp; A.aiQuota().left &gt; 0) return 'author';   // 作者额度
+  return 'local';                                            // 永远可用的兜底
+};</code></pre>
+<p>额度是"完成检测换来的"，所以不能白给：同一轮、同口径只授予一次（用 <code>kind:bank:round.startedAt</code> 去重），
+整库检测要求测过 ≥100 词且覆盖 ≥95%，随机摸底要求 ≥80 题且达到目标精度。</p>
+
+<h3>4.3 Agent 与工具调用</h3>
+<p>后端是一个极简的函数调用循环：模型说"我要看频段数据"，服务端执行工具、把 JSON 结果回灌，直到模型给出回答或超过 3 轮。
+关键是<b>模型的输出永远不直接进界面数字位</b>——界面上的数字来自工具返回值。</p>
+<table>
+<tr><th style="width:180px">工具</th><th>作用</th></tr>
+<tr><td class="k">get_profile</td><td>取整体情况：词汇量、区间、双口径、覆盖率、四态统计</td></tr>
+<tr><td class="k">get_band_profile</td><td>取七段词频掌握率与缺口</td></tr>
+<tr><td class="k">get_weak_words</td><td>取没掌握 / 没测过的词清单</td></tr>
+<tr><td class="k">make_plan</td><td>按每日可投入时间折算补词计划</td></tr>
+<tr><td class="k">get_examples</td><td>按需检索真实例句（RAG）</td></tr>
+<tr><td class="k">get_round_diff</td><td>取多轮差分：真学会 / 背了又忘 / 掉档</td></tr>
+<tr><td class="k">get_map_cell</td><td>取词汇地图某一格的数据</td></tr>
+<tr><td class="k">get_quota</td><td>取当前 AI 档位与剩余额度</td></tr>
+<tr><td class="k">suggest_actions</td><td>动作工具：给出可点按钮（go / start / review / ask）</td></tr>
+</table>
+<table>
+<tr><td class="k">循环上限</td><td><code>MAX_TOOL_ROUNDS = 3</code>，避免模型无限取数</td></tr>
+<tr><td class="k">输出预算</td><td><code>maxTokens = 1000</code>；历史只带最近 6 条，控制成本</td></tr>
+<tr><td class="k">流式协议</td><td>SSE 事件：<code>mode</code> / <code>tool</code> / <code>delta</code> / <code>actions</code> / <code>done</code> / <code>error</code></td></tr>
+<tr><td class="k">可视化</td><td>界面把"这次调了哪几个工具、拿到了什么"渲染成标签，回答下方可展开"本次发送给模型的数据"</td></tr>
+</table>
+
+<h3>4.4 提示工程：三条硬规矩</h3>
+<pre><code>你是「四六级词汇量检测」工具里的诊断教练。规则：
+1) 所有数字必须来自工具返回值，不许自己估算或编造；
+2) 数据不足（样本 &lt; 30 或覆盖率 &lt; 95%）时直接说"样本太少，下不了结论"；
+3) 掌握率只有两种口径：严格（只算认识）与折中（模糊算一半），不要自创第三种。</code></pre>
+<p>这三条不是写在文档里的愿望，而是被断言守着的：<code>check-ai-link.mjs</code> 会验证"动作按钮真的执行"、
+"非法动作被拒绝"、"越界参数被规整"；<code>check-ai-tiers.mjs</code> 验证额度授予/扣减/下限保护。</p>
+
+<h3>4.5 轻量 RAG：例句是查出来的</h3>
+<table>
+<tr><td class="k">语料</td><td>Tatoeba 英中对照句 9,204 句（CC-BY 2.0 FR），覆盖 5,138 个词</td></tr>
+<tr><td class="k">索引</td><td>构建期建"单词 → 候选句"倒排索引，并按可读性打分：词数接近 10–12、长度 60–80 字符、主语开头加分</td></tr>
+<tr><td class="k">运行期</td><td>模型需要举例时调 <code>get_examples</code>，返回真实句子 + 中文译文 + 来源标注</td></tr>
+<tr><td class="k">为什么不用向量库</td><td>向量方案要拖入几十 MB 权重，与"单文件 + 断网可用"直接冲突；本例的检索需求是精确命中单词，倒排索引足够且可解释</td></tr>
+</table>
+
+<h3>4.6 双向联动与动作白名单</h3>
+<table>
+<tr><td class="k">图 → AI</td><td>点频段条的「问」或 Shift + 点地图格子，问题文本里自动带上该块的真实数字，用户不用复述</td></tr>
+<tr><td class="k">AI → 图</td><td>回答末尾给出可点按钮；点击后真的执行（复测该段 / 开一轮摸底 / 跳转页面）</td></tr>
+<tr><td class="k">安全边界</td><td>模型输出被当作<b>不可信输入</b>：动作类型必须在白名单内，路由必须合法，target 夹到 {150,250,400}，频段夹到 0–6，问题文本截断到 120 字</td></tr>
+<tr><td class="k">按钮绑定</td><td>每个按钮携带自己的动作对象（不是全局下标），避免"点了执行的是上一组的动作"</td></tr>
+</table>
+
+<h3>4.7 优化策略</h3>
+<table>
+<tr><th style="width:190px">策略</th><th>做法与效果</th></tr>
+<tr><td class="k">降级链</td><td>Agent（带工具）→ 直连模型（无工具）→ 本地规则。任一环失败都不弹错误框，而是在回答里说明当前形态</td></tr>
+<tr><td class="k">成本控制</td><td>额度一次一授予；同一轮去重；历史截断 6 条；输出上限 1000 token；不需要 AI 的功能一律本地算</td></tr>
+<tr><td class="k">稳定性</td><td>后端探活后再决定走 Agent 还是直连；SSE 断流有终态事件；超时与异常都落到本地规则兜底</td></tr>
+<tr><td class="k">可观测</td><td>面板实时显示档位徽标（自带 Key / 作者额度剩几次 / 本地方案）与工具调用标签</td></tr>
+<tr><td class="k">密钥安全</td><td>可选授权锁：Key 用 <code>PBKDF2-SHA256（60 万次）+ AES-256-GCM</code> 加密后内联，产物里无明文；解密只存内存</td></tr>
+</table>
+
+<h3>4.8 实测结果</h3>
+<table>
+<tr><td class="k">联网主路径</td><td><code>check-online-ai.mjs</code> 7 项：回答来自模型、至少调用 1 个工具、带依据面板（实测 tool=3）</td></tr>
+<tr><td class="k">离线一致性</td><td>同一份数据下，本地方案与在线诊断的<b>数字部分完全一致</b>（都来自同一批工具/同一套代码）</td></tr>
+<tr><td class="k">拒绝下结论</td><td>样本不足时模型输出"样本太少"，<code>check-ai-link.mjs</code> 有对应断言</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="c5">5 核心功能实现</h2>
+
+<h3>5.1 检测的五个入口，共用一套统计内核</h3>
+<table>
+<tr><th style="width:130px">入口</th><th>题量</th><th>用途与口径</th></tr>
+<tr><td class="k">快速摸底</td><td>约 80–130 题</td><td>分层随机抽 100 词，得到带区间的词汇量估算；3–5 分钟</td></tr>
+<tr><td class="k">高精度</td><td>约 210–340 题</td><td>同一算法、目标误差 ±250 或 ±150，达标自动停</td></tr>
+<tr><td class="k">完整检测</td><td>整库 4,540 词</td><td>覆盖率 ≥95% 后转普查口径，逐词统计，不再外推；产出等级</td></tr>
+<tr><td class="k">分组检测</td><td>每组 100 词</td><td>可中断、可分工推进；只报进度，不外推词汇量</td></tr>
+<tr><td class="k">薄弱词复测</td><td>按缺口词量</td><td>把没掌握/没测过的词组成一轮，用于验证是否真的补上</td></tr>
+</table>
+
+<h3>5.2 词频分层抽样</h3>
+<p>词表按词频切七段（最高频 1k … 20k 以外），每段等比例抽。这样任何一个前缀都是一个合法的等比例样本，
+因此可以边测边算精度、随时喊停。做法上还有两个细节：</p>
+<table>
+<tr><td class="k">稳定乱序</td><td>用词自身的 FNV-1a 哈希定序：视觉上完全打乱，但每次打开、每台机器完全一致</td></tr>
+<tr><td class="k">交错抽取</td><td>按各段词数比例交错出题，前 60 题就跨 5 个以上频段，避免连着考一串冷门词</td></tr>
+<tr><td class="k">效果</td><td>同样 100 题：分层抽样区间 ±62 词，简单随机 ±91 词（约窄三成）</td></tr>
+</table>
+
+<h3>5.3 目标精度自适应停测</h3>
+<p>用户设目标半宽 <code>h</code>（±400 / ±250 / ±150），每次作答后重算当前区间半宽；半宽 ≤ h 且题量 ≥ 20 时提示可以收工。
+题量是结果、不是设定——这是与"固定 20 题出结果"产品的本质区别。</p>
+
+<h3>5.4 区间估计的三层修正</h3>
+<pre><code>se   = sqrt( max(p(1-p), 1e-6) / n ) * sqrt( (N-n) / (N-1) )    // Agresti-Coull 平滑 + 有限总体修正
+half = 1.96 * se * N                                             // 折算回"词"的量纲
+p'   = (k - f/k_opt) / (n - f/k_opt)                             // 四选一时先扣蒙对
+vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
+<table>
+<tr><td class="k">Agresti-Coull</td><td>抽到全对或全错时区间不会塌成 0 宽的点</td></tr>
+<tr><td class="k">有限总体修正</td><td>不放回抽样，乘 (N−n)/(N−1)；题量越接近整库，区间越窄，最后平滑过渡到普查</td></tr>
+<tr><td class="k">方差下限</td><td><code>max(p(1-p), 1e-6)</code>，杜绝"误差为零"的假精度</td></tr>
+</table>
+
+<h3>5.5 四选一的蒙对校正</h3>
+<p>四选一有 25% 蒙对概率，直接用正确率估计掌握率会系统性偏高。校正公式 <code>(p − 1/k) / (1 − 1/k)</code>，
+并把"该样本是否为四选一模式"记进样本，两类模式分别估计、不混算。</p>
+
+<h3>5.6 频段剖面与"缺口 × 权重"排序</h3>
+<table>
+<tr><th style="width:130px">频段</th><th>1k</th><th>1k-2k</th><th>2k-3k</th><th>3k-5k</th><th>5k-10k</th><th>10k-20k</th><th>20k+</th></tr>
+<tr><td class="k">词数（7,175 池）</td><td>738</td><td>610</td><td>478</td><td>874</td><td>1,556</td><td>1,598</td><td>1,321</td></tr>
+<tr><td class="k">权重</td><td>1</td><td>0.33</td><td>0.20</td><td>0.125</td><td>0.067</td><td>0.033</td><td>0.02</td></tr>
+</table>
+<p>优先级 = 缺口词数 × 词频权重。实测：3k-5k 段缺 737 词排在 10k-20k 段缺 897 词之前，因为权重差 4 倍。
+这条性质写成了可判定断言，防止以后改动把冷门词排到前面。</p>
+
+<h3>5.7 等级评估与地基约束</h3>
+<table>
+<tr><th style="width:90px">等级</th><th>掌握率</th><th>四级词数门槛</th><th>六级词数门槛</th><th>典型状态</th></tr>
+<tr><td class="k">S 卓越</td><td>≥ 92%</td><td>≥ 4,177 词</td><td>≥ 5,259 词</td><td>大纲几乎全覆盖</td></tr>
+<tr><td class="k">A 优秀</td><td>85–92%</td><td>3,859–4,176</td><td>4,859–5,258</td><td>核心扎实，零散漏洞</td></tr>
+<tr><td class="k">B+ 良好</td><td>75–85%</td><td>3,405–3,858</td><td>4,287–4,858</td><td>高频拿下，中低频成片缺口</td></tr>
+<tr><td class="k">B 中等</td><td>65–75%</td><td>2,951–3,404</td><td>3,716–4,286</td><td>阅读能应付，写作卡词</td></tr>
+<tr><td class="k">C 偏弱</td><td>50–65%</td><td>2,270–2,950</td><td>2,858–3,715</td><td>高频仍有明显漏洞</td></tr>
+<tr><td class="k">D 基础薄弱</td><td>&lt; 50%</td><td>≤ 2,269</td><td>≤ 2,857</td><td>不到一半，直接刷题一直查词</td></tr>
+</table>
+<div class="box warn" data-lbl="地基约束：防止高频段空洞却评优">
+<p>把最高频 1k 段整段丢掉，总掌握率仍可能有 85%，按比例照样评"优秀"——但这种结构读任何真实文本都会卡。
+所以最高频段过低时对等级封顶：最高频 1k 段 &lt; 60% → 封到 C；&lt; 75% → 封到 B+；&lt; 85% → 封到 A。
+报告页会明确写出封顶原因，而不是偷偷降级。</p>
+</div>
+
+<h3>5.8 多轮差分：区分"真学会"与"背了又忘"</h3>
+<table>
+<tr><td class="k">新学会</td><td>上轮不认识 → 这轮认识</td></tr>
+<tr><td class="k">背了又忘</td><td>上轮认识 → 这轮不认识（复习第一优先级）</td></tr>
+<tr><td class="k">掉档</td><td>上轮模糊 → 这轮完全不认识</td></tr>
+<tr><td class="k">实现</td><td>每轮存 2 bit/词 的状态位图（约 1.8 KB）＋ 聚合快照；词表指纹不一致时只做聚合对比</td></tr>
+</table>
+
+<h3>5.9 词汇地图：182 格，图即入口</h3>
+<p>七段词频 × 26 首字母，颜色表示掌握率（绿 ≥80% / 黄 50–80% / 红 &lt;50%），浓淡表示这一格测过多少。
+点格子直接把这些缺口词组成一轮复测；Shift + 点则带着这一格的真实数字去问 AI。</p>
+
+<h3>5.10 回访卡：隔几天再打开，首页接上上次的结论</h3>
+<table>
+<tr><td class="k">触发</td><td>至少有 1 次随机抽样/整库实测，且距上次检测满 3 天；有未完成的检测时让位给「继续检测」</td></tr>
+<tr><td class="k">三行结论</td><td>① 最该先补哪一段（target 与 weak 分开：高频三段还有洞就优先它们，冷门段最弱时如实说明不先补它）② 按每日时间折算补完天数 ③ 与上一轮相比是否超出 ±抽样误差</td></tr>
+<tr><td class="k">关闭</td><td>「×」收起本次（不落盘）/「以后不再提醒」永久关闭（设置可重开）</td></tr>
+<tr><td class="k">成本</td><td>全部本地计算，不联网、不消耗 AI 额度</td></tr>
+</table>
+
+<h3>5.11 自定义词书</h3>
+<p>支持 txt / csv / 粘贴导入，一行一个词，可选「词,释义」。导入前给出预览（总词数、命中内置词库、新增词条、
+有释义比例、频段分布），并复用同一套引擎检测。边界写在界面上：<b>自定义词书是有偏样本，只报"对这本书的掌握率"，
+不能换算成词汇量</b>。</p>
+
+<h3>5.12 每日可投入时间：一栏设置，四处文案</h3>
+<table>
+<tr><td class="k">换算</td><td><code>每天词数 = round(分钟 ÷ 1.5)</code>，夹在 5–200；代码里只有一处 <code>A.perDayWords()</code></td></tr>
+<tr><td class="k">四处消费</td><td>报告页顶部「还差 X 词（约 N 天 · 每天 M 词）」、报告页分段补词建议、AI 计划、回访卡「补完约 N 天」</td></tr>
+<tr><td class="k">踩过的坑</td><td>其中两处曾把「每天 50 词」写死，设置改了不生效；现在统一走一个函数，并有断言锁死（改 60 分钟后四处必须同时变成 40 词/天）</td></tr>
+</table>
+
+<h3>5.13 界面、动效与无障碍</h3>
+<table>
+<tr><td class="k">入场页</td><td>细线展台框绘制 → 标题逐字升起 → 数字滚动 → 鲸鱼绕场 → 光束扎入按钮 → 整屏对焦退场。内容早已渲染完成，退场无加载空窗</td></tr>
+<tr><td class="k">2.5D 桌宠</td><td>透视倾斜（转轴压脚底）＋ 接地投影 ＋ 受光膜；可拖动、有重力、悬空挣扎（二阶系统由指针速度驱动）</td></tr>
+<tr><td class="k">暗色与主题</td><td>整套设计令牌双主题；主题切换的过渡曾把底色锁住，已修复并加断言</td></tr>
+<tr><td class="k">无障碍</td><td>入场页/模态期间给底层加 <code>inert</code>、完整焦点管理、<code>prefers-reduced-motion</code> 支持；对比度实测辅助文字 4.83:1、开关轨道 5.72:1</td></tr>
+<tr><td class="k">移动端</td><td>390 px 实测无横向溢出、主按钮在屏内、顶栏保持单行</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h3>5.14 界面实拍</h3>
+<p class="small">以下截图取自当前交付产物（桌面 1440×900，浏览器实拍）。</p>
+
+<div class="fig"><img src="screenshots/01-home.png" alt="首页">
+<div class="small">首页：词汇量 + 95% 区间 + 两套口径 + 四态统计 + 三种检测入口；下方是回访卡与分组进度。</div></div>
+
+<div class="fig"><img src="screenshots/ppt-next.jpg" alt="报告页补词清单">
+<div class="small">报告页的补词清单：每段"还差多少词 · 掌握率 · 每天 N 词约需几天"，每条都能直接开始复测。</div></div>
+
+<div class="fig"><img src="screenshots/ppt-map.jpg" alt="词汇地图">
+<div class="small">词汇地图：七段词频 × 26 首字母 = 182 格，颜色是掌握率、浓淡是测过多少，点格即复测。</div></div>
+
+<div class="fig"><img src="screenshots/05-ai-diagnose.png" alt="AI 诊断面板">
+<div class="small">AI 诊断面板：回答上方标出这次调了哪些工具，下方可展开"本次发送给模型的数据"。</div></div>
+
+<style>.fig{margin:14px 0;text-align:center}.fig img{max-width:100%;border:1px solid var(--line2);border-radius:12px}.fig .small{margin-top:6px}</style>
+
+<!-- ============================================================ -->
+<h2 id="c6">6 测试与部署</h2>
+
+
+<h3>6.1 测试体系（11 个套件 / 421 条离线断言）</h3>
+<table>
+<tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
+<tr><td class="k">smoke-test.js（jsdom）</td><td>195</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
+<tr><td class="k">scripts/run-btest.mjs（真实 Chrome）</td><td>55</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口；自动读结果，有 FAIL 即非 0 退出</td></tr>
+<tr><td class="k">scripts/pet-test.mjs</td><td>40</td><td>拖动/重力/悬空物理/气泡版式/活动范围/自愈</td></tr>
+<tr><td class="k">scripts/check-intro.mjs</td><td>43</td><td>入场页分层浮现、退场干净、旁路、减少动效、手机布局</td></tr>
+<tr><td class="k">scripts/check-offline.mjs</td><td>7</td><td>孤立单文件（旁边无 assets）也能完整使用</td></tr>
+<tr><td class="k">scripts/check-recipient.mjs</td><td>20</td><td>空目录 + 全新浏览器配置 + 断网 + 双视口</td></tr>
+<tr><td class="k">scripts/check-ai-tiers.mjs</td><td>23</td><td>三档通路、额度授予/扣减/下限保护</td></tr>
+<tr><td class="k">scripts/check-ai-link.mjs</td><td>15</td><td>图表→AI 上下文、动作白名单、点击真的执行</td></tr>
+<tr><td class="k">scripts/check-book.mjs</td><td>17</td><td>词书解析/预览/切换/持久化/删除回退</td></tr>
+<tr><td class="k">scripts/check-ai-lock.mjs</td><td>6</td><td>无锁形态（可选授权功能的回归）</td></tr>
+<tr><td class="k">scripts/check-online-ai.mjs</td><td>7</td><td>联网主路径（需后端）：工具调用与动作</td></tr>
+</table>
+<p class="small">另有小程序侧三套一致性测试：引擎 1,302 条字段级、答题流程 34,310 条、页面冒烟 26 项，全部与网页版逐字段相等。</p>
+
+<h3>6.2 缺陷复盘：五个真出过的 bug</h3>
+<table>
+<tr><th style="width:230px">现象</th><th>根因与修法</th></tr>
+<tr><td class="k">入场页例句数显示 10,276</td><td>把「词→[英,中]」的扁平数组当对象数了两遍（5,138×2）。改为构建期算好语料真实规模注入</td></tr>
+<tr><td class="k">报告页「每天 50 词」写死</td><td>设置页改了不生效。收敛到 <code>A.perDayWords()</code>，并加"四处同时变"的断言</td></tr>
+<tr><td class="k">浏览器断言页一条都没跑</td><td>文件里一处语法错误，而生成脚本只打印 ok。补了 <code>run-btest.mjs</code> 自动跑分器</td></tr>
+<tr><td class="k">手机顶栏被品牌名挤成一列竖字</td><td>7 字品牌名在 390 px 下换行，顶栏涨到 200 px。窄屏让图标让位、名称单行省略，并加高度断言</td></tr>
+<tr><td class="k">页面多出一行乱码 <code>&gt;3" &gt;</code></td><td>favicon 的 data URI 被 <code>/&lt;link[^&gt;]*&gt;/</code> 正则截断。改为整行替换 + URL 编码，并加兜底清理</td></tr>
+</table>
+<div class="box ok" data-lbl="测试经验">
+<p>① 断言要针对"真的动过"的元素，否则会假绿；② 时序相关的东西用轮询等条件，不要固定 sleep；
+③ 生成式测试页必须配一个自动读结果的 runner；④ 改名要连测试里的期望字符串一起扫。</p>
+</div>
+
+<h3>6.3 验收场景</h3>
+<table>
+<tr><td class="k">离线交付</td><td>空目录 + 全新浏览器配置 + 屏蔽全部 http/https：20 项断言全过（答题、进度、档案、手机布局、顶栏）</td></tr>
+<tr><td class="k">手机双视口</td><td>390×844 与 1440×900 两档；无横向溢出、主按钮在屏内、无遮挡</td></tr>
+<tr><td class="k">两版产物</td><td>仓库版无任何密钥（<code>check-no-key.mjs</code>）；评委版可演示在线 AI</td></tr>
+<tr><td class="k">多端一致</td><td>小程序与网页版引擎逐字段相等（1,302 + 34,310 条断言，0 差异）</td></tr>
+</table>
+
+<h3>6.4 部署方式</h3>
+<table>
+<tr><th style="width:150px">形态</th><th>步骤</th><th style="width:150px">适用</th></tr>
+<tr><td class="k">离线单文件</td><td>双击 <code>index.html</code>，无需安装、无需联网</td><td>学生个人 / 断网环境</td></tr>
+<tr><td class="k">本地后端（可选）</td><td><code>npm install</code> → 配 <code>.env</code> → <code>npm run server</code> → 浏览器打开 <code>http://127.0.0.1:8787</code></td><td>演示带工具调用的 Agent</td></tr>
+<tr><td class="k">微信小程序</td><td>开发者工具「导入项目」→ 选 <code>miniprogram/</code> 目录 → 填 AppID → 编译；预览不需要备案</td><td>移动端 / 扫码体验</td></tr>
+</table>
+
+<h3>6.5 环境配置与依赖清单</h3>
+<pre><code># .env（可选，只在需要在线 AI 时使用；不要提交）
+LLM_PROVIDER=deepseek          # deepseek | qwen | zhipu | ollama | mock
+DEEPSEEK_API_KEY=sk-xxxxxxxx   # 对应厂商的 Key
+DEEPSEEK_MODEL=deepseek-chat
+# QWEN_API_KEY= / QWEN_MODEL=  ZHIPU_API_KEY= / ZHIPU_MODEL=
+# OLLAMA_BASE=http://127.0.0.1:11434  OLLAMA_MODEL=qwen2.5:7b
+PORT=8787</code></pre>
+<table>
+<tr><td class="k">运行时</td><td>Node.js ≥ 18（仅后端需要）；浏览器 = 产物运行时，无依赖</td></tr>
+<tr><td class="k">生产依赖</td><td><b>0 个</b>（<code>dependencies: {}</code>）</td></tr>
+<tr><td class="k">开发依赖</td><td>jsdom（页面测试）、pptxgenjs（生成演示稿）、opentype.js + pngjs + potrace（标识素材处理）</td></tr>
+<tr><td class="k">数据准备</td><td><code>npm run data</code> 按固定 SHA 拉取词表；<code>node miniprogram/tools/gen-mini-data.mjs</code> 生成小程序数据</td></tr>
+<tr><td class="k">构建</td><td><code>node build.js</code> / <code>node build.js --with-key</code>；产物不写时间戳，可复现</td></tr>
+</table>
+
+<h3>6.6 发布检查清单</h3>
+<table>
+<tr><td class="k">① 构建</td><td>两种产物都构建一遍；<code>check-no-key.mjs</code> 通过</td></tr>
+<tr><td class="k">② 测试</td><td>smoke / 浏览器 / 桌宠 / 入场 / 离线 / 收件人 六套全绿</td></tr>
+<tr><td class="k">③ 派生物</td><td>截图重拍、PPT 重出、PDF 重导、桌面副本按 SHA256 比对</td></tr>
+<tr><td class="k">④ 文档</td><td>数字口径统一（断言数、体积、词条数）——历史上三次事故都出在"派生物没同步"</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="c7">7 总结与展望</h2>
+
+<h3>7.1 已完成</h3>
+<p>一个 2.11 MB 的单文件 Web 应用：五入口检测、带区间的词汇量估计、七段诊断、等级与地基约束、多轮差分、
+182 格词汇地图、回访卡、自定义词书、使用者档案、三档 AI 通路、离线可用的本地规则引擎，
+外加一个同源引擎的微信小程序版本。全部由单人完成，421 条离线断言守着回归。</p>
+
+<h3>7.2 可改进的方向</h3>
+<table>
+<tr><th style="width:170px">方向</th><th>为什么值得做</th><th style="width:120px">难点</th></tr>
+<tr><td class="k">错因归类</td><td>现在只知道"不会"，不知道是形近、义近还是搭配不会；加上错因能进一步细化补词策略</td><td>需要更多交互设计</td></tr>
+<tr><td class="k">发音与听写</td><td>小程序端缺 TTS；接入后可覆盖听说维度</td><td>插件或后端依赖</td></tr>
+<tr><td class="k">在线演示环境</td><td>让评委不下载就能点开</td><td>需要托管与合规</td></tr>
+<tr><td class="k">小程序 AI 诊断</td><td>移动端也能追问</td><td>需配置 request 合法域名或云函数转发</td></tr>
+</table>
+
+<h3>7.3 长期展望</h3>
+<p>这个项目真正想验证的事情是：<b>把"误差"当成产品的一等公民</b>，用户会不会更信任、更愿意按结论行动。
+如果这套"测量 + 处方"的框架成立，它可以迁移到其他可量化的学习能力上（听力词汇、语法覆盖、阅读速度），
+核心始终是同一件事：先把数测准，再说下一步。</p>
+
+<!-- ============================================================ -->
+<h2 id="ca">附录</h2>
+
+<h3>附录 A　关键参数速查</h3>
+<table>
+<tr><td class="k">词库规模</td><td>四级 4,540 词 / 六级 5,716 词 / 含派生 7,175 词（派生 1,459）</td></tr>
+<tr><td class="k">例句</td><td>9,204 句英中对照，覆盖 5,138 个词（每词内联 1 句）</td></tr>
+<tr><td class="k">区间</td><td>z = 1.96；方差下限 1e-6；有限总体修正 (N−n)/(N−1)</td></tr>
+<tr><td class="k">等级阈值</td><td>0.92 / 0.85 / 0.75 / 0.65 / 0.50；封顶线 0.60 / 0.75 / 0.85（按最高频 1k 段）</td></tr>
+<tr><td class="k">频段权重</td><td>1 / 0.33 / 0.20 / 0.125 / 0.067 / 0.033 / 0.02</td></tr>
+<tr><td class="k">每日时间</td><td>分钟 ÷ 1.5，夹在 5–200；设置范围 5–180</td></tr>
+<tr><td class="k">AI</td><td>工具 8+1；最多 3 轮；输出 1000 token；历史 6 条；问题截断 120 字；target ∈ {150,250,400}</td></tr>
+<tr><td class="k">存储</td><td>2 bit/词 ≈ 1.8 KB 每轮；最多 12 轮；FNV-1a 指纹</td></tr>
+</table>
+
+<h3>附录 B　术语表</h3>
+<table>
+<tr><td class="k">口径（严格/折中）</td><td>严格只算「认识」；折中把「模糊」按 0.5 计入。两套都展示</td></tr>
+<tr><td class="k">缺口 / 未测</td><td>缺口 = 测过还不会（真正的洞）；未测 = 压根不知道（不构成结论）</td></tr>
+<tr><td class="k">地基约束</td><td>最高频段过低时对等级封顶，防止"高频空一片却因总分高而评优"</td></tr>
+<tr><td class="k">回访卡</td><td>隔几天再打开时首页出现的三段结论卡片，不弹窗、可永久关闭</td></tr>
+<tr><td class="k">词表指纹</td><td>词表内容的 FNV-1a 摘要，用于判断两轮是否可比</td></tr>
+</table>
+
+<h3>附录 C　数据来源与许可</h3>
+<table>
+<tr><td class="k">词库</td><td>公开四六级大纲词表整理，附国际音标与词频分层；界面与算法为本项目原创（MIT）</td></tr>
+<tr><td class="k">例句</td><td>Tatoeba 英中对照语料，<b>CC-BY 2.0 FR</b>；每条例句标注来源</td></tr>
+<tr><td class="k">桌宠立绘</td><td>DS鲸鱼娘 · Sutera-Diffusus · MIT（经 1TRYOUT/dsh-whale-pixel-pet 分发，保留署名）</td></tr>
+<tr><td class="k">生成式素材</td><td>标识「30」由作者提供原图，矢量化后内联；无第三方受限字体嵌入（见 LICENSING.md）</td></tr>
+</table>
+
+<h3>附录 D　答辩常见追问</h3>
+<table>
+<tr><th style="width:250px">可能的问题</th><th>一句话应答</th></tr>
+<tr><td class="k">你们这是背单词 App 吗？</td><td>不是。我们只做测量与诊断：测准 + 开补词清单，背单词交给你习惯的工具。</td></tr>
+<tr><td class="k">测出来的数凭什么可信？</td><td>误差写在数字旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，抽样与估计有 195 条断言守着。</td></tr>
+<tr><td class="k">AI 具体做了什么？</td><td>只做解释与规划：所有数字来自 8 个工具的返回值，模型不许自己算数；数据不足时它会拒绝下结论。</td></tr>
+<tr><td class="k">是向量 RAG 吗？</td><td>不是。本地语料倒排索引 + 工具按需检索的轻量 RAG；向量方案会拖几十 MB 权重，毁掉单文件与断网可用。</td></tr>
+<tr><td class="k">断网能用吗？</td><td>能。单文件双击即开，答题、进度、报告、本地方案全部离线可用。</td></tr>
+<tr><td class="k">为什么还要做小程序？</td><td>同一套引擎换一种交付形态：小程序主包 1.56 MB，与网页版逐字段一致（1,302 + 34,310 条一致性断言）。</td></tr>
+<tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
+</table>
+
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 421 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
+实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
+
+</div>
+</body>
+</html>
