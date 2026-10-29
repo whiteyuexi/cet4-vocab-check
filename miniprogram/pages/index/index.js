@@ -1,9 +1,13 @@
-/* 首页：余额卡 + 两个入口 + 分组网格 + 继续检测
+/* 首页：词汇量卡 + 两个入口 + 分组网格 + 继续检测
    数据全部来自引擎（utils/engine.js）；这一页不持有会话，只管"发起"和"接着测"。
    接口说明见 IMPORT-NOTES.md §10.6① */
 var engineMod = require('../../utils/engine.js');
 var quizMod = require('../../utils/quiz.js');
+var cardMod = require('../../utils/card.js');
 var eng = engineMod.engine;
+
+/* 本次会话里点过「收起」就记住，刷新小程序后还会出现（与网页版一致：不落盘） */
+var cardHiddenThisRun = false;
 
 /* 千分位。小程序里 toLocaleString 支持不稳，自己拼 */
 function fmt(n) {
@@ -58,6 +62,7 @@ Page({
     rankK: '', rankName: '', rankTone: 'ok', ratioPct: 0, coveragePct: 0,
     testedText: '', remaining: 0, toNext: 0, nextName: '',
     resume: null, canRetest: false, roundNo: 1,
+    cardShow: false, cardLines: [], cardHead: '',
     need250: 0, mins250: '', needAll: '', minsAll: '', poolSize: 0, bankName: '',
     groups: [], showGroups: true
   },
@@ -79,6 +84,14 @@ Page({
         };
       }
     }
+    /* 回访卡：距上次检测满 3 天才出现；内容全部本地算，不调大模型 */
+    var cardShow = cardMod.shouldShow(eng, { hidden: cardHiddenThisRun });
+    var info = cardShow ? cardMod.info(eng) : null;
+    var bandNameFn = function (b) { return '「' + (eng.BAND_NAMES[b] || ('第 ' + b + ' 段')) + '」'; };
+    var cardHead = info
+      ? ((info.kind === 'full' ? '实测 ' : '上次 ') + fmt(info.vocab) + ' 词' +
+         (info.half ? '（±' + info.half + '）' : '') + ' · ' + (info.days === 0 ? '今天' : info.days + ' 天前'))
+      : '';
     var n250 = eng.needFor(250);
     var pool = eng.curPoolSize();
     this.setData({
@@ -108,7 +121,10 @@ Page({
       minsAll: eng.minsText(pool),
       poolSize: pool,
       bankName: eng.bankName(),
-      groups: groupRows()
+      groups: groupRows(),
+      cardShow: cardShow,
+      cardLines: info ? cardMod.lines(info, bandNameFn) : [],
+      cardHead: cardHead
     });
   },
 
@@ -153,5 +169,45 @@ Page({
   },
   onReport: function () {
     wx.navigateTo({ url: '/pages/report/report' });
+  },
+
+  /* ---------- 回访卡 ---------- */
+  onCardReview: function () {
+    var info = cardMod.info(eng);
+    if (!info || !info.target) {
+      wx.showToast({ title: '先做一次快速摸底', icon: 'none' });
+      return;
+    }
+    var list = eng.mapCellWords(info.target.band, 'all');
+    if (!list.length) {
+      wx.showToast({ title: '这一段没有需要复测的词', icon: 'none' });
+      return;
+    }
+    var use = list.slice(0, 400);
+    var name = eng.BAND_NAMES[info.target.band] || ('第 ' + info.target.band + ' 段');
+    quizMod.quiz.start('list', { list: use, label: '补「' + name + '」段 · ' + use.length + ' 词' });
+    wx.navigateTo({ url: '/pages/quiz/quiz' });
+  },
+  onCardHide: function () {
+    cardHiddenThisRun = true;
+    this.setData({ cardShow: false });
+  },
+  onCardOff: function () {
+    var self = this;
+    wx.showModal({
+      title: '以后不再提醒',
+      content: '回访卡不会再自动出现。想恢复可以去「设置 → 回访提醒」重新打开。',
+      confirmText: '不再提醒',
+      success: function (res) {
+        if (!res.confirm) return;
+        eng.S.settings.revisitOff = true;
+        eng.save();
+        self.setData({ cardShow: false });
+        wx.showToast({ title: '已关闭回访提醒', icon: 'none' });
+      }
+    });
+  },
+  onStats: function () {
+    wx.switchTab({ url: '/pages/stats/stats' });
   }
 });

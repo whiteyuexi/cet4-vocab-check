@@ -1,19 +1,19 @@
-<!-- 首页：余额卡 + 入口 + 分组 -->
+<!-- 首页：词汇量卡 + 入口 + 分组 -->
 <view class="page">
 
   <!-- 品牌 -->
   <view class="brand">
     <view class="mark">词</view>
     <view class="brand-txt">
-      <view class="t1">词汇账户余额查询</view>
+      <view class="t1">四六级词汇量检测</view>
       <view class="t2">把词汇量测准，并说清差在哪</view>
     </view>
   </view>
 
-  <!-- 余额卡 -->
+  <!-- 词汇量卡 -->
   <view class="card hero">
     <view class="hero-top">
-      <view class="hero-label">当前词汇余额</view>
+      <view class="hero-label">当前词汇量</view>
       <view wx:if="{{rep.ready}}" class="chip chip-{{rankTone === 'ok' ? 'ok' : (rankTone === 'warn' ? 'warn' : 'bad')}}">{{rankK}} · {{rankName}}</view>
       <view wx:else class="chip chip-plain">未测完</view>
     </view>
@@ -45,6 +45,26 @@
 
     <view class="bar hero-bar"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
     <view class="t3 hero-foot">{{bankName}} · 覆盖 {{coveragePct}}%<text wx:if="{{toNext > 0}}"> · 再掌握 {{toNext}} 词到「{{nextName}}」</text></view>
+  </view>
+
+  <!-- 回访卡：距上次检测满 3 天才出现，不遮挡、可永久关闭 -->
+  <view wx:if="{{cardShow}}" class="card card-tight revisit">
+    <view class="rv-top">
+      <view class="rv-head">
+        <text class="rv-v">{{cardHead}}</text>
+        <text class="chip chip-rv">回访</text>
+      </view>
+      <view class="rv-x" catchtap="onCardHide">×</view>
+    </view>
+    <view class="rv-body">
+      <view wx:for="{{cardLines}}" wx:key="*this" class="rv-line">{{item}}</view>
+    </view>
+    <view class="rv-acts">
+      <view class="btn btn-primary btn-sm rv-a" bindtap="onCardReview">开始补这一段</view>
+      <view class="btn btn-sm rv-a" bindtap="onReport">看完整报告</view>
+      <view class="btn btn-ghost btn-sm rv-a" bindtap="onStats">看总览</view>
+    </view>
+    <view class="rv-off" catchtap="onCardOff">以后不再提醒</view>
   </view>
 
   <!-- 继续检测 -->

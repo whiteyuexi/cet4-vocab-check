@@ -6,6 +6,7 @@
      · 键盘快捷键、退出弹窗也是本页的事 */
 var engineMod = require('../../utils/engine.js');
 var quizMod = require('../../utils/quiz.js');
+var SENTENCES = require('../../utils/sentences-data.js');   // 9,204 句英中语料里每词取一句
 var eng = engineMod.engine;
 
 var timer = null;
@@ -16,7 +17,8 @@ Page({
     bandName: '',
     empty: false,
     quitAsk: false,
-    probLine: ''
+    probLine: '',
+    eg: null
   },
 
   onLoad: function () {
@@ -36,9 +38,12 @@ Page({
 
   /* 唯一渲染入口 */
   applyState: function (st) {
+    /* 揭示答案时顺手把例句带上：只有本词在语料里才显示，没有就不占地方 */
+    var w = st && st.word && st.word.w;
+    var eg = (st && st.revealed && w && SENTENCES[w]) ? SENTENCES[w] : null;
     if (timer) { clearTimeout(timer); timer = null; }
     var band = (st && st.word) ? (eng.BAND_NAMES[st.word.band] || '') : '';
-    this.setData({ s: st, bandName: band, empty: false });
+    this.setData({ s: st, bandName: band, empty: false, eg: eg });
     /* 自动跳下一题（自评 850ms / 四选一 750ms 对、1600ms 错）——延时由控制器给出，本页只负责计时 */
     if (st && st.auto && st.auto.pending) {
       var self = this;

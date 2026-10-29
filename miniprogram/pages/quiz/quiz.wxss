@@ -55,3 +55,10 @@
 .dg-sub { margin: 10rpx 0 26rpx; line-height: 1.55; }
 .dialog .btn { margin-bottom: 14rpx; }
 .quit-drop { color: #B02E22; }
+
+/* 揭示区的短语与例句 */
+.phr { margin-top: 16rpx; font-size: 24rpx; color: #575E6B; }
+.eg { margin-top: 20rpx; padding: 20rpx 22rpx; background: #F6F8FC; border-radius: 16rpx; }
+.eg-en { font-size: 26rpx; color: #101319; line-height: 1.55; }
+.eg-zh { margin-top: 8rpx; font-size: 24rpx; color: #575E6B; line-height: 1.5; }
+.eg-src { margin-top: 10rpx; font-size: 20rpx; color: #8B93A3; }

@@ -1,5 +1,5 @@
 {
-  "description": "词汇账户余额查询 · 微信小程序（CET 词汇量检测与诊断）",
+  "description": "四六级词汇量检测 · 微信小程序（统计引擎与网页版逐字段一致）",
   "packOptions": {
     "ignore": [
       {
@@ -13,6 +13,10 @@
       {
         "type": "file",
         "value": "IMPORT-NOTES.md"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
       },
       {
         "type": "file",

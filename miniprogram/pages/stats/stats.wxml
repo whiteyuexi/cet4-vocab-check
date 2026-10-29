@@ -1,0 +1,59 @@
+<!-- 总览：掌握情况 + 七段剖面 + 检测记录 -->
+<view class="page">
+
+  <view class="card">
+    <view class="t1 sect">掌握情况</view>
+    <view class="gap-line">
+      <view class="gap-i"><view class="t3">已测</view><view class="num gap-v">{{tested}}</view></view>
+      <view class="gap-i"><view class="t3">未测</view><view class="num gap-v">{{untested}}</view></view>
+      <view class="gap-i"><view class="t3">覆盖</view><view class="num gap-v">{{coveragePct}}%</view></view>
+    </view>
+    <view class="bar"><view class="bar-in" style="width:{{coveragePct}}%"></view></view>
+    <view class="state-row">
+      <view class="st"><text class="dot ok"></text>认识 {{k}}</view>
+      <view class="st"><text class="dot warn"></text>模糊 {{f}}</view>
+      <view class="st"><text class="dot bad"></text>不认识 {{u}}</view>
+    </view>
+    <view class="t3" style="margin-top:12rpx">{{sourceNote}}</view>
+  </view>
+
+  <!-- 七段剖面：点一条就开这一段的复测 -->
+  <view class="card">
+    <view class="row-head">
+      <view class="t1">词频分布</view>
+      <view class="t3">点任意一段 → 复测该段缺口词</view>
+    </view>
+
+    <view wx:if="{{!bands.length}}" class="empty">还没有数据，先去做一次快速摸底</view>
+
+    <view wx:for="{{bands}}" wx:key="band" class="brow" data-band="{{item.band}}" bindtap="onBand">
+      <view class="brow-top">
+        <view class="brow-name">{{item.name}}</view>
+        <view class="brow-val num {{item.tone === 'none' ? 't3' : item.tone}}">{{item.p === null ? '—' : item.p + '%'}}</view>
+      </view>
+      <view class="bar"><view class="bar-in bar-{{item.tone}}" style="width:{{item.w}}%"></view></view>
+      <view class="brow-foot t3">
+        全段 {{item.N}} 词 · 测过 {{item.n}} 词
+        <text wx:if="{{item.p !== null}}"> · 缺口约 {{item.gap}} 词</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 检测记录 -->
+  <view class="card">
+    <view class="row-head">
+      <view class="t1">检测记录</view>
+      <view class="t3">按每天 {{perDay}} 词折算计划</view>
+    </view>
+    <view wx:if="{{!rounds.length}}" class="empty">还没有归档的轮次。整库测完一轮后会出现在这里。</view>
+    <view wx:for="{{rounds}}" wx:key="n" class="rec">
+      <view class="rec-l">
+        <view class="t2 bold">第 {{item.n}} 轮 · {{item.when}}</view>
+        <view class="t3">掌握率 {{item.ratio}}%<text wx:if="{{item.rankName}}"> · {{item.rankName}}</text></view>
+      </view>
+      <view class="rec-r num">{{item.vocab}} 词</view>
+    </view>
+    <view class="btn btn-ghost" style="margin-top:20rpx" bindtap="onReport">看本轮报告与补词方案</view>
+  </view>
+
+</view>

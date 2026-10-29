@@ -701,7 +701,7 @@ node miniprogram/test/quiz-parity.mjs       # 34310 断言 / 0 差异
 | `app.wxss` | 全局设计令牌与通用类。**刻意去掉了网页版的毛玻璃(backdrop-filter)、feTurbulence 颗粒、多层 drop-shadow 合成** —— 小程序渲染层不支持或代价过高，改用纯色 + 单层阴影 |
 | `project.config.json` | `appid` 目前是占位 `touristappid`，**必须换成你自己的 AppID**；`packOptions.ignore` 已排除 test/、tools/、本文件与 README，不计入上传包 |
 | `sitemap.json` | 允许全部索引 |
-| `pages/index/*` | 首页：余额卡（词汇量 + 95% 区间 + 两套口径 + 覆盖率）、快速摸底 / 全量检测 / 开始第 N+1 轮、46 个分组网格（带每组进度）、继续检测 |
+| `pages/index/*` | 首页：词汇量卡（词汇量 + 95% 区间 + 两套口径 + 覆盖率）、快速摸底 / 全量检测 / 开始第 N+1 轮、46 个分组网格（带每组进度）、继续检测 |
 | `pages/quiz/*` | 答题页：题面（词 + 音标 + 频段）、自评三键（不认识/模糊/认识）与四选一、改判、撤销、跳过、下一个、模式切换、退出弹窗（看报告/保存返回/放弃/继续） |
 | `pages/report/*` | 报告页：等级卡（含"未达 95% 不给等级"的说明）、频段剖面 7 行、提升优先级 Top3、地基缺口、本轮明细、多轮对比四指标、复测未掌握词、开始新一轮 |
 | `test/pages-smoke.mjs` | 页面层冒烟测试（Node + wx mock），12 项 |

@@ -21,7 +21,7 @@
 
     <view class="hero-meta">
       <view class="mi">
-        <view class="mi-k">词汇余额</view>
+        <view class="mi-k">词汇量</view>
         <view class="mi-v num">{{vocabText}}</view>
       </view>
       <view class="mi">

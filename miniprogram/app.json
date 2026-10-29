@@ -1,15 +1,37 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/stats/stats",
+    "pages/settings/settings",
     "pages/quiz/quiz",
     "pages/report/report"
   ],
   "window": {
     "navigationBarBackgroundColor": "#EDF0F6",
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "词汇账户余额查询",
+    "navigationBarTitleText": "四六级词汇量检测",
     "backgroundColor": "#EDF0F6",
     "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8B93A3",
+    "selectedColor": "#2A5BE0",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/stats/stats",
+        "text": "总览"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置"
+      }
+    ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",

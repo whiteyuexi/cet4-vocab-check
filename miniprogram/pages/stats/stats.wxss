@@ -1,0 +1,33 @@
+/* 总览页样式 */
+.sect { margin-bottom: 20rpx; }
+.row-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20rpx; }
+.row-head .t3 { font-size: 22rpx; }
+
+.gap-line { display: flex; margin-bottom: 18rpx; }
+.gap-i { flex: 1; }
+.gap-v { font-size: 40rpx; font-weight: 700; margin-top: 4rpx; }
+
+.state-row { display: flex; gap: 26rpx; margin-top: 16rpx; font-size: 24rpx; color: #575E6B; }
+.st { display: flex; align-items: center; }
+.dot { width: 14rpx; height: 14rpx; border-radius: 50%; margin-right: 8rpx; display: inline-block; }
+.dot.ok { background: #0A6B4A; }
+.dot.warn { background: #D98A00; }
+.dot.bad { background: #B02E22; }
+
+/* 频段条 */
+.brow { padding: 18rpx 0; border-top: 1rpx solid rgba(16,19,25,.06); }
+.brow:first-of-type { border-top: none; }
+.brow:active { opacity: .7; }
+.brow-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10rpx; }
+.brow-name { font-size: 27rpx; font-weight: 600; }
+.brow-val { font-size: 27rpx; font-weight: 700; }
+.brow-foot { margin-top: 8rpx; font-size: 22rpx; }
+.bar-ok { background: #0A6B4A; }
+.bar-warn { background: #D98A00; }
+.bar-bad { background: #B02E22; }
+.bar-none { background: rgba(16,19,25,.16); }
+
+/* 记录 */
+.rec { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-top: 1rpx solid rgba(16,19,25,.06); }
+.rec:first-of-type { border-top: none; }
+.rec-r { font-size: 30rpx; font-weight: 700; }

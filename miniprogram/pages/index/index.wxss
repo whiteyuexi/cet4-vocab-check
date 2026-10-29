@@ -9,7 +9,7 @@
 }
 .brand-txt { flex: 1; }
 
-/* 余额卡 */
+/* 词汇量卡 */
 .hero { padding: 34rpx 32rpx 28rpx; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; }
 .hero-label { font-size: 25rpx; color: #6B7280; letter-spacing: 1rpx; }
@@ -60,3 +60,21 @@
 .footer-links { text-align: center; padding: 10rpx 0 8rpx; }
 .tip { margin-top: 18rpx; }
 .center { text-align: center; }
+
+/* ---------- 回访卡 ---------- */
+.revisit { border-left: 6rpx solid #2A5BE0; }
+.rv-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.rv-head { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; }
+.rv-v { font-size: 27rpx; font-weight: 700; color: #101319; }
+.chip-rv { margin-left: 12rpx; }
+.rv-x {
+  width: 56rpx; height: 56rpx; margin: -8rpx -8rpx 0 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34rpx; color: #8B93A3; border-radius: 12rpx;
+}
+.rv-x:active { background: #F3F5FA; }
+.rv-body { margin-top: 12rpx; }
+.rv-line { font-size: 25rpx; line-height: 1.62; color: #575E6B; margin-bottom: 8rpx; }
+.rv-acts { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 18rpx; }
+.rv-a { flex: 0 0 auto; padding: 0 26rpx; }
+.rv-off { margin-top: 16rpx; font-size: 22rpx; color: #8B93A3; text-decoration: underline; }

@@ -24,6 +24,12 @@
     <view class="reveal" wx:if="{{s.revealed}}">
       <view class="hr"></view>
       <view class="mean">{{s.word.t}}</view>
+      <view class="phr" wx:if="{{s.word.ph}}">短语 <text class="bold">{{s.word.ph.p}}</text> {{s.word.ph.t}}</view>
+      <view class="eg" wx:if="{{s.eg}}">
+        <view class="eg-en">{{s.eg[0]}}</view>
+        <view class="eg-zh">{{s.eg[1]}}</view>
+        <view class="eg-src">例句来源：Tatoeba（CC-BY 2.0 FR）</view>
+      </view>
     </view>
   </view>
 

@@ -76,10 +76,12 @@ eng.S.settings.autoNext = false;
 eng.save();
 
 console.log('=== 一、页面模块加载 ===');
-let indexPage, quizPage, reportPage;
+let indexPage, quizPage, reportPage, statsPage, settingsPage;
 ok('pages/index/index.js 加载', () => { indexPage = loadPage('../pages/index/index.js'); });
 ok('pages/quiz/quiz.js 加载', () => { quizPage = loadPage('../pages/quiz/quiz.js'); });
 ok('pages/report/report.js 加载', () => { reportPage = loadPage('../pages/report/report.js'); });
+ok('pages/stats/stats.js 加载', () => { statsPage = loadPage('../pages/stats/stats.js'); });
+ok('pages/settings/settings.js 加载', () => { settingsPage = loadPage('../pages/settings/settings.js'); });
 
 console.log('=== 二、首页渲染 ===');
 ok('onShow 不抛错且填出数据', () => {
@@ -176,6 +178,130 @@ ok('撤销/跳过/改判 三个动作可用', () => {
   const s2 = quizPage.data.s;
   if (s2 && s2.revealed) quizPage.onRejudge({ currentTarget: { dataset: { v: 1 } } });
   assert.ok(quizPage.data.s, '动作后状态丢失');
+});
+
+/* ---------- 总览页 ---------- */
+console.log('=== 七、总览页（频段剖面 / 检测记录） ===');
+ok('总览 onShow 填出频段与覆盖', () => {
+  statsPage.onShow();
+  assert.ok(statsPage.data.ready, 'ready 未置 true');
+  assert.ok(statsPage.data.bands.length >= 1, '频段为空');
+  assert.ok(statsPage.data.total > 0, '总词数为 0');
+  const b = statsPage.data.bands[0];
+  assert.ok(b.name && b.N > 0, '频段字段不全: ' + JSON.stringify(b));
+  console.log('   ' + statsPage.data.tested + '/' + statsPage.data.total + ' 词 · 覆盖 ' +
+    statsPage.data.coveragePct + '% · 频段 ' + statsPage.data.bands.length + ' 条');
+});
+ok('点频段会起一段复测并跳转', () => {
+  nav.length = 0;
+  const target = statsPage.data.bands.find(function (b) { return b.p !== null; }) || statsPage.data.bands[0];
+  statsPage.onBand({ currentTarget: { dataset: { band: target.band } } });
+  assert.deepStrictEqual(nav, ['/pages/quiz/quiz'], '导航异常: ' + JSON.stringify(nav));
+  const sess = eng.S.session;
+  assert.ok(sess && sess.queue && sess.queue.length > 0, '没有生成复测队列');
+  console.log('   复测队列 ' + sess.queue.length + ' 词 · ' + sess.label);
+  eng.S.session = null; eng.save();
+});
+
+/* ---------- 设置页 ---------- */
+console.log('=== 八、设置页（每日时间 / 口径 / 回访开关） ===');
+ok('设置 onShow 读数正确', () => {
+  settingsPage.onShow();
+  const dm = eng.S.settings.dailyMinutes || 30;
+  assert.strictEqual(settingsPage.data.dailyMinutes, dm);
+  assert.strictEqual(settingsPage.data.perDay, Math.max(5, Math.min(200, Math.round(dm / 1.5))));
+  console.log('   ' + dm + ' 分钟/天 ≈ ' + settingsPage.data.perDay + ' 词/天');
+});
+ok('改每日时间会改换算并落盘', () => {
+  settingsPage.setDaily(60);
+  assert.strictEqual(eng.S.settings.dailyMinutes, 60);
+  assert.strictEqual(settingsPage.data.perDay, 40);
+  const stored = JSON.parse(store.get('cet4vocab_v1') || '{}');
+  assert.strictEqual(stored.settings.dailyMinutes, 60, '没写进存储');
+  settingsPage.setDaily(30);
+  assert.strictEqual(eng.S.settings.dailyMinutes, 30);
+});
+ok('每日时间会被夹在 5–180', () => {
+  settingsPage.setDaily(9999);
+  assert.strictEqual(eng.S.settings.dailyMinutes, 180);
+  settingsPage.setDaily(-10);
+  assert.strictEqual(eng.S.settings.dailyMinutes, 5);
+  settingsPage.setDaily(30);
+});
+ok('答题方式与严格口径可切换并落盘', () => {
+  settingsPage.onMode({ currentTarget: { dataset: { mode: 'choice' } } });
+  assert.strictEqual(eng.S.settings.mode, 'choice');
+  settingsPage.onStrict({ detail: { value: true } });
+  assert.strictEqual(eng.S.settings.strict, true);
+  const stored = JSON.parse(store.get('cet4vocab_v1') || '{}');
+  assert.strictEqual(stored.settings.mode, 'choice');
+  assert.strictEqual(stored.settings.strict, true);
+  settingsPage.onMode({ currentTarget: { dataset: { mode: 'self' } } });
+  settingsPage.onStrict({ detail: { value: false } });
+});
+ok('关掉回访提醒会写 revisitOff', () => {
+  settingsPage.onRevisit({ detail: { value: false } });
+  assert.strictEqual(eng.S.settings.revisitOff, true);
+  assert.strictEqual(settingsPage.data.revisitOff, true);
+  settingsPage.onRevisit({ detail: { value: true } });
+  assert.strictEqual(eng.S.settings.revisitOff, false);
+});
+
+/* ---------- 回访卡 ---------- */
+console.log('=== 九、回访卡（首页） ===');
+const cardMod = require('../utils/card.js');
+ok('没有数据时不显示', () => {
+  eng.S.samples = [];
+  eng.save();
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, false, '无数据却显示了');
+});
+ok('有 5 天前的抽样就显示，且文案齐全', () => {
+  eng.addSample({
+    n: 64, k: 40, f: 8,
+    bands: { 1: { N: 1000, n: 20, k: 8, f: 2 }, 2: { N: 1000, n: 22, k: 18, f: 2 } }
+  });
+  eng.S.samples[eng.S.samples.length - 1].ts = Date.now() - 5 * 86400000;
+  eng.save();
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, true, '没有显示回访卡');
+  assert.ok(indexPage.data.cardLines.length >= 2, '文案不足: ' + indexPage.data.cardLines.length);
+  assert.ok(/天前/.test(indexPage.data.cardHead), 'head 异常: ' + indexPage.data.cardHead);
+  console.log('   head: ' + indexPage.data.cardHead);
+  indexPage.data.cardLines.forEach(function (l) { console.log('   · ' + l.slice(0, 44)); });
+});
+ok('刚测完（0 天）不打扰', () => {
+  eng.S.samples[eng.S.samples.length - 1].ts = Date.now();
+  eng.save();
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, false);
+});
+ok('收起只影响本次；永久关闭写 revisitOff', () => {
+  eng.S.samples[eng.S.samples.length - 1].ts = Date.now() - 5 * 86400000;
+  eng.save();
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, true);
+  indexPage.onCardHide();
+  assert.strictEqual(indexPage.data.cardShow, false);
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, false, '收起后 onShow 又出现了');
+  eng.S.settings.revisitOff = false;
+  indexPage.onCardOff();          // mock 的 showModal 会自动 confirm
+  assert.strictEqual(eng.S.settings.revisitOff, true);
+  indexPage.onShow();
+  assert.strictEqual(indexPage.data.cardShow, false);
+  eng.S.settings.revisitOff = false;
+  eng.save();
+});
+ok('回访卡的「开始补这一段」能起复测', () => {
+  eng.S.samples[eng.S.samples.length - 1].ts = Date.now() - 5 * 86400000;
+  eng.save();
+  nav.length = 0;
+  indexPage.onCardReview();
+  assert.ok(eng.S.session && eng.S.session.queue.length > 0, '没有生成会话');
+  assert.deepStrictEqual(nav, ['/pages/quiz/quiz']);
+  console.log('   ' + eng.S.session.label);
+  eng.S.session = null; eng.save();
 });
 
 console.log('=== 汇总 ===');

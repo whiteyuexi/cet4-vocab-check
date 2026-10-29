@@ -1,5 +1,5 @@
 /* ======================================================================
-   词汇账户余额查询 · 统计引擎（微信小程序移植版）
+   四六级词汇量检测 · 统计引擎（微信小程序移植版）
    移植自 src/app.part1.js（网页版第 1 部分），只做必要改动：
      · 6 处浏览器本地存储调用 -> storage 适配层（utils/storage.js）
      · 词库来源取全局变量 -> createEngine 注入（utils/words-data.js）
@@ -637,10 +637,15 @@ function engineBody(A) {
   /* 某格里的「缺口词」（未测 + 模糊 + 不认识），给地图的「点一下复测」用 */
   A.mapCellWords = function (band, letter) {
     var out = [], pool = activePool();
+    /* letter 传 'all' 表示"整段、不限首字母"。
+       这里曾经漏了这个判断：'all' 被当成一个真首字母去比，永远对不上 →
+       mapCellWords(band,'all') 一直返回空，AI 建议里的「复测某段」点了只弹一句
+       "这块没有需要复测的词"。网页版已修，小程序这边同步修掉。 */
+    var anyLetter = !letter || letter === 'all';
     for (var n = 0; n < pool.length; n++) {
       var i = pool[n];
       if (A.bandOf(i) !== band) continue;
-      if (String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
+      if (!anyLetter && String(WORDS[i].w).charAt(0).toUpperCase() !== letter) continue;
       var s = A.getSt(i);
       if (s === undefined || s === 0 || s === 1) out.push(i);
     }
@@ -748,6 +753,14 @@ function engineBody(A) {
     });
     while (S.samples.length > 20) S.samples.shift();
   };
+  /* 每天能背多少词 = 每日可投入时间 ÷ 每词约 1.5 分钟，夹在 5–200。
+     报告页的「每天 N 词」、回访卡的「补完几天」都用这一个函数——
+     网页版曾经在两处写死 50，设置改了不生效，这里从一开始就收敛。 */
+  A.perDayWords = function () {
+    var dm = (S.settings && S.settings.dailyMinutes) || 30;
+    return Math.max(5, Math.min(200, Math.round(dm / 1.5)));
+  };
+
   A.estimateNow = function () {
     var pool = activePool();
     var t = tally(pool);
@@ -1090,7 +1103,7 @@ function engineBody(A) {
       bands: bands, gainTop: gainTop, deficitTop: deficitTop, baseGap: baseGap,
       fuzzyShare: knownish ? t.f / knownish : 0,   // 「有印象」里有多少是不确定的
       refs: A.RANK_REFS,
-      perDay: 50
+      perDay: A.perDayWords()
     };
   };
 
