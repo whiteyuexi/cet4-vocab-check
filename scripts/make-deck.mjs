@@ -494,10 +494,10 @@ page_({
 
 /* ---------- 24 工程质量 ---------- */
 page_({
-  kind: 'text', kicker: '工程质量', title: '421 条断言，和五个真出过的 bug',
+  kind: 'text', kicker: '工程质量', title: '427 条断言，和五个真出过的 bug',
   lead: '抽样和区间估计没法靠肉眼验收，只能写成断言。',
   layout: 'nums-bug',
-  nums: [['421', '离线断言，10 个套件；另有 7 条联网断言'], ['11', '测试套件，浏览器那套自动跑分'], ['0', '运行时依赖']],
+  nums: [['427', '离线断言，10 个套件；另有 7 条联网断言'], ['11', '测试套件，浏览器那套自动跑分'], ['0', '运行时依赖']],
   rows: [
     ['入场页例句数显示 10,276', '把例句数组当对象数了两遍，改成构建期算好注入'],
     ['报告页「每天 50 词」写死', '设置页改了不生效，改成统一函数并加断言'],
@@ -640,7 +640,7 @@ function renderCover(p) {
   s.addText('四六级词汇量检测', { x: M, y: 2.95, w: CW, h: 1.0, fontFace: F, fontSize: 52, bold: true, color: C.white });
   s.addText('测准一个数，再告诉你背哪些词', { x: M, y: 4.0, w: CW, h: 0.5, fontFace: F, fontSize: 19, color: 'D6D2C6' });
   s.addShape(pptx.ShapeType.rect, { x: M, y: 4.85, w: CW, h: 0.012, fill: { color: '3A362C' } });
-  nums(s, [['7,175', '词条，全部带音标'], ['9,204', '英中对照例句'], ['421', '条离线断言'], ['2.11 MB', '单文件，断网可用']], 5.1, { sz: 26, color: C.white });
+  nums(s, [['7,175', '词条，全部带音标'], ['9,204', '英中对照例句'], ['427', '条离线断言'], ['2.11 MB', '单文件，断网可用']], 5.1, { sz: 26, color: C.white });
   s.addText('广东亚视演艺职业学院 · 人工智能学院　｜　李壹铭　｜　github.com/whiteyuexi/cet4-vocab-check', {
     x: M, y: 6.55, w: CW, h: 0.32, fontFace: F, fontSize: 10.5, color: '8E887C',
   });

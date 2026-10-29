@@ -398,6 +398,17 @@
     h += '<div class="switch"><div class="st"><b>自动跳转延迟</b><small>当前 ' + S.settings.autoDelay + ' 毫秒</small></div>' +
       '<input type="range" min="300" max="2500" step="50" value="' + S.settings.autoDelay + '" data-act="set-delay" style="width:180px"></div>';
     h += sw('sound', '单词发音', '作答时朗读单词（依赖浏览器语音引擎）');
+    /* 口音：词库音标是教材通用的英式标注，而系统语音默认多为美式，所以给个开关，
+       并把这个差别写在界面上，而不是让用户自己发现"读的和标的不一样"。 */
+    var acc = A.accentCfg ? A.accentCfg() : { k: 'us', name: '美式' };
+    h += '<div class="switch" style="align-items:flex-start"><div class="st"><b>发音口音</b>' +
+      '<small>当前：<b>' + esc(acc.name) + '</b>。词库音标采用教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː），' +
+      '系统语音默认多为美式，两者不完全一致时以你选的口音为准</small></div>' +
+      '<div class="tabs" style="margin:0;width:190px">' +
+      (A.ACCENTS || []).map(function (a) {
+        return '<button class="' + (a.k === acc.k ? 'on' : '') + '" data-act="set-accent" data-accent="' + a.k + '">' + a.name + '</button>';
+      }).join('') +
+      '</div></div>';
     h += sw('includeExt', '包含拓展派生词', '除大纲核心词外，再加入 ' + A.WORDS.filter(function (w) { return w.x; }).length + ' 个常见派生词（当前词库 ' + A.activePool().length + ' 词）');
     h += sw('strict', '严格的估算口径', '只把「认识」算作掌握；关闭时「模糊」按一半折算。两种口径的数值都会列在总览页');
     h += '</div>';
@@ -679,6 +690,17 @@
         case 'ai-do': A.aiRunAction(t.getAttribute('data-aid')); break;
         case 'ai-guide': A.openAiGuide(); break;
         case 'ai-guide-settings': A.closeModal(); A.go('settings'); break;
+        case 'set-accent': {
+          var ak = t.getAttribute('data-accent');
+          S.settings.accent = ak === 'uk' ? 'uk' : 'us';
+          A.save();
+          if (A.repickVoice) A.repickVoice();          // 换口音要重新选音色
+          A.render();
+          var nm = A.accentCfg().name;
+          A.toast('发音口音：' + nm);
+          if (S.settings.sound) A.speak('vocabulary');  // 念一个词让用户立刻听到差别
+          break;
+        }
         case 'set-daily':
           S.settings.dailyMinutes = parseInt(t.getAttribute('data-min'), 10) || 30;
           A.save(); A.render();

@@ -76,7 +76,7 @@ pre code{background:none;color:inherit;padding:0}
 <div class="kv">
   <div><b>7,175</b><span>词条（全部带音标）</span></div>
   <div><b>9,204</b><span>英中对照例句</span></div>
-  <div><b>421</b><span>条离线断言</span></div>
+  <div><b>427</b><span>条离线断言</span></div>
   <div><b>2.11 MB</b><span>单文件产物</span></div>
   <div><b>0</b><span>运行时外部依赖</span></div>
 </div>
@@ -108,7 +108,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">自动化测试</td><td>11 个套件 / 421 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>11 个套件 / 427 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
 </table>
 
 <h3>1.3 三个亮点</h3>
@@ -167,7 +167,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td class="k">隐私</td><td>逐题作答不出本机，只把汇总数据交给可选的大模型</td><td>localStorage 存储；上行字段白名单</td></tr>
 <tr><td class="k">性能</td><td>首屏 &lt; 300 ms（本机），交互不卡顿</td><td>无框架、无虚拟 DOM；动效只动 transform/opacity</td></tr>
 <tr><td class="k">可访问性</td><td>键盘可操作、对比度达标、尊重减少动效</td><td>焦点管理 + inert + 实测 4.83:1 / 5.72:1</td></tr>
-<tr><td class="k">可维护</td><td>改一处生效一处，回归可自动验证</td><td>421 条断言 + 11 个套件；产物可复现</td></tr>
+<tr><td class="k">可维护</td><td>改一处生效一处，回归可自动验证</td><td>427 条断言 + 11 个套件；产物可复现</td></tr>
 <tr><td class="k">移动端</td><td>390 px 宽可用</td><td>响应式；实测无横向溢出、顶栏单行</td></tr>
 </table>
 
@@ -442,6 +442,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <tr><td class="k">暗色与主题</td><td>整套设计令牌双主题；主题切换的过渡曾把底色锁住，已修复并加断言</td></tr>
 <tr><td class="k">无障碍</td><td>入场页/模态期间给底层加 <code>inert</code>、完整焦点管理、<code>prefers-reduced-motion</code> 支持；对比度实测辅助文字 4.83:1、开关轨道 5.72:1</td></tr>
 <tr><td class="k">移动端</td><td>390 px 实测无横向溢出、主按钮在屏内、顶栏保持单行</td></tr>
+<tr><td class="k">发音</td><td>Web Speech API 朗读单词，<b>口音可切换（美式 en-US / 英式 en-GB，默认美式）</b>；词库音标采用教材通用的英式标注，界面上直接说明这个差别</td></tr>
 </table>
 
 <!-- ============================================================ -->
@@ -466,10 +467,10 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <h2 id="c6">6 测试与部署</h2>
 
 
-<h3>6.1 测试体系（11 个套件 / 421 条离线断言）</h3>
+<h3>6.1 测试体系（11 个套件 / 427 条离线断言）</h3>
 <table>
 <tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
-<tr><td class="k">smoke-test.js（jsdom）</td><td>195</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
+<tr><td class="k">smoke-test.js（jsdom）</td><td>201</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
 <tr><td class="k">scripts/run-btest.mjs（真实 Chrome）</td><td>55</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口；自动读结果，有 FAIL 即非 0 退出</td></tr>
 <tr><td class="k">scripts/pet-test.mjs</td><td>40</td><td>拖动/重力/悬空物理/气泡版式/活动范围/自愈</td></tr>
 <tr><td class="k">scripts/check-intro.mjs</td><td>43</td><td>入场页分层浮现、退场干净、旁路、减少动效、手机布局</td></tr>
@@ -575,7 +576,7 @@ PORT=8787</code></pre>
 <h3>8.1 已完成</h3>
 <p>一个 2.11 MB 的单文件 Web 应用：五入口检测、带区间的词汇量估计、七段诊断、等级与地基约束、多轮差分、
 182 格词汇地图、回访卡、自定义词书、使用者档案、三档 AI 通路、离线可用的本地规则引擎，
-外加一个同源引擎的微信小程序版本。全部由单人完成，421 条离线断言守着回归。</p>
+外加一个同源引擎的微信小程序版本。全部由单人完成，427 条离线断言守着回归。</p>
 
 <h3>8.2 可改进的方向</h3>
 <table>
@@ -627,7 +628,7 @@ PORT=8787</code></pre>
 <table>
 <tr><th style="width:250px">可能的问题</th><th>一句话应答</th></tr>
 <tr><td class="k">你们这是背单词 App 吗？</td><td>不是。我们只做测量与诊断：测准 + 开补词清单，背单词交给你习惯的工具。</td></tr>
-<tr><td class="k">测出来的数凭什么可信？</td><td>误差写在数字旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，抽样与估计有 195 条断言守着。</td></tr>
+<tr><td class="k">测出来的数凭什么可信？</td><td>误差写在数字旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，抽样与估计有 201 条断言守着。</td></tr>
 <tr><td class="k">AI 具体做了什么？</td><td>只做解释与规划：所有数字来自 8 个工具的返回值，模型不许自己算数；数据不足时它会拒绝下结论。</td></tr>
 <tr><td class="k">是向量 RAG 吗？</td><td>不是。本地语料倒排索引 + 工具按需检索的轻量 RAG；向量方案会拖几十 MB 权重，毁掉单文件与断网可用。</td></tr>
 <tr><td class="k">断网能用吗？</td><td>能。单文件双击即开，答题、进度、报告、本地方案全部离线可用。</td></tr>
@@ -635,7 +636,7 @@ PORT=8787</code></pre>
 <tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
 </table>
 
-<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 421 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 427 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
 实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
 
 </div>

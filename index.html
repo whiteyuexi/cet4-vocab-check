@@ -2827,23 +2827,42 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
   }
   A.highlightWord = highlightWord;
 
-  /* ---------- 发音 ---------- */
+  /* ---------- 发音 ----------
+     口音可选：美式（en-US，默认）与英式（en-GB）。
+     为什么做成设置项：词库里的音标是教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː），
+     而浏览器 TTS 默认多半是美式，两者会对不上（比如 student 标 /ˈstjuːdənt/，美音读 /ˈstuːdnt/）。
+     四六级听力两种口音都会出现，所以让用户自己选，默认美式（多数系统语音包更全）。 */
+  A.ACCENTS = [
+    { k: 'us', name: '美式', lang: 'en-US', re: /^en[-_]US/i },
+    { k: 'uk', name: '英式', lang: 'en-GB', re: /^en[-_]GB/i }
+  ];
+  function accentCfg() {
+    var k = (S.settings && S.settings.accent) || 'us';
+    for (var i = 0; i < A.ACCENTS.length; i++) if (A.ACCENTS[i].k === k) return A.ACCENTS[i];
+    return A.ACCENTS[0];
+  }
+  A.accentCfg = accentCfg;
   var voice = null;
   function pickVoice() {
     if (!window.speechSynthesis) return;
+    var cfg = accentCfg();
     var vs = window.speechSynthesis.getVoices() || [];
-    for (var i = 0; i < vs.length; i++) { if (/^en[-_]US/i.test(vs[i].lang)) { voice = vs[i]; return; } }
-    for (var j = 0; j < vs.length; j++) { if (/^en/i.test(vs[j].lang)) { voice = vs[j]; return; } }
+    voice = null;
+    for (var i = 0; i < vs.length; i++) if (cfg.re.test(vs[i].lang)) { voice = vs[i]; return; }
+    for (var j = 0; j < vs.length; j++) if (/^en/i.test(vs[j].lang)) { voice = vs[j]; return; }   // 没有对应口音就退到任意英语音色
   }
   if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
+  /* 切换口音后要重新选音色，否则会继续用上一个口音的 voice */
+  A.repickVoice = function () { pickVoice(); };
   function speak(text) {
     if (!S.settings.sound) { toast('发音已在设置中关闭'); return; }
     if (!window.speechSynthesis) { toast('当前浏览器不支持语音朗读'); return; }
     try {
+      var cfg = accentCfg();
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; u.rate = 0.88;
-      if (voice) u.voice = voice;
+      u.lang = cfg.lang; u.rate = 0.88;
+      if (voice && cfg.re.test(voice.lang)) u.voice = voice;
       window.speechSynthesis.speak(u);
     } catch (e) { toast('发音失败'); }
   }
@@ -4128,6 +4147,17 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
     h += '<div class="switch"><div class="st"><b>自动跳转延迟</b><small>当前 ' + S.settings.autoDelay + ' 毫秒</small></div>' +
       '<input type="range" min="300" max="2500" step="50" value="' + S.settings.autoDelay + '" data-act="set-delay" style="width:180px"></div>';
     h += sw('sound', '单词发音', '作答时朗读单词（依赖浏览器语音引擎）');
+    /* 口音：词库音标是教材通用的英式标注，而系统语音默认多为美式，所以给个开关，
+       并把这个差别写在界面上，而不是让用户自己发现"读的和标的不一样"。 */
+    var acc = A.accentCfg ? A.accentCfg() : { k: 'us', name: '美式' };
+    h += '<div class="switch" style="align-items:flex-start"><div class="st"><b>发音口音</b>' +
+      '<small>当前：<b>' + esc(acc.name) + '</b>。词库音标采用教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː），' +
+      '系统语音默认多为美式，两者不完全一致时以你选的口音为准</small></div>' +
+      '<div class="tabs" style="margin:0;width:190px">' +
+      (A.ACCENTS || []).map(function (a) {
+        return '<button class="' + (a.k === acc.k ? 'on' : '') + '" data-act="set-accent" data-accent="' + a.k + '">' + a.name + '</button>';
+      }).join('') +
+      '</div></div>';
     h += sw('includeExt', '包含拓展派生词', '除大纲核心词外，再加入 ' + A.WORDS.filter(function (w) { return w.x; }).length + ' 个常见派生词（当前词库 ' + A.activePool().length + ' 词）');
     h += sw('strict', '严格的估算口径', '只把「认识」算作掌握；关闭时「模糊」按一半折算。两种口径的数值都会列在总览页');
     h += '</div>';
@@ -4409,6 +4439,17 @@ html[data-theme="dark"] .intro-logo .logo-mark{filter:brightness(1.22)}
         case 'ai-do': A.aiRunAction(t.getAttribute('data-aid')); break;
         case 'ai-guide': A.openAiGuide(); break;
         case 'ai-guide-settings': A.closeModal(); A.go('settings'); break;
+        case 'set-accent': {
+          var ak = t.getAttribute('data-accent');
+          S.settings.accent = ak === 'uk' ? 'uk' : 'us';
+          A.save();
+          if (A.repickVoice) A.repickVoice();          // 换口音要重新选音色
+          A.render();
+          var nm = A.accentCfg().name;
+          A.toast('发音口音：' + nm);
+          if (S.settings.sound) A.speak('vocabulary');  // 念一个词让用户立刻听到差别
+          break;
+        }
         case 'set-daily':
           S.settings.dailyMinutes = parseInt(t.getAttribute('data-min'), 10) || 30;
           A.save(); A.render();

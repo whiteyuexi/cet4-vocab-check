@@ -1255,23 +1255,42 @@
   }
   A.highlightWord = highlightWord;
 
-  /* ---------- 发音 ---------- */
+  /* ---------- 发音 ----------
+     口音可选：美式（en-US，默认）与英式（en-GB）。
+     为什么做成设置项：词库里的音标是教材通用的英式标注（非卷舌、BATH 用 ɑː、保留 juː），
+     而浏览器 TTS 默认多半是美式，两者会对不上（比如 student 标 /ˈstjuːdənt/，美音读 /ˈstuːdnt/）。
+     四六级听力两种口音都会出现，所以让用户自己选，默认美式（多数系统语音包更全）。 */
+  A.ACCENTS = [
+    { k: 'us', name: '美式', lang: 'en-US', re: /^en[-_]US/i },
+    { k: 'uk', name: '英式', lang: 'en-GB', re: /^en[-_]GB/i }
+  ];
+  function accentCfg() {
+    var k = (S.settings && S.settings.accent) || 'us';
+    for (var i = 0; i < A.ACCENTS.length; i++) if (A.ACCENTS[i].k === k) return A.ACCENTS[i];
+    return A.ACCENTS[0];
+  }
+  A.accentCfg = accentCfg;
   var voice = null;
   function pickVoice() {
     if (!window.speechSynthesis) return;
+    var cfg = accentCfg();
     var vs = window.speechSynthesis.getVoices() || [];
-    for (var i = 0; i < vs.length; i++) { if (/^en[-_]US/i.test(vs[i].lang)) { voice = vs[i]; return; } }
-    for (var j = 0; j < vs.length; j++) { if (/^en/i.test(vs[j].lang)) { voice = vs[j]; return; } }
+    voice = null;
+    for (var i = 0; i < vs.length; i++) if (cfg.re.test(vs[i].lang)) { voice = vs[i]; return; }
+    for (var j = 0; j < vs.length; j++) if (/^en/i.test(vs[j].lang)) { voice = vs[j]; return; }   // 没有对应口音就退到任意英语音色
   }
   if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
+  /* 切换口音后要重新选音色，否则会继续用上一个口音的 voice */
+  A.repickVoice = function () { pickVoice(); };
   function speak(text) {
     if (!S.settings.sound) { toast('发音已在设置中关闭'); return; }
     if (!window.speechSynthesis) { toast('当前浏览器不支持语音朗读'); return; }
     try {
+      var cfg = accentCfg();
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; u.rate = 0.88;
-      if (voice) u.voice = voice;
+      u.lang = cfg.lang; u.rate = 0.88;
+      if (voice && cfg.re.test(voice.lang)) u.voice = voice;
       window.speechSynthesis.speak(u);
     } catch (e) { toast('发音失败'); }
   }
