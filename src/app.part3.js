@@ -405,6 +405,7 @@
     h += '<div class="sec-title">数据管理<span class="line"></span></div>';
     h += '<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px">' +
       '<button class="btn" data-act="profiles">切换 / 新建使用者</button>' +
+      '<button class="btn" data-act="demo-levels" title="生成 6 个演示档案，每个档案的作答刚好落在 S/A/B+/B/C/D 六个等级上，方便逐个展示">生成六个等级的演示档案</button>' +
       '<button class="btn" data-act="pet-reset" title="如果桌宠跑到了奇怪的位置、或者拖不动，点这里把她叫回右下角">桌宠跑丢了？叫回右下角</button>' +
       '<button class="btn" data-act="export-json">导出作答备份（JSON）</button>' +
       '<button class="btn" data-act="export-csv">导出未掌握词表（CSV）</button>' +
@@ -772,6 +773,31 @@
               ' · ' + mtake.length + ' 词' + (mlist.length > mcap ? '（共 ' + mlist.length + '，先测前 ' + mcap + '）' : '')
           });
           break;
+        case 'demo-levels': {
+          var hasDemo = A.profileList().some(function (p) { return String(p.name).indexOf(A.DEMO_PREFIX) === 0; });
+          var run = function () {
+            var made = A.buildDemoProfiles();
+            var txt = made.map(function (m) { return m.rank + ' ' + m.rankName + '（' + Math.round(m.ratio * 100) + '%）'; }).join(' / ');
+            A.render();
+            A.profilesModal();
+            A.toast('已生成 6 个演示档案：' + txt);
+          };
+          if (hasDemo) {
+            A.modal('<b>重新生成演示档案？</b><div class="tiny" style="margin:8px 0 14px;line-height:1.8">' +
+              '会按当前词库重新写一遍这 6 个档案的数据（覆盖它们原有的作答，不影响你自己的档案）。</div>' +
+              '<div class="row" style="gap:10px"><button class="btn primary grow" data-act="demo-levels-go">重新生成</button>' +
+              '<button class="btn ghost grow" data-act="modal-close">取消</button></div>');
+          } else {
+            run();
+          }
+          break;
+        }
+        case 'demo-levels-go': A.closeModal(); (function () {
+          var made = A.buildDemoProfiles();
+          A.render();
+          A.profilesModal();
+          A.toast('已生成 6 个演示档案');
+        })(); break;
         case 'profiles': A.profilesModal(); break;
         case 'switch-profile':
           A.switchProfile(t.getAttribute('data-id'));

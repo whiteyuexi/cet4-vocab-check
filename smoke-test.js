@@ -376,6 +376,54 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     A.save(); A.go('home');
   });
 
+  // ---------- 等级演示档案：六个等级各一个（给评委看数据用） ----------
+  step('等级演示档案', () => {
+    A.S.status = {}; A.S.samples = []; A.S.session = null; A.S.rounds = []; A.save();
+    A.go('settings');
+    const btn = q('[data-act="demo-levels"]');
+    check('设置页有「生成六个等级的演示档案」入口', !!btn, btn ? btn.textContent.trim() : 'none');
+
+    const made = A.buildDemoProfiles();
+    check('一次生成 6 个演示档案', made.length === 6, made.map(m => m.rank).join('/'));
+
+    // 关键：不是贴假等级，而是让引擎按真实作答算出等级，且必须逐个对上
+    const want = ['S', 'A', 'B+', 'B', 'C', 'D'];
+    const got = made.map(m => m.rank);
+    check('六个档案的等级分别是 S/A/B+/B/C/D', JSON.stringify(got) === JSON.stringify(want), got.join(' '));
+
+    // 逐个切换后再验证一次：切过去"当前档案"的等级要和生成时一致
+    const list = A.profileList().filter(p => String(p.name).indexOf(A.DEMO_PREFIX) === 0);
+    check('六个档案都出现在使用者列表里', list.length === 6, list.length + ' 个');
+    let allMatch = true, detail = [];
+    list.forEach(row => {
+      A.switchProfile(row.id);
+      const R = A.levelReport();
+      const expect = A.DEMO_LEVELS.filter(L => row.name === A.DEMO_PREFIX + L.name)[0];
+      const ok = R.ready && R.rank && R.rank.k === expect.k;
+      if (!ok) allMatch = false;
+      detail.push(row.name.replace(A.DEMO_PREFIX, '') + '→' + (R.rank ? R.rank.k : '-') + '(' + Math.round(R.ratio * 100) + '%)');
+    });
+    check('切到每个档案后引擎算出的等级都对', allMatch, detail.join(' '));
+
+    // 高频段必须高于封顶线，否则等级会被地基约束压下来（这是唯一容易出错的地方）
+    A.switchProfile(list[list.length - 1].id);              // 拿最弱的那个检查一遍覆盖
+    const R2 = A.levelReport();
+    check('演示档案是 100% 覆盖（首页显示实测而非抽样）', R2.coverage >= 0.95, Math.round(R2.coverage * 100) + '%');
+    check('每个档案都有补词清单可看', R2.bands.filter(b => b.N > 0).length >= 6,
+      R2.bands.filter(b => b.N > 0).length + ' 个频段');
+
+    // 重复生成不叠加
+    const again = A.buildDemoProfiles();
+    const demoCount = A.profileList().filter(p => String(p.name).indexOf(A.DEMO_PREFIX) === 0).length;
+    check('重复生成不会叠加档案', demoCount === 6 && again.length === 6, demoCount + ' 个');
+
+    // 清理：删掉演示档案，恢复干净状态
+    A.profileList().filter(p => String(p.name).indexOf(A.DEMO_PREFIX) === 0).forEach(p => {
+      if (A.profileList().length > 1) A.removeProfile(p.id);
+    });
+    A.S.status = {}; A.S.samples = []; A.S.session = null; A.S.rounds = []; A.save(); A.go('home');
+  });
+
   // ---------- 好用程度：下一步建议与成绩导出 ----------
   step('结果页的下一步与导出', () => {
     A.S.status = {}; A.S.samples = []; A.S.session = null;

@@ -59,7 +59,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-si
   <div><b>2.11 MB</b>单文件产物</div>
   <div><b>7,175</b>词条（全带音标）</div>
   <div><b>9,204</b>条例句（英中对照）</div>
-  <div><b>413</b>条离线自动化断言</div>
+  <div><b>421</b>条离线自动化断言</div>
   <div><b>11</b>个测试套件</div>
   <div><b>0</b>运行时外部依赖</div>
 </div>
@@ -843,10 +843,10 @@ for (let round = 0; round &lt; 3; round++) {                 // MAX_TOOL_ROUNDS 
   app.css        设计令牌 + 全部样式                          ~1,300 行
 server/          Node 原生 http + Agent 循环 + 工具层 + 语料检索  ~370 行</code></pre>
 
-<h3>9.2 测试矩阵（11 个套件 / 413 条离线断言）</h3>
+<h3>9.2 测试矩阵（11 个套件 / 421 条离线断言）</h3>
 <table>
 <tr><th style="width:210px">套件</th><th style="width:80px">条数</th><th>覆盖什么</th></tr>
-<tr><td class="k">smoke-test.js（jsdom）</td><td>187</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、<b>回访卡</b>（19 条）</td></tr>
+<tr><td class="k">smoke-test.js（jsdom）</td><td>195</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、<b>回访卡</b>（19 条）</td></tr>
 <tr><td class="k">scripts/run-btest.mjs（真实浏览器）</td><td>55</td><td>布局不溢出、暗色切换、对比度、键盘焦点、地图与 AI 入口；自动读结果、有 FAIL 即非 0 退出</td></tr>
 <tr><td class="k">scripts/pet-test.mjs</td><td>40</td><td>拖动/重力/悬空物理/气泡版式/活动范围/自愈/叫回</td></tr>
 <tr><td class="k">scripts/check-intro.mjs</td><td>43</td><td>入场页分层浮现、退场干净、旁路、减少动效、手机布局</td></tr>
@@ -928,7 +928,7 @@ node build.js --with-key   # 评委版：内联作者 Key，只发评委，绝�
 </div>
 
 <footer>
-本文档描述的是当前交付版本（单文件 2.11 MB / 413 条离线断言）。
+本文档描述的是当前交付版本（单文件 2.11 MB / 421 条离线断言）。
 技术实现细节见《技术文档》，功能清单与评分点对照见《网站功能总览》，
 赛题 AI 方向对照与未来路线见《AI技术对照与下一步路线》，开发过程与缺陷复盘见报告系列 01–18。
 </footer>
@@ -938,7 +938,7 @@ node build.js --with-key   # 评委版：内联作者 Key，只发评委，绝�
 <table>
 <tr><th style="width:250px">可能的追问</th><th>一句话应答</th></tr>
 <tr><td>你们这是背单词 App 吗？</td><td>不是。我们生产处方、不生产药：测准 + 诊断 + 开补词单，背单词交给用户惯用的工具。</td></tr>
-<tr><td>测出来准吗？凭什么？</td><td>我们把误差写在结果旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，并且抽样与估计有 187 条断言守着。</td></tr>
+<tr><td>测出来准吗？凭什么？</td><td>我们把误差写在结果旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，并且抽样与估计有 195 条断言守着。</td></tr>
 <tr><td>AI 具体做了什么？</td><td>模型只做解释与规划，所有数字来自 8 个工具的返回值；数据不足时它会明确说"样本太少不能下结论"。</td></tr>
 <tr><td>是向量 RAG 吗？</td><td>不是。是「本地语料倒排索引 + 工具按需检索」的轻量 RAG；向量方案会拖几十 MB 权重，毁掉单文件 2 MB 与断网可用。</td></tr>
 <tr><td>断网能用吗？</td><td>能。单文件双击即开，答题、进度、报告、本地方案全部离线可用；AI 走不了时有确定性规则兜底。</td></tr>

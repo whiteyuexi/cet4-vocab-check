@@ -239,6 +239,131 @@
     if (A.render) A.render();
     return true;
   };
+  /* ================= 等级演示档案（给评委看六个等级长什么样） =================
+     为什么需要：等级只升级一次，要展示"每个等级各自是什么样子"，靠现场答题是不可能的
+     （测到 S 需要把手上的词背到 92%）。这里一次性生成 6 个使用者档案，每个档案的作答
+     刚好落在对应等级上，之后在「使用者」面板里点一下就能切换。
+     数据是真的让引擎算出来的：先按等级反推每个频段该有多少认识/模糊/不认识，
+     再把这些词条写进作答状态，最后 rank 由 rankAt() 现算——不是往报告里贴一个假等级。
+     设计上的两个约束：
+       ① 高频段掌握率必须高于该等级的封顶线，否则会被地基约束压下去（生成后要校验）；
+       ② 每个档案都是 100% 覆盖，这样首页显示"实测"、报告页才有等级与补词清单。 */
+  var DEMO_PREFIX = '示例 · ';
+  A.DEMO_PREFIX = DEMO_PREFIX;
+  A.DEMO_LEVELS = [
+    { k: 'S', name: '卓越', ratio: 0.94, top: 0.97, blurb: '大纲几乎全覆盖，可以直接上真题' },
+    { k: 'A', name: '优秀', ratio: 0.88, top: 0.93, blurb: '核心扎实，只剩零散漏洞' },
+    { k: 'B+', name: '良好', ratio: 0.80, top: 0.86, blurb: '高频词拿下，中低频成片缺口' },
+    { k: 'B', name: '中等', ratio: 0.70, top: 0.78, blurb: '阅读能应付，写作长难句卡词' },
+    { k: 'C', name: '偏弱', ratio: 0.57, top: 0.52, blurb: '高频词仍有明显漏洞' },
+    { k: 'D', name: '基础薄弱', ratio: 0.38, top: 0.33, blurb: '不到一半，直接刷题一直在查词' }
+  ];
+
+  /* 给定各频段词数与目标总掌握率，解出一条"高频高、低频低"的等比下降曲线。
+     为什么要解：总掌握率是各频段加权平均，只写死一个数会让高频段也掉下去，
+     一掉到封顶线以下，等级就被压低了。 */
+  function bandRatioCurve(sizes, targetRatio, topRatio) {
+    var order = [1, 2, 3, 4, 5, 6, 0];
+    var total = 0, b;
+    for (b in sizes) total += sizes[b];
+    var want = targetRatio * total;
+    function sumAt(slope) {
+      var s = 0;
+      for (var k = 0; k < order.length; k++) {
+        var r = topRatio - slope * k;
+        if (r > 1) r = 1;
+        if (r < 0) r = 0;
+        s += (sizes[order[k]] || 0) * r;
+      }
+      return s;
+    }
+    var lo = 0, hi = 0.6;
+    for (var it = 0; it < 60; it++) {
+      var mid = (lo + hi) / 2;
+      if (sumAt(mid) > want) lo = mid; else hi = mid;
+    }
+    var slope = (lo + hi) / 2, out = {};
+    for (var k2 = 0; k2 < order.length; k2++) {
+      var r2 = topRatio - slope * k2;
+      out[order[k2]] = Math.max(0, Math.min(1, r2));
+    }
+    return out;
+  }
+
+  /* 稳定但打散的顺序：同一台机器每次生成的结果一样，方便复现与截图 */
+  function demoSorted(list) {
+    return list.slice().sort(function (a, b) {
+      var ha = (a * 2654435761) % 4294967296, hb = (b * 2654435761) % 4294967296;
+      return ha - hb || a - b;
+    });
+  }
+
+  /* 生成 6 个等级演示档案。返回 [{name, rank, ratio}]，已按等级从高到低排好 */
+  A.buildDemoProfiles = function () {
+    var keep = A.activeProfile();
+    var sizes = {};
+    var pool = activePool();
+    var byBand = {};
+    for (var i = 0; i < pool.length; i++) {
+      var b = A.bandOf(pool[i]);
+      sizes[b] = (sizes[b] || 0) + 1;
+      (byBand[b] = byBand[b] || []).push(pool[i]);
+    }
+
+    var made = [];
+    A.DEMO_LEVELS.forEach(function (L) {
+      var name = DEMO_PREFIX + L.name;
+      var id = null, list = A.profileList();
+      for (var m = 0; m < list.length; m++) if (list[m].name === name) id = list[m].id;
+      if (id) A.switchProfile(id); else A.createProfile(name);
+
+      /* 清空这个档案，重新灌数据（可重复生成，不会叠加） */
+      S.status = {};
+      S.samples = [];
+      S.rounds = [];
+      S.session = null;
+      S.lastResult = null;
+      S.history = [];
+      S.round = { n: 1, startedAt: Date.now() };
+
+      var curve = bandRatioCurve(sizes, L.ratio, L.top);
+      for (var bb in byBand) {
+        var words = demoSorted(byBand[bb]);
+        var N = words.length;
+        var r = curve[bb] === undefined ? L.ratio : curve[bb];
+        var score = N * r;
+        var fuzzy = Math.round(score * 0.08);          // 8% 落在「模糊」，其余是「认识」
+        var known = Math.max(0, Math.round(score - 0.5 * fuzzy));
+        if (known + fuzzy > N) { fuzzy = Math.max(0, N - known); }
+        for (var w = 0; w < N; w++) {
+          A.setSt(words[w], w < known ? 2 : (w < known + fuzzy ? 1 : 0));
+        }
+      }
+
+      /* 再补一条与作答一致的抽样记录：首页的"最近一次抽样"与回访卡会用到它 */
+      var sampleBands = {}, per = 0;
+      for (var sb in byBand) {
+        var bbWords = demoSorted(byBand[sb]).slice(0, 12);
+        var k = 0, f = 0;
+        for (var si = 0; si < bbWords.length; si++) {
+          var st = A.getSt(bbWords[si]);
+          if (st === 2) k++; else if (st === 1) f++;
+        }
+        sampleBands[sb] = { N: sizes[sb], n: bbWords.length, k: k, f: f };
+        per += bbWords.length;
+      }
+      S.samples = [{ ts: Date.now(), n: per, k: 0, f: 0, pre: 0, bank: bankKey(), mode: 'self', bands: sampleBands }];
+      A.save();
+
+      var R = A.levelReport();
+      made.push({ id: A.activeProfile().id, name: name, rank: R.rank ? R.rank.k : '?', rankName: R.rank ? R.rank.name : '', ratio: R.ratio });
+    });
+
+    /* 回到生成前的档案，别把用户从自己那一页踢走 */
+    A.switchProfile(keep.id);
+    return made;
+  };
+
   A.markWelcomed = function () { S.welcomed = true; save(); };
   A.needsWelcome = function () { return !S.welcomed; };
 
