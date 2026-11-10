@@ -1419,6 +1419,7 @@
     else if (route === 'stats') html = A.viewStats();
     else if (route === 'report') html = A.viewReport ? A.viewReport() : '';
     else if (route === 'settings') html = A.viewSettings();
+    else if (route === 'drill') html = A.viewDrill ? A.viewDrill() : '';
     var banner = A.storageBroken
       ? '<div class="card" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-size:13px;line-height:1.7">' +
         '<b>无法保存作答数据</b>：浏览器禁止了本地存储（localStorage），刷新后会丢失。' +
@@ -1687,7 +1688,7 @@
         '<button class="btn primary lg fx-shine fx-magnet" data-act="start" data-kind="probe" data-target="400">快速摸底 · 约 ' + nFast + ' 题 · ' + minsText(nFast) + '</button>' +
         '<button class="btn lg outline-light" data-act="start" data-kind="probe" data-target="250">更准一点 · 约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>' +
         '</div>';
-      h += '<p class="hero-note">中途随时可以停，做题记录会保留；下次打开接着测。</p>';
+      h += '<p class="hero-note">中途随时可以停，做题记录会保留；下次打开接着测。 或者 <button class="btn sm ghost" style="vertical-align:middle;margin-left:6px" data-act="drill-start">直接进语境里练</button></p>';
       h += '</div>';
     } else {
       h += '<div class="hero">';

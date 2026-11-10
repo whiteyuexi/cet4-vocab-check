@@ -623,6 +623,17 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
       check('结果页给出 95% 区间', /95% 区间/.test(txt), txt.slice(0, 46).replace(/\s+/g, ' '));
     });
 
+    /* 语境填空：出题来自例句语料，判分完全确定，不依赖网络与模型 */
+    step('语境填空', () => {
+      const n = A.buildDrill(6);
+      check('能从缺口词里出题', n > 0, String(n));
+      A.go('drill');
+      check('渲染出四个选项', qa('.drill-opt').length === 4, qa('.drill-opt').length + ' 个');
+      click('.drill-opt');
+      check('选中后给出对错反馈', !!q('.drill-fb'));
+      check('判分是确定的（选中即记账）', A.S.drill.qs[0].pick >= 0, String(A.S.drill.qs[0].pick));
+    });
+
     // 模拟刷新
     const dom2 = makeDom(global.__savedRaw);
     win.close();

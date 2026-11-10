@@ -105,6 +105,7 @@
     }
     h += '</ol>';
     h += '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">' +
+      '<button class="btn sm" data-act="drill-start">语境里练一练</button>' +
       '<button class="btn sm" data-act="copy-report">复制成绩</button>' +
       '<button class="btn sm" data-act="print-report">打印 / 存为 PDF</button>' +
       '<button class="btn sm ghost" data-act="go" data-route="stats">看总体统计</button>' +
@@ -656,6 +657,15 @@
           break;
         }
         case 'resume': A.go('test'); break;
+        /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
+        case 'drill-start': {
+          var dn = A.buildDrill(10);
+          if (!dn) { A.toast('还没有能出题的缺口词——先做完一次摸底'); break; }
+          A.go('drill');
+          break;
+        }
+        case 'drill-pick': A.drillPick(parseInt(t.getAttribute('data-n'), 10)); break;
+        case 'drill-next': A.drillNext(); break;
         case 'drop-session': A.S.session = null; A.save(); A.render(); A.toast('已放弃上次检测'); break;
         case 'judge': A.judge(parseInt(t.getAttribute('data-v'), 10)); break;
         case 'rejudge': A.rejudge(parseInt(t.getAttribute('data-v'), 10)); break;
