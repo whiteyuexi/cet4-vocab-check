@@ -79,6 +79,7 @@ win.addEventListener('load', () => {
       check('生成本次结果', !!A.S.lastResult && A.S.lastResult.total === 6,
         A.S.lastResult ? JSON.stringify({ total: A.S.lastResult.total, k: A.S.lastResult.k, f: A.S.lastResult.f, u: A.S.lastResult.u }) : '');
       check('写入历史记录', A.S.history.length === 1);
+      check('结果 kind 与开始时一致（probe）', A.S.lastResult.kind === 'probe', A.S.lastResult.kind);
       check('结果页列出错词', qa('.witem').length > 0, qa('.witem').length + ' 个');
     });
 
@@ -599,6 +600,28 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     A.setSt(A.activePool()[0], 2);
     A.startSession('list', { list: A.activePool().slice(0, 8), label: '测试' });
   });
+
+    /* P0 回归：80 题摸底做完，结果页必须交出词汇量和区间，而不是只给"掌握 62 / 80 词"。
+       成因：startSession 只认 group/all/probe/list，而空态按钮发的是 kind="quick"，
+       落不进任何分支 → 空队列 → 弹一句假的"当前词库里没有可检测的词"；
+       反过来结果页又按 kind === 'quick' 判断，永远不成立。两边对不上，一路漏到交付版。 */
+    step('摸底结果必须给出词汇量（P0 回归）', () => {
+      A.S.session = null; A.save(); A.go('test');
+      check('空答题页的快速摸底是 probe', !!q('[data-act="start"][data-kind="probe"]'));
+      click('[data-act="start"][data-kind="probe"]');
+      check('点下去真的开了一轮摸底', !!A.S.session && A.S.session.kind === 'probe',
+        A.S.session ? A.S.session.kind : 'null');
+
+      // 按"完成 100 词摸底"的形态渲染结果页
+      A.S.session = null; A.save();
+      A.addSample({ n: 100, k: 62, f: 18 }); A.save();
+      A.S.lastResult = { kind: 'probe', label: '摸底检测 · 目标 ±400 词', ts: Date.now(),
+                         total: 100, k: 62, f: 18, u: 20, skipped: 0, log: [] };
+      A.go('result');
+      const txt = doc.getElementById('view').textContent;
+      check('结果页给出词汇量', /≈ [\d,]+ 词/.test(txt), (/≈ [\d,]+ 词/.exec(txt) || ['无'])[0]);
+      check('结果页给出 95% 区间', /95% 区间/.test(txt), txt.slice(0, 46).replace(/\s+/g, ' '));
+    });
 
     // 模拟刷新
     const dom2 = makeDom(global.__savedRaw);

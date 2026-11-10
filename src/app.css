@@ -6,7 +6,9 @@
 
 :root{
   /* 文字 */
-  --ink:#101319; --ink2:#575E6B; --ink3:#6B7280;
+  /* --ink3 原来 #6B7280 在页面底 #EDF0F6 上只有 4.2:1（白底才是文档写的 4.83:1），
+     页面级小字达不到 AA。压深到 #5C6371，同底色上约 5.4:1。 */
+  --ink:#101319; --ink2:#575E6B; --ink3:#5C6371;
   /* 表面 */
   --bg:#EDF0F6; --glass:rgba(255,255,255,.72); --glass-2:rgba(255,255,255,.5);
   --glass-line:rgba(255,255,255,.75); --line:rgba(16,19,25,.07); --line2:rgba(16,19,25,.13);
@@ -182,7 +184,7 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
 .presets button{padding:10px 6px;border-radius:11px;border:1px solid var(--line);background:var(--glass-2);
   display:flex;flex-direction:column;gap:3px;align-items:center}
 .presets button b{font-size:13px;font-weight:650}
-.presets button small{font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400}
+.presets button small{font-family:var(--mono);font-size:11px;color:var(--ink3);font-weight:400}
 .presets button:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
 
 /* ---------- 分组网格 ---------- */
@@ -190,7 +192,7 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
 .gbtn{padding:9px 7px 8px;border-radius:11px;border:1px solid var(--line);background:var(--glass);
   box-shadow:var(--lift-sm);display:flex;flex-direction:column;gap:6px;backdrop-filter:var(--blur)}
 .gbtn b{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink2);text-align:center;letter-spacing:-.02em}
-.gbtn small{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-align:center;letter-spacing:-.01em}
+.gbtn small{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:center;letter-spacing:-.01em}
 .gbtn i{display:block;height:3px;border-radius:2px;background:var(--line2);overflow:hidden}
 .gbtn i em{display:block;height:100%;border-radius:2px;background:var(--warn);transition:width .5s cubic-bezier(.2,.7,.3,1)}
 .gbtn:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--lift-hover)}
@@ -215,10 +217,16 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
   background:var(--glass-2);border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
 .spk:hover{color:var(--accent);border-color:var(--accent)}
 .spk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* 判定标准常驻在三个按钮上方：这套测量用的仪器就是用户自己的判断，
+   标准不在现场 = 每人拿自己的尺子量。颜色用 --ink2，不用 --ink3（小字要有余量）。 */
+.judge-hint{font-size:12.5px;line-height:1.7;color:var(--ink2);text-align:center;
+  margin-top:22px;padding:9px 12px;border-radius:12px;background:var(--glass-2);
+  border:1px solid var(--line)}
+.judge-hint b{color:var(--ink);font-weight:700}
 .judge{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:26px}
 .jbtn{padding:16px 8px;border-radius:15px;border:1px solid var(--line2);background:var(--glass-2);font-weight:650;
   display:flex;flex-direction:column;gap:5px;align-items:center;font-size:14px}
-.jbtn small{font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--ink3)}
+.jbtn small{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--ink3)}
 .jbtn::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line2)}
 .jbtn.k::before{background:var(--ok)}.jbtn.f::before{background:var(--warn)}.jbtn.u::before{background:var(--bad)}
 .jbtn.k:hover,.jbtn.k.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
@@ -245,7 +253,7 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
 .ex-en{font-size:14.5px;line-height:1.62}
 .ex-en b{color:var(--accent);font-weight:700}
 .ex-zh{font-size:12.5px;color:var(--ink2);margin-top:4px}
-.ex-src{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:8px}
+.ex-src{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:8px}
 .test-foot{display:flex;gap:9px;justify-content:center;margin-top:20px;flex-wrap:wrap}
 
 /* ---------- 统计与报告 ---------- */
@@ -261,14 +269,14 @@ html[data-theme="dark"] .bank.on{background:rgba(255,255,255,.1)}
 .barcol{flex:1 0 22px;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
 .barcol .stack{width:100%;max-width:24px;background:var(--line);border-radius:5px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;gap:1px}
 .barcol .stack i{display:block;width:100%;border-radius:2px;transition:height .6s cubic-bezier(.2,.7,.3,1)}
-.barcol span{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.barcol span{font-family:var(--mono);font-size:11px;color:var(--ink3)}
 .bandlist{display:flex;flex-direction:column;gap:3px;margin-top:12px}
 .brow{display:grid;grid-template-columns:104px 1fr 50px 24px;gap:12px;align-items:center;padding:6px 0}
 .bl{font-size:12.5px;color:var(--ink2)}
 .bbar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;box-shadow:inset 0 1px 2px rgba(16,19,25,.06)}
 .bbar>i{display:block;height:100%;border-radius:6px;transition:width .6s cubic-bezier(.2,.7,.3,1)}
 .bv{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
-.bmeta{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin:-2px 0 8px 116px}
+.bmeta{font-family:var(--mono);font-size:11px;color:var(--ink3);margin:-2px 0 8px 116px}
 .hist{display:flex;flex-direction:column;gap:8px}
 .hist .h{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--glass-2);border:1px solid var(--line);border-radius:13px;font-size:12.5px}
 .hist .h b{font-variant-numeric:tabular-nums;font-family:var(--mono)}
@@ -327,7 +335,7 @@ details.tips[open] summary::before{content:"− "}
 .ai-a ul{margin:6px 0;padding-left:20px}
 .ai-a li{margin:4px 0}
 .ai-tools{display:flex;flex-wrap:wrap;gap:6px}
-.ai-tool{font-family:var(--mono);font-size:10.5px;background:var(--ok-soft);color:var(--ok);padding:3px 9px;border-radius:20px}
+.ai-tool{font-family:var(--mono);font-size:11px;background:var(--ok-soft);color:var(--ok);padding:3px 9px;border-radius:20px}
 /* AI 授权锁：作者把 API Key 加密后内联进产物，密码对了才解开。
    这条提示必须显得"是我不想花你的额度"，而不是"这里坏了" */
 .ai-lock{border:1px solid rgba(42,91,224,.22);background:linear-gradient(180deg,rgba(42,91,224,.06),rgba(42,91,224,.02));
@@ -592,7 +600,7 @@ html[data-theme="dark"] .pet-canvas{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5)
 html[data-theme="dark"] .pet-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
 html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,0) 76%)}
 
-.pet-credit{position:absolute;left:0;right:0;bottom:252px;font-size:10px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
+.pet-credit{position:absolute;left:0;right:0;bottom:252px;font-size:11px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 /* 只有 token 计量一行；没投喂过就整块隐藏，别在那儿留一条会挡点击的空盒子 */
 .pet-credit:empty{display:none}
 .pet-credit a{color:var(--ink3);text-decoration:underline}
@@ -779,7 +787,7 @@ html[data-theme="dark"] .revisit{border-left-color:var(--accent)}
   padding:12px 14px;border-radius:13px;border:1px solid var(--line);background:var(--glass-2)}
 .who-row.on{border-color:rgba(42,91,224,.3);background:var(--accent-soft)}
 .who-nm{font-size:13.5px;font-weight:650;color:var(--ink);display:flex;align-items:center;gap:8px;min-width:0}
-.who-nm em{font-style:normal;font-size:10px;font-weight:700;color:var(--accent);
+.who-nm em{font-style:normal;font-size:11px;font-weight:700;color:var(--accent);
   background:#fff;border-radius:999px;padding:1px 7px}
 html[data-theme="dark"] .who-nm em{background:rgba(255,255,255,.12)}
 .who-meta{grid-column:1;font-size:11.5px;color:var(--ink3);font-family:var(--mono)}
@@ -819,7 +827,7 @@ html[data-theme="dark"] .vmap-c.bad{background:rgba(240,138,124,var(--fa,.5));bo
 .vmap-legend i.warn{background:var(--warn)}
 .vmap-legend i.bad{background:var(--bad)}
 .vmap-legend i.none{background:transparent;border:1px dashed var(--line2)}
-.vmap-hint{margin-left:auto;font-family:var(--mono);font-size:10.5px;opacity:.85}
+.vmap-hint{margin-left:auto;font-family:var(--mono);font-size:11px;opacity:.85}
 .vmap-sum{margin-top:12px;line-height:1.85}
 .vmap-sum b{color:var(--ink)}
 
@@ -901,7 +909,7 @@ html[data-theme="dark"] .vmap-c.bad{background:rgba(240,138,124,var(--fa,.5));bo
 .rpt-brow+.rpt-brow{border-top:1px solid var(--line)}
 .rpt-brow.hot{background:var(--warn-soft)}
 .rpt-bname{font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
-.rpt-bname em{font-style:normal;font-size:10px;font-weight:700;color:var(--warn);
+.rpt-bname em{font-style:normal;font-size:11px;font-weight:700;color:var(--warn);
   background:#fff;border-radius:999px;padding:1px 7px}
 .rpt-bstat{display:flex;align-items:center;gap:10px}
 .rpt-bbar{flex:1;height:8px;border-radius:5px;background:var(--line);overflow:hidden}
@@ -973,7 +981,7 @@ html[data-theme="dark"] .vmap-c.bad{background:rgba(240,138,124,var(--fa,.5));bo
   background:var(--rk-soft,var(--line));color:var(--rk,var(--ink2));font-weight:800;font-size:12px}
 .rpt-hrow-name{font-weight:650;color:var(--ink)}
 .rpt-hrow-v{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);text-align:right}
-.rpt-hrow-v i{font-style:normal;font-size:10px;color:var(--ink3);margin-left:2px;font-weight:400}
+.rpt-hrow-v i{font-style:normal;font-size:11px;color:var(--ink3);margin-left:2px;font-weight:400}
 .rpt-hrow-d{font-family:var(--mono);font-size:11.5px;color:var(--ok);text-align:right}
 .rpt-hrow-t{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right}
 
@@ -1040,7 +1048,7 @@ html[data-theme="dark"] .rpt-kv{background:rgba(255,255,255,.04)}
   stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .6s cubic-bezier(.2,.7,.3,1)}
 .rail-card b{font-size:14px;font-weight:800;letter-spacing:-.02em;color:var(--ink);
   font-variant-numeric:tabular-nums;margin-top:2px}
-.rail-card small{font-size:10px;color:var(--ink3);font-family:var(--mono);text-align:center;line-height:1.35}
+.rail-card small{font-size:11px;color:var(--ink3);font-family:var(--mono);text-align:center;line-height:1.35}
 
 /* 右上角等级印章 */
 .seal{position:fixed;right:20px;top:88px;z-index:44;width:108px;display:none;
@@ -1057,7 +1065,7 @@ html[data-theme="dark"] .rpt-kv{background:rgba(255,255,255,.04)}
 .seal.tone-warn{--rk:var(--warn);--rk-soft:var(--warn-soft)}
 .seal.tone-bad{--rk:var(--bad);--rk-soft:var(--bad-soft)}
 .seal.locked .seal-in{font-size:17px;color:var(--ink3);border-style:dashed;border-color:rgba(16,19,25,.2)}
-.seal small{font-size:10.5px;font-family:var(--mono);color:var(--ink3);text-align:center;
+.seal small{font-size:11px;font-family:var(--mono);color:var(--ink3);text-align:center;
   line-height:1.3;white-space:nowrap}
 .seal.ready small{color:var(--rk)}
 @media (min-width:1280px){ .seal{display:flex} }
@@ -1090,7 +1098,7 @@ html[data-theme="dark"] .seal.locked .seal-in{border-color:rgba(255,255,255,.22)
 .mail-seal.locked{background:radial-gradient(circle at 34% 28%,#E4E9F3,#AEB7C7 80%);
   font-size:11px;color:#4A5262}
 .mail.ready:hover .mail-seal{transform:translateX(-50%) scale(1.12)}
-.mail-tag{margin-top:9px;text-align:center;font-size:10.5px;font-weight:600;color:var(--ink3);
+.mail-tag{margin-top:9px;text-align:center;font-size:11px;font-weight:600;color:var(--ink3);
   letter-spacing:.02em;white-space:nowrap}
 .mail.ready .mail-tag{color:var(--accent)}
 @keyframes mailFloat{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-6px) rotate(1.2deg)}}
@@ -1187,7 +1195,7 @@ html[data-theme="dark"] #intro::after{mix-blend-mode:screen;opacity:.28}
 .intro-enter{margin:34px auto 0;--d:.82s;display:inline-flex;align-items:center;gap:10px;
   height:52px;padding:0 30px;border:0;border-radius:999px;cursor:pointer;position:relative;overflow:hidden;
   font:700 16px/1 var(--sans);letter-spacing:.14em;color:#fff;
-  background:linear-gradient(115deg,#2A5BE0,#3E7BFF 62%,#00C4B4);
+  background:linear-gradient(115deg,#1F4BD0,#2A5BE0 62%,#2F6BD8);
   box-shadow:0 12px 30px -12px rgba(42,91,224,.62), inset 0 1px 0 rgba(255,255,255,.42);
   transition:transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease}
 .intro-enter svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;
@@ -1369,7 +1377,7 @@ html[data-theme="dark"] .ai-act:hover{color:#fff;background:linear-gradient(180d
 .rail-card.rail-ai svg{width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round;margin-bottom:4px}
 .rail-card.rail-ai b{font-size:11.5px;color:var(--ink);font-weight:650}
-.rail-card.rail-ai small{font-size:9.5px;color:var(--ink3)}
+.rail-card.rail-ai small{font-size:11px;color:var(--ink3)}
 .rail-card.rail-ai:hover{box-shadow:var(--lift-hover)}
 .rail-card.rail-ai:hover svg{stroke:var(--accent-deep,#1E46C8)}
 
@@ -1385,7 +1393,7 @@ html[data-theme="dark"] .g-step.warn{background:rgba(224,177,92,.1)}
 .guide::-webkit-scrollbar-thumb{background:rgba(16,19,25,.16);border-radius:5px}
 /* 顶栏品牌：主标「四六级词汇量检测」（完整名较长，靠字号与字重压住单行） */
 .logo .logo-sub{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;
-  font-size:10px;font-weight:650;letter-spacing:.02em;vertical-align:1px;
+  font-size:11px;font-weight:650;letter-spacing:.02em;vertical-align:1px;
   color:var(--accent);background:var(--accent-soft);border:1px solid rgba(42,91,224,.22)}
 html[data-theme="dark"] .logo .logo-sub{color:#A8C2FF;border-color:rgba(127,164,255,.3)}
 
@@ -1428,3 +1436,20 @@ html[data-theme="dark"] .ai-note { background: rgba(224,177,92,.12); border-colo
 }
 .spk.acc.both { min-width: 56px; font-size: 12px; }
 .spk.acc:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- 结果页：一个数字 + 一个动作 ----------
+   结论独占一屏，其余全部折叠。数字用 --mono 的字宽但走 --sans 的字形，
+   避免等宽字体在大字号下显得"像日志"。 */
+.res-hero{text-align:center;padding:26px 22px 22px}
+.res-num{font-size:44px;line-height:1.1;font-weight:800;letter-spacing:-.02em;margin:10px 0 6px;
+  font-variant-numeric:tabular-nums}
+.res-sub{color:var(--ink2);max-width:34em;margin:0 auto;line-height:1.65}
+.res-cta{margin-top:18px;min-width:220px}
+details.tips{margin-top:14px}
+details.tips[open]{padding-bottom:18px}
+details.tips summary{display:flex;align-items:center;gap:6px}
+html[data-theme="dark"] .res-num{color:var(--ink)}
+
+/* 答题页：气泡收窄，别压到判词行（她可以继续在旁边，但话不能盖住按钮） */
+.pet.testing .pet-bubble{width:190px;max-width:190px;font-size:12.5px;line-height:1.6}
+.pet.testing .pet-bubble .pet-chip{font-size:11.5px;padding:5px 9px}

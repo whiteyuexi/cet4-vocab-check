@@ -104,9 +104,13 @@
     A.render();
     if (A.S.settings.autoBothAccents && A.S.settings.sound) A.speakAll(A.WORDS[i].w, ['uk', 'us']);
     A.announce(A.WORDS[i].w + '：已标记为' + (v === 2 ? '认识' : v === 1 ? '模糊' : '不认识'));
-    if (A.S.settings.autoNext) {
+    /* 只在「认识」时才自动跳走。
+       选「模糊 / 不认识」的人正是需要看释义、看例句的人，850ms 读不完；
+       更糟的是定时器一响页面就翻页，紧接着点的「改判」会落到下一个词上——
+       一个本来用来纠错的按钮，变成新的错误来源。 */
+    if (A.S.settings.autoNext && v === 2) {
       clearTimer();
-      RUN.timer = setTimeout(function () { A.nextQ(); }, A.S.settings.autoDelay);
+      RUN.timer = setTimeout(function () { A.nextQ(); }, Math.max(1400, A.S.settings.autoDelay));
     }
   };
 
@@ -269,7 +273,7 @@
         '<b style="font-size:17px">还没有正在进行的检测</b>' +
         '<div class="tiny" style="margin:8px 0 18px">选择一个模式马上开始</div>' +
         '<div class="row" style="justify-content:center;flex-wrap:wrap">' +
-        '<button class="btn primary" data-act="start" data-kind="quick">快速摸底 100 词</button>' +
+        '<button class="btn primary" data-act="start" data-kind="probe" data-target="400">快速摸底 80 题</button>' +
         '<button class="btn" data-act="go" data-route="groups">分组检测</button>' +
         '<button class="btn" data-act="start" data-kind="all">全量检测</button>' +
         '</div></div>';
@@ -361,7 +365,13 @@
         h += '</div>';
       }
     } else {
-      h += '<div class="judge">';
+      /* 判定标准必须待在判断现场。
+       这三个按钮就是整套测量的仪器：不同人对「模糊」的阈值不一样，标准藏起来，
+       等于每人拿自己的尺子量，再把结果拿去比较。第一轮常驻，之后折成一个小问号。 */
+    h += '<div class="judge-hint">' +
+      '<b>认识</b>：3 秒内想起主要中文意思　·　<b>模糊</b>：见过但拿不准　·　<b>不认识</b>：完全没印象' +
+      '</div>';
+    h += '<div class="judge">';
       h += '<button class="jbtn u' + (RUN.revealed && lastV() === 0 ? ' on' : '') + '" data-act="judge" data-v="0">不认识<small>按 1</small></button>';
       h += '<button class="jbtn f' + (RUN.revealed && lastV() === 1 ? ' on' : '') + '" data-act="judge" data-v="1">模糊<small>按 2</small></button>';
       h += '<button class="jbtn k' + (RUN.revealed && lastV() === 2 ? ' on' : '') + '" data-act="judge" data-v="2">认识<small>按 3</small></button>';

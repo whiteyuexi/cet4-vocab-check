@@ -240,11 +240,20 @@
        · **检测进行中不自己走动**（只在原地呼吸/看鼠标），把注意力留给题目；
        · 被人拖到正文区、或窗口变化把她留在那儿，会自己顺着地面走回右下角。 */
   function safeLeft() {
-    // 正文列右边界 + 一点余量；同时保证至少留出她自己的宽度
+    // 正文列右边界 + 一点余量：以前只按视口算（W*0.68），根本不知道正文有多宽，
+    // 于是在 1280–1366 的笔记本上她会落进正文区，气泡正好压在判词行上。
     var w = window.innerWidth;
+    var edge = 0;
+    var wrap = document.querySelector('.wrap');
+    if (wrap) {
+      var r = wrap.getBoundingClientRect();
+      if (r.width > 0) edge = r.right;
+    }
     var byRatio = w * 0.68;              // 右侧约三分之一
     var byContent = w - NW - 340;        // 离右边缘 340px 以内
-    return Math.max(NW + 8, Math.min(maxX(), Math.max(byRatio, byContent)));
+    var base = Math.max(byRatio, byContent);
+    if (edge > 0) base = Math.max(base, edge + 12);
+    return Math.max(NW + 8, Math.min(maxX(), base));
   }
   function inSafeZone() { return P.x >= safeLeft() - 2; }
   function busy() {
@@ -1129,6 +1138,10 @@
     if (!built) { built = true; hostEl = host; build(host); }
     // 兜底：主循环万一没在跑，这里补上，别让她彻底不动
     else if (wide() && !rafId) startLoop();
+
+    /* 答题页把气泡收窄：那是唯一会挡住"认识"按钮的场合。
+       她可以继续在旁边，但话不能压到判词行上。 */
+    if (hostEl) hostEl.classList.toggle('testing', A.getRoute() === 'test');
 
     if (creditEl) {
       var fedNow = feedLine();

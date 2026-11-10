@@ -11,67 +11,86 @@
     if (!r) {
       return '<div class="card" style="text-align:center;padding:40px 20px">' +
         '<b style="font-size:17px">还没有检测结果</b><div class="tiny" style="margin:10px 0 18px">先完成一次检测吧</div>' +
-        '<button class="btn primary" data-act="start" data-kind="quick">开始快速摸底</button></div>';
+        '<button class="btn primary" data-act="start" data-kind="probe" data-target="400">开始快速摸底</button></div>';
     }
     var total = r.total, score = A.scoreOf(r, !!S.settings.strict);
-    var ratio = total ? score / total : 0;
-    var universe = A.activePool().length;
-    var est = A.estimate(total, score, universe);
-    var isQuick = r.kind === 'quick';
+    var pctScore = A.pct(score, total);
+    /* 结果页的大数字必须和首页、总览、回访卡是同一个口径。
+       以前这里调 A.estimate(total, score, universe) —— 没有分层、没有 Agresti-Coull，
+       和「下一步」里的 A.estimateNow() 各算各的，同一个用户会看到两个数。
+       现在统一读 estimateNow()：它是全站唯一的口径来源。 */
+    var isQuick = r.kind === 'probe';
     var enoughSample = total >= 20;                 // 少于 20 词的抽样不给数字，避免"一个词就敢报词汇量"
+    var est = A.estimateNow();
+    var hasEst = isQuick && enoughSample && est && (est.kind === 'sample' || est.kind === 'full');
 
+    var weak = [];
+    for (var i = 0; i < r.log.length; i++) if (r.log[i].v !== 2) weak.push(r.log[i].i);
+
+    var wb = {};
+    weak.forEach(function (i) { var b = A.bandOf(i); (wb[b] || (wb[b] = [])).push(i); });
+    var bandKeys = Object.keys(wb).sort(function (a, b) { return wb[b].length - wb[a].length; });
+
+    var g = A.tally(A.activePool());
+    var ge = A.estimateNow();
+
+    /* 整页只留一个 primary。其余动作降级到折叠区或 ghost 行 */
+    var cta;
+    if (bandKeys.length) {
+      cta = { label: '先补「' + A.BAND_NAMES[bandKeys[0]] + '」这 ' + wb[bandKeys[0]].length + ' 个词',
+              attrs: ' data-act="review-band" data-band="' + bandKeys[0] + '"' };
+    } else if (est.kind === 'sample') {
+      cta = { label: '精测一次（约 ' + A.needFor(150) + ' 题）',
+              attrs: ' data-act="start" data-kind="probe" data-target="150"' };
+    } else if (g.tested < g.total * 0.95) {
+      cta = { label: '继续完整检测', attrs: ' data-act="start" data-kind="all"' };
+    } else {
+      cta = { label: '导出这份成绩', attrs: ' data-act="copy-report"' };
+    }
+
+    /* ---------- 第一屏：一个数字 + 一个动作 ----------
+       以前第一屏是「掌握率环 + 掌握 62/80 词 + 三段图例 + 累计进度 + 未掌握词表 + 四个按钮」，
+       用户来买的是"我大概多少词"，却要先看懂五样东西。现在数字在最上面，下面只有一个按钮。 */
     var h = '';
-    h += '<div class="card" style="text-align:center">';
+    h += '<div class="card res-hero">';
     h += '<div class="tiny">' + esc(r.label) + ' · ' + A.fmtDate(r.ts) + '</div>';
-    h += '<div style="display:flex;justify-content:center;margin:14px 0">' + A.ring(A.pct(score, total), A.pct(score, total) + '%', '本次掌握率') + '</div>';
-    h += '<div style="font-size:30px;font-weight:850">' + (isQuick && est && enoughSample ? '≈ ' + est.vocab.toLocaleString('en-US') + ' 词' : '掌握 ' + (r.k + r.f) + ' / ' + total + ' 词') + '</div>';
-    h += '<div class="tiny" style="margin-top:6px">' + (isQuick && est && enoughSample
-      ? ('按随机抽样 ' + total + ' 词估算大纲词汇量，95% 置信区间 ' + est.lo.toLocaleString('en-US') + ' ~ ' + est.hi.toLocaleString('en-US') + (total < 50 ? '；样本偏小，误差较大' : ''))
-      : isQuick && !enoughSample
+    h += '<div class="res-num">' + (hasEst ? '≈ ' + est.vocab.toLocaleString('en-US') + ' 词'
+      : (r.k + r.f) + ' / ' + total + ' 词') + '</div>';
+    h += '<div class="tiny res-sub">' + (hasEst
+      ? (est.kind === 'sample'
+        ? ('基于 ' + est.n + ' 词分层抽样，95% 区间 ' + est.lo.toLocaleString('en-US') + ' ~ ' + est.hi.toLocaleString('en-US') + (est.n < 50 ? '；样本偏小，误差较大' : ''))
+        : ('全库已测 ' + A.pct(est.tally.tested, est.tally.total) + '%，这是实测值不是估算'))
+      : (isQuick && !enoughSample
         ? ('这轮只答了 ' + total + ' 词，样本太小不给词汇量估算；做完 20 词以上（推荐 100 词）再看结果')
-        : '认识 ' + r.k + ' · 模糊 ' + r.f + ' · 不认识 ' + r.u + (r.skipped ? ' · 跳过 ' + r.skipped : '')) + '</div>';
+        : ('本次掌握率 ' + pctScore + '% · 认识 ' + r.k + ' · 模糊 ' + r.f + ' · 不认识 ' + r.u + (r.skipped ? ' · 跳过 ' + r.skipped : '')))) + '</div>';
+    h += '<button class="btn primary res-cta"' + cta.attrs + '>' + esc(cta.label) + '</button>';
     h += '</div>';
 
-    h += '<div class="card"><div class="segbar">' +
+    /* ---------- 细节收进折叠：想深究时再看，不和结论抢位置 ---------- */
+    h += '<details class="card tips"><summary>这次答了 ' + total + ' 题 · 掌握率 ' + pctScore + '%</summary>';
+    h += '<div style="display:flex;justify-content:center;margin:16px 0">' + A.ring(pctScore, pctScore + '%', '本次掌握率') + '</div>';
+    h += '<div class="segbar">' +
       '<i style="width:' + A.pct(r.k, total) + '%;background:var(--ok)"></i>' +
       '<i style="width:' + A.pct(r.f, total) + '%;background:var(--warn)"></i>' +
       '<i style="width:' + A.pct(r.u, total) + '%;background:var(--bad)"></i></div>' +
       '<div class="legend"><span><i style="background:var(--ok)"></i>认识 ' + r.k + ' 词</span>' +
       '<span><i style="background:var(--warn)"></i>模糊 ' + r.f + ' 词</span>' +
       '<span><i style="background:var(--bad)"></i>不认识 ' + r.u + ' 词</span></div>';
-    var g = A.tally(A.activePool());
-    var ge = A.estimateNow();
     h += '<div class="tiny" style="margin-top:14px">累计进度：已测 ' + g.tested + ' / ' + g.total + ' 词' +
       (ge.kind === 'full' ? '，全库累计掌握 <b>' + Math.round(g.k + 0.5 * g.f).toLocaleString('en-US') + '</b> 词（已接近实测）'
         : ge.kind === 'sample' ? '，整体估算词汇量 <b>≈ ' + ge.vocab.toLocaleString('en-US') + '</b> 词（基于 ' + ge.n + ' 词随机抽样）'
           : '') + '</div>';
     h += '<div class="bar" style="margin-top:8px"><i style="width:' + A.pct(g.tested, g.total) + '%"></i></div>';
-    h += '</div>';
-
-    var weak = [];
-    for (var i = 0; i < r.log.length; i++) if (r.log[i].v !== 2) weak.push(r.log[i].i);
-
-    h += '<div class="sec-title">本次没掌握的 ' + weak.length + ' 个词<span class="line"></span></div>';
-    if (!weak.length) {
-      h += '<div class="card tiny">全部答对，太强了！可以试试下一组或全量检测。</div>';
-    } else {
-      h += '<div class="card"><div class="wordlist">';
-      for (var n = 0; n < Math.min(weak.length, 300); n++) h += A.wordRow(weak[n]);
-      h += '</div>' + (weak.length > 300 ? '<div class="tiny" style="margin-top:8px">仅列出前 300 个，完整清单可用「导出未掌握词表」拿到</div>' : '') + '</div>';
-    }
+    h += '</details>';
 
     /* ---------- 下一步：把"然后呢"说清楚，并且点一下就能做 ---------- */
-    var wb = {};
-    weak.forEach(function (i) { var b = A.bandOf(i); (wb[b] || (wb[b] = [])).push(i); });
-    var bandKeys = Object.keys(wb).sort(function (a, b) { return wb[b].length - wb[a].length; });
-    var est = A.estimateNow();
     h += '<div class="sec-title">下一步做什么<span class="line"></span></div>';
     h += '<div class="card nextstep">';
     h += '<ol>';
     if (bandKeys.length) {
       var tb = bandKeys[0];
       h += '<li>本次没掌握的词里，<b>' + A.BAND_NAMES[tb] + '</b> 段最多（' + wb[tb].length + ' 个）——先啃这一段最划算。' +
-        '<button class="btn sm primary" data-act="review-band" data-band="' + tb + '">只复测这 ' + wb[tb].length + ' 个</button></li>';
+        '<button class="btn sm" data-act="review-band" data-band="' + tb + '">只复测这 ' + wb[tb].length + ' 个</button></li>';
     }
     if (est.kind === 'sample') {
       h += '<li>想要更准的数字：再做一次摸底，把目标精度设到 <b>±150 词</b>。' +
@@ -92,6 +111,17 @@
       '<button class="btn sm ghost" data-act="start" data-kind="all">再测一轮</button>' +
       '</div>';
     h += '</div>';
+
+    /* ---------- 未掌握词表：默认折叠，别让失败清单排在处方前面 ---------- */
+    h += '<div class="sec-title">本次没掌握的 ' + weak.length + ' 个词<span class="line"></span></div>';
+    if (!weak.length) {
+      h += '<div class="card tiny">全部答对，太强了！可以试试下一组或全量检测。</div>';
+    } else {
+      h += '<details class="card tips"><summary>展开这 ' + weak.length + ' 个词</summary><div class="wordlist">';
+      for (var n = 0; n < Math.min(weak.length, 300); n++) h += A.wordRow(weak[n]);
+      h += '</div>' + (weak.length > 300 ? '<div class="tiny" style="margin-top:8px">仅列出前 300 个，完整清单可用「导出未掌握词表」拿到</div>' : '') + '</details>';
+    }
+
     if (A.aiCardHTML) h += A.aiCardHTML();
     return h;
   };
@@ -614,12 +644,17 @@
 
       switch (act) {
         case 'go': A.go(t.getAttribute('data-route')); break;
-        case 'start':
+        case 'start': {
+          /* data-target 以前根本没往下传：结果页「精测一次（约 N 题）」和桌宠的「开始摸底」
+             都落回 startSession 的默认 250，按钮上写的题数从来没有生效过。 */
+          var tg = parseInt(t.getAttribute('data-target'), 10);
           A.startSession(t.getAttribute('data-kind'), {
             group: t.getAttribute('data-group') !== null ? parseInt(t.getAttribute('data-group'), 10) : undefined,
-            size: t.getAttribute('data-size') ? parseInt(t.getAttribute('data-size'), 10) : undefined
+            size: t.getAttribute('data-size') ? parseInt(t.getAttribute('data-size'), 10) : undefined,
+            target: isFinite(tg) ? tg : undefined
           });
           break;
+        }
         case 'resume': A.go('test'); break;
         case 'drop-session': A.S.session = null; A.save(); A.render(); A.toast('已放弃上次检测'); break;
         case 'judge': A.judge(parseInt(t.getAttribute('data-v'), 10)); break;
