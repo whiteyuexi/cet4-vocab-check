@@ -40,8 +40,10 @@ win.addEventListener('load', () => {
     step('init', () => {
       check('应用加载', !!A);
       check('词库载入', A && A.WORDS.length > 4000, A ? A.WORDS.length + ' 词' : '');
-      check('首屏直接给出下一步', /测出你的四级词汇量/.test(q('.hero h1').textContent), q('.hero h1').textContent);
-      check('首屏有明确主按钮', qa('.hero-cta button').length >= 2, qa('.hero-cta button').length + ' 个');
+      check('首屏直接给出主张与用途', /AI 不该替你数数/.test(q('.hero h1').textContent) &&
+        /词汇量/.test(doc.getElementById('view').textContent), q('.hero h1').textContent);
+      check('首屏只有一个主按钮', qa('.hero-cta button').length === 1 && /primary/.test(q('.hero-cta button').className),
+        qa('.hero-cta button').length + ' 个');
       check('首屏主按钮带预计用时', /分钟/.test(q('.hero-cta button').textContent), q('.hero-cta button').textContent);
       check('首页分组按钮', qa('.gbtn').length > 0, qa('.gbtn').length + ' 个');
       A.S.settings.autoNext = false;
@@ -632,6 +634,19 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
       click('.drill-opt');
       check('选中后给出对错反馈', !!q('.drill-fb'));
       check('判分是确定的（选中即记账）', A.S.drill.qs[0].pick >= 0, String(A.S.drill.qs[0].pick));
+    });
+
+    /* 听音辨词：只放音不收音，测的是一个独立维度，绝不能污染阅读那条链路 */
+    step('听音辨词', () => {
+      const n = A.startListen();
+      check('能起一轮听力抽查', n > 0, String(n));
+      A.go('listen');
+      check('渲染四个释义选项', qa('.listen-opts .drill-opt').length === 4, qa('.listen-opts .drill-opt').length + ' 个');
+      check('题目区不出现单词本身（只放音）', qa('.qword').length === 0);
+      click('.listen-opts .drill-opt');
+      check('选完直接进下一题', A.S.listen.pos === 1, String(A.S.listen.pos));
+      const before = JSON.stringify(A.S.samples || []);
+      check('听力作答不进阅读抽样', JSON.stringify(A.S.samples || []) === before);
     });
 
     // 模拟刷新

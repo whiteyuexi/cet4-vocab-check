@@ -1152,7 +1152,7 @@
 
     /* 答题页把气泡收窄：那是唯一会挡住"认识"按钮的场合。
        她可以继续在旁边，但话不能压到判词行上。 */
-    if (hostEl) hostEl.classList.toggle('testing', A.getRoute() === 'test');
+    if (hostEl) hostEl.classList.toggle('testing', /^(test|drill|listen)$/.test(A.getRoute()));
 
     if (creditEl) {
       var fedNow = feedLine();

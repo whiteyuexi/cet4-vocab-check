@@ -1420,6 +1420,7 @@
     else if (route === 'report') html = A.viewReport ? A.viewReport() : '';
     else if (route === 'settings') html = A.viewSettings();
     else if (route === 'drill') html = A.viewDrill ? A.viewDrill() : '';
+    else if (route === 'listen') html = A.viewListen ? A.viewListen() : '';
     var banner = A.storageBroken
       ? '<div class="card" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-size:13px;line-height:1.7">' +
         '<b>无法保存作答数据</b>：浏览器禁止了本地存储（localStorage），刷新后会丢失。' +
@@ -1681,14 +1682,15 @@
          主路径只留一条（快速摸底），第二条是"想更准"的可选项。 */
       var nFast = needFor(400), nStd = needFor(250);
       h += '<div class="hero intro">';
-      h += '<h1>几分钟，测出你的' + bs + '词汇量</h1>';
-      h += '<p>按词频分层随机抽题，测完给你一个<b>带误差范围</b>的数字，以及各频段的强弱分布。</p>';
+      h += '<p class="tiny" style="letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:0 0 10px">四六级词汇量检测 · 分层抽样 · 可查来源</p>';
+      h += '<h1>AI 不该替你数数。</h1>';
+      h += '<p>大模型会编数字。词汇量差 500 词就是另一档——所以我们把测量锁给统计，把解释留给 AI：<b>测完给你一个带 95% 区间的数字，每条结论都能点开看它来自哪几个词。</b></p>';
       if (t.tested) h += '<p class="hero-note">你已测过 ' + t.tested + ' 词（来自分组检测）——那不是随机抽样，算不出词汇量，补一次摸底就行。</p>';
       h += '<div class="hero-cta">' +
         '<button class="btn primary lg fx-shine fx-magnet" data-act="start" data-kind="probe" data-target="400">快速摸底 · 约 ' + nFast + ' 题 · ' + minsText(nFast) + '</button>' +
-        '<button class="btn lg outline-light" data-act="start" data-kind="probe" data-target="250">更准一点 · 约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>' +
         '</div>';
-      h += '<p class="hero-note">中途随时可以停，做题记录会保留；下次打开接着测。 或者 <button class="btn sm ghost" style="vertical-align:middle;margin-left:6px" data-act="drill-start">直接进语境里练</button></p>';
+      h += '<p class="hero-note">想更准？<button class="btn sm ghost" style="vertical-align:middle;margin:0 4px" data-act="start" data-kind="probe" data-target="250">约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>' +
+        '　或者 <button class="btn sm ghost" style="vertical-align:middle;margin:0 4px" data-act="listen-start">测听力词汇量</button><button class="btn sm ghost" style="vertical-align:middle" data-act="drill-start">进语境里练</button></p>';
       h += '</div>';
     } else {
       h += '<div class="hero">';

@@ -181,4 +181,145 @@
     A.save();
     A.render();
   };
+
+  /* ================= 听音辨词（只放音，不收音） =================
+     为什么加这个：四六级有一条被忽略的真相——"看得懂"和"听得出"是两回事。
+     阅读能认出 4500 词的人，听力考试里同一个词放出来常常反应不过来。
+     所以这里不是"多一个入口"，是**多一个测量维度**：
+       同样的分层抽样队列，只播声音、不给字，让用户在四个中文释义里选。
+     算出来的听力词汇量，和阅读词汇量一对比，差的那几百个就是"认得但听不出"。
+
+     技术上：不碰阅读那条链路。抽样队列复用 probeQueue，估计复用 probeStats，
+     结果单独存 S.listen，绝不混进 reading 的 sample —— 混了就两边都脏。 */
+  var LN = 20;
+
+  /* 释义要能一眼读完。词库里的 t 是词典原文（"pron.准; …的人"），
+     直接拿来当选项又长又难看，还会把按钮撑变形。只取第一个义项，超过 14 字截断。 */
+  function gloss(t) {
+    var s = String(t || '').split(/[;；]/)[0].replace(/^[a-z]+\.\s*/i, '').trim();
+    if (s.length > 14) s = s.slice(0, 14) + '…';
+    return s || String(t || '');
+  }
+
+  function listenOpts(idx) {
+    var want = gloss(A.WORDS[idx].t);
+    var pool = A.activePool(), out = [], guard = 0;
+    while (out.length < 3 && guard < 900) {
+      guard++;
+      var j = pool[Math.floor(Math.random() * pool.length)];
+      if (j === idx) continue;
+      var t = gloss(A.WORDS[j].t);
+      if (t === want || out.indexOf(t) >= 0) continue;
+      out.push(t);
+    }
+    if (out.length < 3) return null;
+    var opts = shuffle([want].concat(out));
+    return { opts: opts, ans: opts.indexOf(want) };
+  }
+
+  A.startListen = function () {
+    var q = A.probeQueue();
+    if (!q || !q.length) return 0;
+    var qs = [], i = 0;
+    while (qs.length < LN && i < q.length) {
+      var o = listenOpts(q[i]);
+      if (o) qs.push({ i: q[i], opts: o.opts, ans: o.ans });
+      i++;
+    }
+    if (!qs.length) return 0;
+    A.S.listen = { qs: qs, pos: 0, log: [], spoken: -1, ts: Date.now() };
+    A.save();
+    return qs.length;
+  };
+
+  A.viewListen = function () {
+    var d = A.S.listen;
+    if (!d || !d.qs || !d.qs.length) {
+      return '<div class="card" style="text-align:center;padding:34px 22px">' +
+        '<div class="res-num" style="font-size:30px">听音辨词</div>' +
+        '<div class="tiny res-sub" style="margin-top:8px">只放声音、不给字，你从四个中文释义里选一个。<br>' +
+        '20 个词，约 2 分钟。测完会给你一个<b>带区间的听力词汇量</b>，并和阅读词汇量对照。</div>' +
+        '<button class="btn primary" data-act="listen-start" style="margin-top:18px">开始（20 词）</button>' +
+        '</div>';
+    }
+    if (d.pos >= d.qs.length) return listenResult(d);
+
+    var q = d.qs[d.pos], word = String(A.WORDS[q.i].w);
+    var h = '';
+    h += '<div class="card listen">';
+    h += '<div class="drill-top"><span class="tiny">第 ' + (d.pos + 1) + ' / ' + d.qs.length + ' 词</span>' +
+         '<span class="tiny">只播声音 · 不给字幕</span></div>';
+    h += '<button class="listen-play" data-act="listen-play">' +
+         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5z"/></svg>' +
+         '<span>再听一遍</span></button>';
+    h += '<div class="drill-opts listen-opts">';
+    for (var k = 0; k < q.opts.length; k++) {
+      h += '<button class="drill-opt" data-act="listen-pick" data-n="' + k + '">' + esc(q.opts[k]) + '</button>';
+    }
+    h += '</div></div>';
+
+    // 进入这一题时自动播一次；用 spoken 标记防止重渲染时反复播
+    var want = d.pos;
+    setTimeout(function () {
+      var cur = A.S.listen;
+      if (!cur || cur.pos !== want || cur.spoken === want) return;
+      cur.spoken = want;
+      if (A.speak) A.speak(word);
+    }, 140);
+    return h;
+  };
+
+  A.listenPlay = function () {
+    var d = A.S.listen;
+    if (!d || d.pos >= d.qs.length) return;
+    if (A.speak) A.speak(String(A.WORDS[d.qs[d.pos].i].w));
+  };
+
+  /* 选完立刻记分并进下一题：这是测量，不是练习，不给即时反馈 */
+  A.listenPick = function (n) {
+    var d = A.S.listen;
+    if (!d || d.pos >= d.qs.length) return;
+    var q = d.qs[d.pos];
+    d.log.push({ i: q.i, v: n === q.ans ? 2 : 0 });
+    d.pos++;
+    A.save();
+    A.render();
+  };
+
+  function listenResult(d) {
+    var st = A.probeStats({ log: d.log });
+    var read = A.estimateNow();
+    var hasListen = st && isFinite(st.vocab) && st.n > 0;
+    var h = '';
+    h += '<div class="card res-hero">';
+    h += '<div class="tiny">听音辨词 · 听力词汇量</div>';
+    h += '<div class="res-num">' + (hasListen ? '≈ ' + Math.round(st.vocab).toLocaleString('en-US') + ' 词' : '—') + '</div>';
+    h += '<div class="tiny res-sub">' + (hasListen
+      ? ('基于 ' + st.n + ' 词分层抽样' + (isFinite(st.lo) ? '，95% 区间 ' + Math.round(st.lo).toLocaleString('en-US') + ' ~ ' + Math.round(st.hi).toLocaleString('en-US') : ''))
+      : '样本不足，这一轮不算数') + '</div>';
+    h += '</div>';
+
+    if (hasListen && read && read.kind === 'sample' && isFinite(read.vocab)) {
+      var gap = Math.round(read.vocab - st.vocab);
+      h += '<div class="card listen-gap">';
+      h += '<div class="tiny">和阅读词汇量对照</div>';
+      h += '<div class="listen-compare">' +
+           '<div><b>' + Math.round(read.vocab).toLocaleString('en-US') + '</b><span>阅读</span></div>' +
+           '<div class="listen-dash">—</div>' +
+           '<div><b>' + Math.round(st.vocab).toLocaleString('en-US') + '</b><span>听力</span></div>' +
+           '</div>';
+      h += '<div class="tiny" style="margin-top:10px">' + (gap > 0
+        ? ('差 <b>' + gap.toLocaleString('en-US') + '</b> 个词——这部分你认得，但听不出来。四六级听力考的正是这些。')
+        : '听力不低于阅读，这种情况很少见，说明这些词你是真的熟。') + '</div>';
+      h += '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">' +
+           '<button class="btn sm primary" data-act="ai-ask" data-q="' + esc('我的听力词汇量和阅读词汇量差了 ' + gap + ' 个词，帮我分析差在哪些词上、怎么练') + '">让 AI 分析这 ' + gap + ' 个词的差距</button>' +
+           '<button class="btn sm" data-act="listen-start">再测一次</button>' +
+           '</div>';
+      h += '</div>';
+    } else {
+      h += '<div class="row" style="margin-top:16px"><button class="btn sm" data-act="listen-start">再测一次</button></div>';
+    }
+    h += '<div class="row" style="margin-top:16px"><button class="btn sm ghost" data-act="go" data-route="home">回首页</button></div>';
+    return h;
+  }
 })(window.__APP__ || (window.__APP__ = {}));

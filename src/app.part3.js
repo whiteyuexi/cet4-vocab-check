@@ -106,6 +106,7 @@
     h += '</ol>';
     h += '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">' +
       '<button class="btn sm" data-act="drill-start">语境里练一练</button>' +
+      '<button class="btn sm" data-act="listen-start">测听力词汇量</button>' +
       '<button class="btn sm" data-act="copy-report">复制成绩</button>' +
       '<button class="btn sm" data-act="print-report">打印 / 存为 PDF</button>' +
       '<button class="btn sm ghost" data-act="go" data-route="stats">看总体统计</button>' +
@@ -666,6 +667,15 @@
         }
         case 'drill-pick': A.drillPick(parseInt(t.getAttribute('data-n'), 10)); break;
         case 'drill-next': A.drillNext(); break;
+        /* 听音辨词：只放音不收音，产出独立的"听力词汇量" */
+        case 'listen-start': {
+          var ln = A.startListen ? A.startListen() : 0;
+          if (!ln) { A.toast('词库太小，出不了听力题'); break; }
+          A.go('listen');
+          break;
+        }
+        case 'listen-play': A.listenPlay(); break;
+        case 'listen-pick': A.listenPick(parseInt(t.getAttribute('data-n'), 10)); break;
         case 'drop-session': A.S.session = null; A.save(); A.render(); A.toast('已放弃上次检测'); break;
         case 'judge': A.judge(parseInt(t.getAttribute('data-v'), 10)); break;
         case 'rejudge': A.rejudge(parseInt(t.getAttribute('data-v'), 10)); break;

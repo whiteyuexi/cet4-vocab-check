@@ -1451,7 +1451,7 @@ details.tips summary{display:flex;align-items:center;gap:6px}
 html[data-theme="dark"] .res-num{color:var(--ink)}
 
 /* 答题页：气泡收窄，别压到判词行（她可以继续在旁边，但话不能盖住按钮） */
-.pet.testing .pet-bubble{width:190px;max-width:190px;font-size:12.5px;line-height:1.6}
+.pet.testing .pet-bubble{display:none}
 .pet.testing .pet-bubble .pet-chip{font-size:11.5px;padding:5px 9px}
 
 /* ---------- 语境填空 ---------- */
@@ -1472,3 +1472,19 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
 .drill-zh{margin-top:6px;color:var(--ink2)}
 .drill-next{margin-top:16px;width:100%}
 @media (max-width:520px){.drill-opts{grid-template-columns:1fr}.drill-sent{font-size:17px}}
+
+/* ---------- 听音辨词 ---------- */
+.listen{padding:22px}
+.listen-play{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:26px 12px;margin:6px 0 20px;border-radius:16px;border:1px dashed var(--line2);
+  background:var(--glass-2);font-size:15px;font-weight:600;color:var(--ink2);transition:all .15s}
+.listen-play:hover{border-color:var(--accent);color:var(--accent)}
+.listen-play svg{width:26px;height:26px;fill:currentColor;stroke:none}
+.listen-opts{grid-template-columns:1fr 1fr}
+.listen-gap{margin-top:14px}
+.listen-compare{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px}
+.listen-compare div{text-align:center}
+.listen-compare b{display:block;font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.listen-compare span{display:block;font-size:11px;color:var(--ink3);letter-spacing:.08em;margin-top:2px}
+.listen-dash{color:var(--ink3);font-size:20px}
+@media (max-width:520px){.listen-opts{grid-template-columns:1fr}.listen-compare b{font-size:24px}}
