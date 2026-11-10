@@ -15,7 +15,10 @@
   // 情绪 → 立绘。99 张里挑能表达状态的，缺图时沿 FALLBACK 回退
   var MOOD_ART = {
     idle: 'idle-cute', happy: 'celebrate', praise: 'levelup', love: 'blush',
-    think: 'curious', warn: 'meme-doubt', sad: 'meme-cry', star: 'achievement'
+    think: 'curious', warn: 'meme-doubt', sad: 'meme-cry', star: 'achievement',
+    /* 第一次见面用"挥手"，不用"撒彩纸"——彩纸屑是"贴纸"最强的视觉信号，
+       第一眼就读成表情包，而不是一个在场的小家伙。 */
+    greet: 'greet'
   };
   var FALLBACK_ART = ['idle-cute', 'greet'];
   // 戳一下会短暂切过去的小动作
@@ -136,7 +139,7 @@
       return { mood: 'idle', text: '你已经测过 ' + t.tested + ' 词了，不过那是分组检测——不能外推。补一次随机摸底才能算出词汇量。',
         acts: [{ label: '补一次摸底', act: 'start', kind: 'probe', target: 250 }] };
     }
-    return { mood: 'happy', text: A.myName() + '，第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
+    return { mood: 'greet', text: A.myName() + '，第一次来呀。做一次快速摸底就行——约 80 题、3 分钟，我给你一个带误差范围的数字。',
       acts: [{ label: '开始摸底', act: 'start', kind: 'probe', target: 400 },
              { label: '这是什么？', act: 'ai-ask', q: '这个工具是怎么算出我的词汇量的？' }] };
   }
@@ -913,14 +916,14 @@
     RIG.actT += dt * 1000;
     if (RIG.actT >= RIG.actNext) {
       RIG.actT = 0;
-      RIG.actNext = 900 + Math.random() * 2600;
+      RIG.actNext = 620 + Math.random() * 1700;
       rigFire(rigPick());
     }
 
     var b = Math.sin(t * (Math.PI * 2) / 4.2);      // 呼吸 4.2s
     var sway = Math.sin(t * 0.62);                  // 极慢的重心摆动
     var hb = Math.sin(t * 1.13 + 1.7);              // 头部自由微动（和呼吸不同相）
-    var ang = RS.head * 0.030 + hb * 0.010;         // 头的倾角（弧度）
+    var ang = RS.head * 0.045 + hb * 0.017;         // 头的倾角（弧度）
     var sq = RS.sq;                                 // 挤压能量
     var lag = Math.sin(t * 1.35 - 0.9);             // 发/裙的滞后
 
@@ -940,7 +943,7 @@
 
     var S = FIG_H, ox = 0.5 * S, oy = 0.45 * S;
     var g = RIG.grid, k, v, nx, ny, X, Y, dx, dy;
-    var wH, wC, wT, wR, wS, wE, wN, hx, hy, dT, wv;
+    var wH, wC, wT, wR, wS, wE, wN, hx, hy, dT, wv, dep;
 
     for (k = 0; k < g.length; k++) {
       v = g[k]; nx = v.nx; ny = v.ny;
@@ -959,9 +962,9 @@
                     rigReg(nx, ny, 0.585, 0.375, 0.075, 0.05));     // 两只眼
 
       /* 1) 呼吸：胸腔起伏、肩膀跟着抬 */
-      dy += wC * (-1.5 * b);
+      dy += wC * (-2.6 * b);
       dy += wH * (-0.45 * b);
-      dx += wC * (nx - 0.5) * 0.9 * b;
+      dx += wC * (nx - 0.5) * 1.5 * b;
 
       /* 2) 头：绕脖子转一点，再轻微点头 */
       hx = X - ox; hy = Y - oy;
@@ -971,16 +974,24 @@
       /* 3) 尾：从尾根往外传播的波，越靠尖摆得越大（相位延迟 = 布料感） */
       dT = Math.sqrt((nx - 0.66) * (nx - 0.66) + (ny - 0.58) * (ny - 0.58));
       wv = Math.sin(t * 3.4 - dT * 7.5);
-      dx += wT * (wv * 2.6 + RS.tail * 15 * dT) * (1 + RIG.swim * 0.9);
+      dx += wT * (wv * 3.6 + RS.tail * 15 * dT) * (1 + RIG.swim * 0.9);
       dy += wT * (wv * 0.9 - Math.abs(RS.tail) * 1.4);
 
       /* 4) 头发与裙摆：比身体慢半拍，永远追不上 */
-      dx += (wR * 1.5 + wS * 1.1) * lag;
+      dx += (wR * 2.2 + wS * 1.6) * lag;
       dy += (wR * 0.4 + wS * 0.5) * Math.abs(lag);
 
       /* 5) 视线：眼睛那块整体平移一两个像素 */
       dx += wE * look.x * 1.5;
       dy += wE * look.y * 1.1;
+
+      /* 5c) 分层视差：越靠前的部件跟鼠标动得越多。
+         纸片感的根源不是"动得少"，是"全都在同步动"——头、身体、尾巴、头发位移一样，
+         大脑立刻判定这是一张平面图。把深度拆开（头/发/手在前、身体在中、尾巴在后），
+         位移量差出三倍，同样的鼠标移动就读成了"有厚度"。 */
+      dep = Math.min(1.15, wH * 1.05 + wR * 0.95 + wN * 0.90 + wT * 0.50);
+      dx += dep * look.x * 4.2;
+      dy += dep * look.y * 2.8;
 
       /* 5b) 合着的双手：浮着的时候跟着一起轻轻沉浮，不是焊在胸口的 */
       dy += wN * (Math.sin(t * 0.9 + 0.6) * 1.3 - b * 0.5) * (1 + RIG.swim * 0.6);
@@ -990,7 +1001,7 @@
       dx += wE * ((nx < 0.5 ? 0.385 : 0.585) - nx) * S * (1 - bk) * 0.10;
 
       /* 7) 重心：脚不动，越往上摆得越多 */
-      dx += sway * 0.85 * (1 - ny);
+      dx += sway * 1.7 * (1 - ny);
 
       /* 8) 下蹲式挤压：脚底为支点，压扁 + 变宽 */
       dx += -sq * (nx - 0.5) * S * 0.030;
