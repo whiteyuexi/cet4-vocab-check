@@ -540,6 +540,14 @@ html[data-theme="dark"] .pet-chip:hover{color:#fff;
 .pet-art-in{opacity:0}
 html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
 
+/* 网格绑骨层：位置、尺寸、投影和 .pet-art 完全一致，只是内容换成逐帧形变后的画面。
+   之所以要一层独立 canvas：形变不能靠 transform 做（那是刚体），只能自己重绘。 */
+.pet-canvas{position:absolute;left:0;top:var(--art-trim);width:232px;height:232px;
+  display:block;pointer-events:none;
+  filter:drop-shadow(0 7px 13px rgba(16,19,25,.17))}
+html[data-theme="dark"] .pet-canvas{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
+.pet.face-l .pet-canvas{transform:scaleX(-1)}
+
 /* 受光膜：一条跟着倾斜转的斜向反光，暗示光从左上来。
    用 soft-light 叠在立绘上，靠径向遮罩收在身体范围内，别糊到空白区 */
 .pet-sheen{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;
@@ -549,9 +557,10 @@ html[data-theme="dark"] .pet-art{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
   -webkit-mask-image:radial-gradient(58% 58% at 50% 46%,#000 34%,transparent 74%);
   mask-image:radial-gradient(58% 58% at 50% 46%,#000 34%,transparent 74%)}
 
-/* 走路时的小碎步；向左走时整体镜像（镜像放在 img 上，不和外层变换打架） */
-.pet.walk .pet-anim{animation:petStep .36s ease-in-out infinite}
-@keyframes petStep{0%,100%{transform:translateY(0) rotate(-1.8deg)}50%{transform:translateY(-5px) rotate(1.8deg)}}
+/* 游动：不再是"迈步子"的左右摇滚。这张立绘没有腿，摇滚只会暴露它是贴图。
+   换成缓慢的上下浮动 + 极轻的侧倾；真正的摆动交给网格绑骨（尾巴 / 发丝 / 游动波） */
+.pet.walk .pet-anim{animation:petSwim 1.15s ease-in-out infinite}
+@keyframes petSwim{0%,100%{transform:translateY(0) rotate(-.7deg)}50%{transform:translateY(-3.5px) rotate(.7deg)}}
 .pet.face-l .pet-art{transform:scaleX(-1)}
 .pet.poked .pet-anim{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
 @keyframes petPoke{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-9px) scale(1.05)}}

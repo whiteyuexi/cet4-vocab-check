@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>桌宠形变原型 · 网格绑骨</title>
+<style>
+:root{
+  --art: 232px;          /* 和主程序 .pet-fig 同尺寸 */
+  --ink:#101319;
+  --ground:#E7EBF3;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:
+  radial-gradient(120% 90% at 50% 8%,#FFFFFF 0%,#F2F5FA 42%,#E4E9F2 100%);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--ink)}
+body.dark{background:radial-gradient(120% 90% at 50% 8%,#232A3A 0%,#171C28 45%,#10131A 100%);
+  --ground:#0C0F15;color:#E8EDF6}
+
+#stage{position:absolute;inset:0;overflow:hidden}
+
+/* 地面柔光 */
+#glow{position:absolute;left:50%;bottom:8%;width:520px;height:180px;transform:translateX(-50%);
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(42,91,224,.13),rgba(42,91,224,0) 72%);filter:blur(6px)}
+body.dark #glow{background:radial-gradient(closest-side,rgba(110,160,255,.16),rgba(42,91,224,0) 72%)}
+
+/* 两只形象并排：左=现在的做法（整张图摆），右=网格形变 */
+.slot{position:absolute;bottom:14%;width:var(--art);height:var(--art)}
+#slotA{left:calc(50% - 320px)}
+#slotB{left:calc(50% + 88px)}
+.slot .cap{position:absolute;left:0;bottom:-30px;width:100%;text-align:center;
+  font-size:12px;letter-spacing:.04em;opacity:.55}
+.slot .floor{position:absolute;left:50%;bottom:-8px;width:150px;height:20px;margin-left:-75px;
+  border-radius:50%;background:radial-gradient(closest-side,rgba(16,19,25,.42),rgba(16,19,25,0) 78%);
+  filter:blur(1.5px);pointer-events:none}
+body.dark .slot .floor{background:radial-gradient(closest-side,rgba(0,0,0,.62),rgba(0,0,0,0) 78%)}
+
+/* 左：完全照搬主程序的三层结构（透视倾斜 + 呼吸浮动 + 单张立绘） */
+#figA{position:absolute;inset:0;
+  transform:perspective(620px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));
+  transform-origin:50% 100%;will-change:transform}
+#animA{position:absolute;inset:0;transform-origin:50% 100%;animation:bob 4.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+#imgA{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 7px 13px rgba(16,19,25,.17))}
+body.dark #imgA{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
+
+/* 右：canvas 网格 */
+#canvasB{position:absolute;inset:0;width:100%;height:100%;display:block;
+  filter:drop-shadow(0 7px 13px rgba(16,19,25,.17))}
+body.dark #canvasB{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5))}
+
+/* 控制面板 */
+#panel{position:absolute;left:18px;top:18px;width:252px;padding:14px 16px 12px;
+  background:rgba(255,255,255,.82);border:1px solid rgba(16,19,25,.08);border-radius:14px;
+  backdrop-filter:blur(10px);font-size:12px;line-height:1.5;
+  box-shadow:0 6px 26px rgba(16,19,25,.08)}
+body.dark #panel{background:rgba(26,32,46,.86);border-color:rgba(255,255,255,.09);
+  box-shadow:0 6px 26px rgba(0,0,0,.4)}
+#panel h1{margin:0 0 8px;font-size:13px;letter-spacing:.02em}
+#panel .row{display:flex;align-items:center;gap:8px;margin:5px 0}
+#panel .row label{flex:0 0 58px;opacity:.72}
+#panel input[type=range]{flex:1;accent-color:#2A5BE0;height:3px}
+#panel .v{flex:0 0 30px;text-align:right;font-variant-numeric:tabular-nums;opacity:.55}
+#panel .hint{margin-top:9px;padding-top:8px;border-top:1px solid rgba(16,19,25,.08);
+  font-size:11px;opacity:.55;line-height:1.6}
+body.dark #panel .hint{border-top-color:rgba(255,255,255,.1)}
+#panel kbd{display:inline-block;padding:0 4px;border-radius:4px;background:rgba(16,19,25,.07);
+  font:11px/1.6 ui-monospace,Menlo,monospace}
+body.dark #panel kbd{background:rgba(255,255,255,.1)}
+#fps{position:absolute;right:18px;top:18px;font:12px/1.5 ui-monospace,Menlo,monospace;opacity:.45}
+</style></head>
+<body>
+<div id="stage">
+  <div id="glow"></div>
+
+  <div class="slot" id="slotA">
+    <div class="floor"></div>
+    <div id="figA"><div id="animA"><img id="imgA" alt=""></div></div>
+    <div class="cap">现在：一张图在摆</div>
+  </div>
+
+  <div class="slot" id="slotB">
+    <div class="floor"></div>
+    <canvas id="canvasB"></canvas>
+    <div class="cap">网格绑骨：呼吸 / 甩尾 / 眨眼 / 视线</div>
+  </div>
+</div>
+
+<div id="panel">
+  <h1>形变参数</h1>
+  <div class="row"><label>呼吸</label><input type="range" id="sBreath" min="0" max="2" step="0.05" value="1"><span class="v" id="vBreath">1.0</span></div>
+  <div class="row"><label>头部</label><input type="range" id="sHead" min="0" max="2" step="0.05" value="1"><span class="v" id="vHead">1.0</span></div>
+  <div class="row"><label>尾巴</label><input type="range" id="sTail" min="0" max="2" step="0.05" value="1"><span class="v" id="vTail">1.0</span></div>
+  <div class="row"><label>发/裙</label><input type="range" id="sHair" min="0" max="2" step="0.05" value="1"><span class="v" id="vHair">1.0</span></div>
+  <div class="row"><label>视线</label><input type="range" id="sGaze" min="0" max="2" step="0.05" value="1"><span class="v" id="vGaze">1.0</span></div>
+  <div class="hint">
+    <kbd>B</kbd> 眨眼 · <kbd>T</kbd> 甩尾 · <kbd>H</kbd> 歪头<br>
+    <kbd>D</kbd> 暗色 · <kbd>C</kbd> 关掉左边对比<br>
+    鼠标在页面里移动 = 她的视线
+  </div>
+</div>
+<div id="fps">—</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var SRC = '../assets/whale-art/dsh-whale-state-idle-cute.webp';
+  var SIZE = 232;              // 显示边长，和主程序一致
+  var DPR  = Math.min(2, window.devicePixelRatio || 1);
+  var COLS = 12, ROWS = 14;    // 网格密度：12×14 格 = 242 个三角形
+
+  document.getElementById('imgA').src = SRC;
+
+  /* ---------- 网格 ---------- */
+  var cv = document.getElementById('canvasB');
+  var ctx = cv.getContext('2d');
+  var px = Math.round(SIZE * DPR);
+  cv.width = px; cv.height = px;
+  ctx.scale(DPR, DPR);
+
+  var img = new Image();
+  var ready = false;
+  img.onload = function(){ ready = true; };
+  img.onerror = function(){ document.querySelector('#slotB .cap').textContent = '立绘加载失败：' + SRC; };
+  img.src = SRC;
+
+  // 顶点：源坐标固定（512 见方），目标坐标每帧按形变重算
+  var vn = [];                 // 静止目标位置（232 空间）
+  for (var j = 0; j <= ROWS; j++) {
+    for (var i = 0; i <= COLS; i++) {
+      vn.push({ nx: i / COLS, ny: j / ROWS });
+    }
+  }
+  var SRCW = 512;
+
+  /* ---------- 形变通道 ---------- */
+  var P = { breath: 1, head: 1, tail: 1, hair: 1, gaze: 1 };
+  var look = { x: 0, y: 0 };
+  var t0 = performance.now();
+
+  // 离散小动作的"能量"，靠弹簧落回 0 —— 这才是不像正弦的关键
+  var sig = { tail: 0, tailV: 0, head: 0, headV: 0, squash: 0, squashV: 0 };
+  var blink = { on: false, t: 0 };
+
+  function spring(x, v, target, k, c, dt) {
+    var a = -k * (x - target) - c * v;
+    v += a * dt;
+    x += v * dt;
+    return [x, v];
+  }
+
+  /* 区域权重：高斯，互相之间自然融合，不会出现硬边 */
+  function g(nx, ny, cx, cy, rx, ry) {
+    var a = (nx - cx) / rx, b = (ny - cy) / ry;
+    return Math.exp(-(a * a + b * b));
+  }
+
+  /* ---------- 每帧：算出每个顶点的位移 ---------- */
+  function deform(t, verts) {
+    var ph = t * 0.001;
+    var b = Math.sin(ph * (Math.PI * 2) / 4.2);           // 呼吸 4.2s
+    var sway = Math.sin(ph * 0.62);                        // 全身极慢的重心摆动
+    var hb = Math.sin(ph * 1.13 + 1.7);                    // 头部的自由微动（不和呼吸同相）
+    var ang = (sig.head * 0.030 + hb * 0.010) * P.head;    // 头倾角（弧度）
+    var sq = sig.squash * P.breath;
+
+    // 眨眼进度 → 眼睛的纵向压缩系数
+    var bk = 1;
+    if (blink.on) {
+      var e = blink.t;                                     // 0..1
+      var c = e < 0.28 ? e / 0.28 : e < 0.5 ? 1 : (1 - e) / 0.5;
+      bk = 1 - 0.92 * c;
+    }
+
+    var ox = 0.5 * SIZE, oy = 0.45 * SIZE;                 // 头的转轴（脖子）
+    var fx = 0.5 * SIZE, fy = 1.0 * SIZE;                  // 挤压的支点（脚底）
+
+    for (var k = 0; k < verts.length; k++) {
+      var v = verts[k], nx = v.nx, ny = v.ny;
+      var X = nx * SIZE, Y = ny * SIZE;
+      var dx = 0, dy = 0;
+
+      var wHead  = g(nx, ny, 0.50, 0.26, 0.30, 0.18);
+      var wChest = g(nx, ny, 0.50, 0.56, 0.22, 0.13);
+      var wTail  = g(nx, ny, 0.82, 0.66, 0.20, 0.11);
+      var wHair  = Math.max(g(nx, ny, 0.23, 0.58, 0.12, 0.20),
+                            g(nx, ny, 0.77, 0.56, 0.12, 0.20));
+      var wSkirt = g(nx, ny, 0.50, 0.80, 0.28, 0.12);
+      var wEye   = Math.max(g(nx, ny, 0.385, 0.375, 0.075, 0.05),
+                            g(nx, ny, 0.585, 0.375, 0.075, 0.05));
+
+      /* 1) 呼吸：胸腔上下起伏 + 肩膀跟着抬，整体缩放以腰为界 */
+      dy += wChest * (-1.5 * b) * P.breath;
+      dy += wHead  * (-0.45 * b) * P.breath;
+      dx += wChest * (nx - 0.5) * 0.9 * b * P.breath;
+
+      /* 2) 头部：绕脖子转一点 + 轻微上下点头 */
+      var hx = X - ox, hy = Y - oy;
+      dx += wHead * (-ang * hy + hb * 0.5) * P.head;
+      dy += wHead * ( ang * hx + Math.abs(ang) * -1.2) * P.head;
+
+      /* 3) 尾巴：从尾根往外传播的波，越靠尖摆得越大（相位延迟） */
+      var dTail = Math.hypot(nx - 0.66, ny - 0.58);
+      var wTailWave = Math.sin(ph * 3.4 - dTail * 7.5);
+      dx += wTail * (wTailWave * 2.6 + sig.tail * 5.0 * dTail * 3) * P.tail;
+      dy += wTail * (wTailWave * 0.9 - Math.abs(sig.tail) * 1.4) * P.tail;
+
+      /* 4) 头发与裙摆：比身体慢半拍，永远追不上 */
+      var lag = Math.sin(ph * 1.35 - 0.9);
+      dx += (wHair * 1.5 + wSkirt * 1.1) * lag * P.hair;
+      dy += (wHair * 0.4 + wSkirt * 0.5) * Math.abs(lag) * P.hair;
+
+      /* 5) 视线：眼睛那块整体平移——只有一两个像素，但立刻"活" */
+      dx += wEye * look.x * 1.5 * P.gaze;
+      dy += wEye * look.y * 1.1 * P.gaze;
+
+      /* 6) 眨眼：把眼睛区域的点朝眼睛中心压扁 */
+      dy += wEye * (0.375 - ny) * SIZE * (1 - bk) * 0.92;
+      dx += wEye * (nx < 0.5 ? 0.385 : 0.585 - nx) * SIZE * (1 - bk) * 0.10;
+
+      /* 7) 全身重心：脚不动，越往上摆得越多 */
+      dx += sway * 0.85 * ny;
+
+      /* 8) 落地/抖动挤压：脚底为支点，压扁 + 变宽 */
+      dx += -sq * (nx - 0.5) * SIZE * 0.035;
+      dy +=  sq * (ny - 1.0) * SIZE * 0.055;
+
+      v.dx = dx; v.dy = dy;
+      v.tx = X + dx; v.ty = Y + dy;
+      // 源坐标：同一网格映射到 512
+      v.sx = nx * SRCW; v.sy = ny * SRCW;
+    }
+  }
+
+  /* ---------- 渲染：逐三角形仿射贴图 ---------- */
+  function tri(sx0, sy0, sx1, sy1, sx2, sy2, u0, v0, u1, v1, u2, v2) {
+    var dx1 = sx1 - sx0, dy1 = sy1 - sy0;
+    var dx2 = sx2 - sx0, dy2 = sy2 - sy0;
+    var den = dx1 * dy2 - dx2 * dy1;
+    if (!den) return;
+    var du1 = u1 - u0, du2 = u2 - u0;
+    var dv1 = v1 - v0, dv2 = v2 - v0;
+    var m11 = (du1 * dy2 - du2 * dy1) / den;
+    var m21 = (du2 * dx1 - du1 * dx2) / den;
+    var m12 = (dv1 * dy2 - dv2 * dy1) / den;
+    var m22 = (dv2 * dx1 - dv1 * dx2) / den;
+    var e0 = u0 - m11 * sx0 - m21 * sy0;
+    var f0 = v0 - m12 * sx0 - m22 * sy0;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(u0, v0); ctx.lineTo(u1, v1); ctx.lineTo(u2, v2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.transform(m11, m12, m21, m22, e0, f0);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
+  }
+
+  // 把三角形沿重心向外推一点点，避免相邻三角形之间出现发丝级裂缝
+  function grow(u0, v0, u1, v1, u2, v2, e) {
+    var cxm = (u0 + u1 + u2) / 3, cym = (v0 + v1 + v2) / 3;
+    function out(u, v) {
+      var ax = u - cxm, ay = v - cym, d = Math.hypot(ax, ay) || 1;
+      return [u + ax / d * e, v + ay / d * e];
+    }
+    var p0 = out(u0, v0), p1 = out(u1, v1), p2 = out(u2, v2);
+    return [p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]];
+  }
+
+  function render() {
+    if (!ready) return;
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    var E = 0.35;
+    for (var j = 0; j < ROWS; j++) {
+      for (var i = 0; i < COLS; i++) {
+        var a = j * (COLS + 1) + i, b2 = a + 1, c = a + COLS + 1, d = c + 1;
+        var A1 = vn[a], B1 = vn[b2], C1 = vn[c], D1 = vn[d];
+        // 上三角 a-b-c
+        var p = grow(B1.tx, B1.ty, A1.tx, A1.ty, C1.tx, C1.ty, E);
+        tri(B1.sx, B1.sy, A1.sx, A1.sy, C1.sx, C1.sy, p[0], p[1], p[2], p[3], p[4], p[5]);
+        // 下三角 b-d-c
+        var q = grow(D1.tx, D1.ty, B1.tx, B1.ty, C1.tx, C1.ty, E);
+        tri(D1.sx, D1.sy, B1.sx, B1.sy, C1.sx, C1.sy, q[0], q[1], q[2], q[3], q[4], q[5]);
+      }
+    }
+  }
+
+  /* ---------- 小动作调度：不等间隔、按权重点名 ---------- */
+  var acts = [
+    { n: 'blink',  w: 46 },
+    { n: 'tail',   w: 22 },
+    { n: 'head',   w: 18 },
+    { n: 'bend',   w: 8  },
+    { n: 'double', w: 6  }
+  ];
+  var actTimer = 0, nextAct = 1200;
+
+  function pickAct() {
+    var tot = 0, i;
+    for (i = 0; i < acts.length; i++) tot += acts[i].w;
+    var r = Math.random() * tot;
+    for (i = 0; i < acts.length; i++) { r -= acts[i].w; if (r <= 0) return acts[i].n; }
+    return 'blink';
+  }
+
+  function fire(name) {
+    if (name === 'blink') { blink.on = true; blink.t = 0; }
+    else if (name === 'tail') { sig.tail = 0.55; sig.tailV = 2.2; }
+    else if (name === 'head') { sig.head = (Math.random() < 0.5 ? -1 : 1) * 0.9; sig.headV = 0; }
+    else if (name === 'bend') { sig.squash = -0.7; sig.squashV = 0; }
+    else if (name === 'double') {
+      blink.on = true; blink.t = 0;
+      sig.tail = 0.35; sig.tailV = 1.4;
+      setTimeout(function(){ if (!blink.on) { blink.on = true; blink.t = 0; } }, 180);
+    }
+  }
+
+  /* ---------- 主循环 ---------- */
+  var last = performance.now(), acc = 0, frames = 0;
+  var fpsEl = document.getElementById('fps');
+
+  function loop(now) {
+    var dt = Math.min(50, now - last) / 1000;
+    last = now;
+
+    // 弹簧
+    var r1 = spring(sig.tail, sig.tailV, 0, 95, 13, dt);   sig.tail = r1[0]; sig.tailV = r1[1];
+    var r2 = spring(sig.head, sig.headV, 0, 70, 12, dt);   sig.head = r2[0]; sig.headV = r2[1];
+    var r3 = spring(sig.squash, sig.squashV, 0, 120, 14, dt); sig.squash = r3[0]; sig.squashV = r3[1];
+
+    if (blink.on) {
+      blink.t += dt / 0.20;                                 // 一次眨眼 200ms
+      if (blink.t >= 1) blink.on = false;
+    }
+
+    // 调度
+    actTimer += dt * 1000;
+    if (actTimer >= nextAct) {
+      actTimer = 0;
+      nextAct = 900 + Math.random() * 2600;
+      fire(pickAct());
+    }
+
+    // 左侧对比组：跟着鼠标做透视倾斜（和主程序一样）
+    var figA = document.getElementById('figA');
+    figA.style.setProperty('--tx', (-look.y * 9).toFixed(2) + 'deg');
+    figA.style.setProperty('--ty', (look.x * 15).toFixed(2) + 'deg');
+
+    deform(now, vn);
+    render();
+
+    frames++;
+    acc += dt;
+    if (acc >= 0.5) { fpsEl.textContent = Math.round(frames / acc) + ' fps'; frames = 0; acc = 0; }
+
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- 输入 ---------- */
+  var SL = [['sBreath','vBreath','breath'],['sHead','vHead','head'],['sTail','vTail','tail'],
+            ['sHair','vHair','hair'],['sGaze','vGaze','gaze']];
+  SL.forEach(function(s){
+    var el = document.getElementById(s[0]), out = document.getElementById(s[1]);
+    el.addEventListener('input', function(){
+      P[s[2]] = parseFloat(el.value);
+      out.textContent = P[s[2]].toFixed(1);
+    });
+  });
+
+  document.addEventListener('pointermove', function(e){
+    look.x = Math.max(-1, Math.min(1, (e.clientX / window.innerWidth - 0.5) * 2));
+    look.y = Math.max(-1, Math.min(1, (e.clientY / window.innerHeight - 0.5) * 2));
+  }, { passive: true });
+
+  document.addEventListener('keydown', function(e){
+    var k = e.key.toLowerCase();
+    if (k === 'b') fire('blink');
+    else if (k === 't') fire('tail');
+    else if (k === 'h') fire('head');
+    else if (k === 'd') document.body.classList.toggle('dark');
+    else if (k === 'c') {
+      var a = document.getElementById('slotA');
+      a.style.display = a.style.display === 'none' ? '' : 'none';
+    }
+  });
+
+  document.getElementById('glow').style.bottom = '12%';
+  requestAnimationFrame(loop);
+})();
+</script>
+</body></html>

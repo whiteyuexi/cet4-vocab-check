@@ -38,6 +38,15 @@
   var ART_TRIM = 4;                          // 232 px 显示高度下约 1.6%
   var GROUND_FROM_BOTTOM = FIG_BOTTOM;       // 地面线距容器底
 
+  /* 悬浮高度。她是鲸鱼，不是站着的小人——素材里腿被裙子盖住、两只鞋并拢，
+     "迈腿"永远做不出来（见 NEXT.md §九）。改成浮着走，问题就不存在了。
+     这个数不能太大（像漂在半空中断开），也不能太小（还是"贴在地上"）。
+     地面线 floorY() 仍然是真实地面：投影、离地高度、守卫都按它算，
+     只有"她自己的静止高度"抬起来 —— 于是投影自然变小变淡，浮起来这件事就被读出来了。 */
+  var HOVER = 42;
+  // 对照用：?hover=0 让她回到"踩在地上"的旧样子，方便 A/B
+  try { if (new URLSearchParams(location.search).get('hover') === '0') HOVER = 0; } catch (e) {}
+
   /* ---------- 根据当前页面和数据决定说什么 ---------- */
   function compose() {
     var r = A.getRoute();
@@ -138,6 +147,9 @@
   var shadowEl = null, shadowSoftEl = null, artEl = null, animEl = null, sheenEl = null, hangEl = null;
   var lastText = '', lastMood = '', lastSig = '';
   var P = { x: 0, y: 0, vy: 0, vx: 0, dragging: false, air: false, walking: false, faceL: false };
+  /* 悬浮起伏：两个不同周期的正弦叠在一起，读起来不像节拍器。
+     只影响 --py 的显示，不影响物理坐标（见 apply） */
+  var bobY = 0, bobT = 0;
   var drag = { on: false, armed: false, sx: 0, sy: 0, ox: 0, oy: 0, moved: 0, lastMove: 0,
                lx: 0, ly: 0, lt: 0, cvx: 0, cvy: 0 };
   var walkTimer = null, rafId = null, lastT = 0;
@@ -189,6 +201,8 @@
   }
   function feetTop() { return groundLine() - (NH - GROUND_FROM_BOTTOM); }
   function floorY() { return feetTop(); }
+  /* 她的静止高度：离地 HOVER。落地判定、复位、窗口变化后的归位，全用这个 */
+  function restY() { return floorY() - HOVER; }
   function maxX() { return Math.max(8, window.innerWidth - NW - 8); }
   /* 左边界：宽屏时左侧有信息栏（rail），她不该走进去——既会挡住卡片，也会让用户点不到她。
      窄屏 rail 不显示，就退回原来的 8px。 */
@@ -205,7 +219,9 @@
   function apply() {
     if (!hostEl) return;
     hostEl.style.setProperty('--px', Math.round(P.x) + 'px');
-    hostEl.style.setProperty('--py', Math.round(P.y) + 'px');
+    // 悬浮起伏只加在"画出来的位置"上，不进 P.y ——
+    // 否则重力、落地判定、投影的离地高度全会被这几个像素带偏
+    hostEl.style.setProperty('--py', Math.round(P.y + bobY) + 'px');
   }
   function setAir(on) { if (P.air !== on) { P.air = on; hostEl.classList.toggle('air', on); } }
   function setWalk(on) { if (P.walking !== on) { P.walking = on; hostEl.classList.toggle('walk', on); } }
@@ -302,13 +318,22 @@
     rafId = requestAnimationFrame(tick);
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
 
+    /* 悬浮起伏。被拎着的时候归零：她应该老老实实跟手，不能自己上下飘 */
+    if (P.dragging || reduceMo) {
+      bobY = 0;
+    } else {
+      bobT += dt / 1000;
+      bobY = Math.sin(bobT * 1.15) * 3.4 + Math.sin(bobT * 0.37 + 1.1) * 1.7;
+      if (hostEl) hostEl.style.setProperty('--py', Math.round(P.y + bobY) + 'px');
+    }
+
     // 兜底：拖拽状态卡住时自己解开，否则重力会被永久挡住
     if (P.dragging && now - drag.lastMove > DRAG_STALE_MS) endDrag();
 
     if (!P.dragging && P.air) {
       P.vy += 0.0022 * dt * dt * 0.5;
       P.y += P.vy * dt * 0.06;
-      var fy = floorY();
+      var fy = restY();
       if (P.y >= fy) {
         P.y = fy; P.vy = 0; setAir(false);
         // 落地：先压一下再抖两下，像把身上的灰抖掉
@@ -320,6 +345,7 @@
 
     stepHang(now, dt);
     applyDepth();
+    rigFrame(now);
     petGuard(now);
   }
 
@@ -429,7 +455,7 @@
     HANG.sw = HANG.swv = HANG.sk = 0; HANG.skx = HANG.sky = 1;
     V.tx = V.ty = 0;
     glideSeq++;
-    var fx = floorY();
+    var fx = restY();
     P.x = Math.max(minX(), window.innerWidth - NW - 26);
     P.y = isFinite(fx) ? fx : 313;
     apply();
@@ -537,10 +563,10 @@
     if (moved < 6) {
       // 没怎么动 = 戳一下；顺手把她放回地面，别留在半空
       poke();
-      if (P.y > floorY()) { P.y = floorY(); }
+      if (P.y > restY()) { P.y = restY(); }
       apply();
-    } else if (P.y > floorY()) {
-      P.y = floorY(); P.vy = 0; setAir(false); apply();
+    } else if (P.y > restY()) {
+      P.y = restY(); P.vy = 0; setAir(false); apply();
     } else {
       P.vy = 0; setAir(true);                            // 交给重力落下
       apply();
@@ -581,7 +607,7 @@
   /* 立体感三件套：透视倾斜 + 接地投影 + 受光膜。
      倾斜角由鼠标位置缓动逼近；投影跟着反向横移、随离地高度缩小变淡。 */
   function applyDepth() {
-    var k = Math.min(1, lift() / 260);
+    var k = Math.min(1, lift() / 200);
     // 被拎着的时候不要再跟着鼠标转头：摆动交给 .pet.held 的动画，两套一起转会打架
     var ttx = P.dragging ? 0 : -look.y * 9;
     var tty = P.dragging ? 0 : look.x * 15;
@@ -650,6 +676,15 @@
     probe.onload = function () {
       if (artState.want !== name) { if (done) done(true); return; }   // 期间又切了别的
       artState.name = name;
+
+      // 绑骨在跑：只换纹理，形变不断；不跑：走原来的 img 交叉淡入
+      if (RIG.on) {
+        rigSetArt(url);
+        if (artEl) artEl.style.opacity = '0';
+        if (done) done(true);
+        return;
+      }
+
       var next = document.createElement('img');
       next.className = 'pet-art pet-art-in';
       next.alt = '';
@@ -703,6 +738,301 @@
     return '<span class="fed">已投喂 ' + t.toLocaleString('en-US') + ' token</span>';
   }
 
+  /* ================= 立绘网格绑骨 =================
+     一张静态立绘 + 整张图做刚体变换，看起来就是"贴图在摆"——因为真实生物不是刚体：
+     胸腔随呼吸起伏、头会独立地歪、尾巴从根部一段段传出去、头发和裙摆永远慢半拍、
+     眼睛会眨、视线跟着你走。这些都没有，剩下的就只有"上下浮 4px"。
+
+     做法：把整张画铺成 12×14 的网格（242 个三角形），每个顶点按
+     「区域高斯权重 × 若干通道」算位移，再逐三角形做仿射贴图。
+     同一张画，画出了形变。代价是每帧自己重绘，所以：
+       · 30fps 上限（这些动作本来就慢，30 帧看不出差别）
+       · 减少动效 / ?rig=0 / canvas 不可用时，整个退回原来的 <img>
+       · 微动靠**离散小动作 + 弹簧**，不是正弦循环——正弦是可以被眼睛数出来的 */
+  var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 12, rows: 14,
+              grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0 };
+  var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
+  var RB = { on: false, t: 0 };                                       // 眨眼进度
+
+  // 各小动作的出现权重。照大肥鱼那套：小动作占绝对多数，眨眼最频繁
+  var RIG_ACTS = [['blink', 46], ['tail', 22], ['head', 18], ['bend', 8], ['twice', 6]];
+
+  function rigReg(nx, ny, cx, cy, rx, ry) {
+    var a = (nx - cx) / rx, b = (ny - cy) / ry;
+    return Math.exp(-(a * a + b * b));
+  }
+
+  function rigInit() {
+    if (RIG.ok) return RIG.on;
+    var cv, cx2;
+    try {
+      cv = document.createElement('canvas');
+      cx2 = cv.getContext && cv.getContext('2d');
+    } catch (e) { cx2 = null; }
+    if (!cx2 || !animEl) return false;
+
+    RIG.dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(FIG_H * RIG.dpr);
+    cv.height = Math.round(FIG_H * RIG.dpr);
+    cv.className = 'pet-canvas';
+    cv.setAttribute('aria-hidden', 'true');
+    cx2.scale(RIG.dpr, RIG.dpr);
+    animEl.insertBefore(cv, animEl.firstChild);
+
+    RIG.cv = cv; RIG.cx = cx2;
+    var i, j, C = RIG.cols, R = RIG.rows;
+    RIG.grid.length = 0;
+    for (j = 0; j <= R; j++) {
+      for (i = 0; i <= C; i++) {
+        var nx = i / C, ny = j / R;
+        // sx/sy 是源坐标（512 见方），tx/ty 是每帧算出来的目标坐标
+        RIG.grid.push({ nx: nx, ny: ny, sx: nx * 512, sy: ny * 512,
+                        tx: nx * FIG_H, ty: ny * FIG_H });
+      }
+    }
+    RIG.ok = true; RIG.on = true;
+    return true;
+  }
+
+  /* 换图：新纹理淡入、旧纹理淡出。
+     关键顺序——**新图加载成功之后**才让旧的淡出，否则中途会有一帧两边都是空的。
+     万一新图拿不到（文件损坏、内联缺失），就把这一张丢掉、旧表情继续留着，
+     绑骨本身不受影响；只有"一张都没加载成功过"时才退回 <img>。 */
+  function rigSetArt(url) {
+    if (!RIG.ok) return;
+    var e = { img: new Image(), a: 0, dir: 1, ok: false };
+    e.img.onload = function () {
+      e.ok = true;
+      var i;
+      for (i = 0; i < RIG.tex.length; i++) if (RIG.tex[i] !== e) RIG.tex[i].dir = -1;
+    };
+    e.img.onerror = function () {
+      var i = RIG.tex.indexOf(e);
+      if (i >= 0) RIG.tex.splice(i, 1);
+      var any = false;
+      for (i = 0; i < RIG.tex.length; i++) if (RIG.tex[i].ok) any = true;
+      if (any || !RIG.on) return;
+      // 一张都没成功：退回老路。artState.name 要先清掉，否则 showArt 会因为"同名"直接返回
+      RIG.on = false;
+      artState.name = '';
+      showArtWithFallback('idle-cute', 0);
+    };
+    e.img.src = url;
+    RIG.tex.push(e);
+    while (RIG.tex.length > 3) RIG.tex.shift();
+  }
+
+  function rigSpring(o, key, k, c, dt) {
+    var vk = key + 'V';
+    o[vk] += (-k * o[key] - c * o[vk]) * dt;
+    o[key] += o[vk] * dt;
+  }
+
+  function rigPick() {
+    var i, tot = 0, r;
+    for (i = 0; i < RIG_ACTS.length; i++) tot += RIG_ACTS[i][1];
+    r = Math.random() * tot;
+    for (i = 0; i < RIG_ACTS.length; i++) {
+      r -= RIG_ACTS[i][1];
+      if (r <= 0) return RIG_ACTS[i][0];
+    }
+    return 'blink';
+  }
+
+  function rigFire(name) {
+    if (name === 'blink') { RB.on = true; RB.t = 0; }
+    else if (name === 'tail') { RS.tail = 0.55; RS.tailV = 2.2; }
+    else if (name === 'head') { RS.head = (Math.random() < 0.5 ? -1 : 1) * 0.9; RS.headV = 0; }
+    else if (name === 'bend') { RS.sq = -0.9; RS.sqV = 0; }
+    else if (name === 'twice') {
+      RB.on = true; RB.t = 0;                       // 连眨两下：第二下靠 t 回绕触发
+      RS.tail = 0.35; RS.tailV = 1.4;
+      RS.head = (Math.random() < 0.5 ? -1 : 1) * 0.5;
+    }
+  }
+
+  /* 逐三角形仿射贴图。目标三角形沿重心外扩 0.35px，避免相邻三角形之间出现发丝级裂缝 */
+  function rigTri(cx2, img, s0, s1, s2, s3, s4, s5, u0, v0, u1, v1, u2, v2) {
+    var E = 0.35, gx = (u0 + u1 + u2) / 3, gy = (v0 + v1 + v2) / 3, ax, ay, d;
+    ax = u0 - gx; ay = v0 - gy; d = Math.sqrt(ax * ax + ay * ay) || 1;
+    u0 += ax / d * E; v0 += ay / d * E;
+    ax = u1 - gx; ay = v1 - gy; d = Math.sqrt(ax * ax + ay * ay) || 1;
+    u1 += ax / d * E; v1 += ay / d * E;
+    ax = u2 - gx; ay = v2 - gy; d = Math.sqrt(ax * ax + ay * ay) || 1;
+    u2 += ax / d * E; v2 += ay / d * E;
+
+    var dx1 = s2 - s0, dy1 = s3 - s1, dx2 = s4 - s0, dy2 = s5 - s1;
+    var den = dx1 * dy2 - dx2 * dy1;
+    if (!den) return;
+    var du1 = u1 - u0, du2 = u2 - u0, dv1 = v1 - v0, dv2 = v2 - v0;
+    var m11 = (du1 * dy2 - du2 * dy1) / den;
+    var m21 = (du2 * dx1 - du1 * dx2) / den;
+    var m12 = (dv1 * dy2 - dv2 * dy1) / den;
+    var m22 = (dv2 * dx1 - dv1 * dx2) / den;
+    var e0 = u0 - m11 * s0 - m21 * s1;
+    var f0 = v0 - m12 * s0 - m22 * s1;
+
+    cx2.save();
+    cx2.beginPath();
+    cx2.moveTo(u0, v0); cx2.lineTo(u1, v1); cx2.lineTo(u2, v2);
+    cx2.closePath();
+    cx2.clip();
+    cx2.transform(m11, m12, m21, m22, e0, f0);
+    cx2.drawImage(img, 0, 0);
+    cx2.restore();
+  }
+
+  function rigFrame(now) {
+    if (!RIG.on || !RIG.cx) return;
+    if (!RIG.rt) RIG.rt = now;
+    if (now - RIG.rt < 30) return;                  // 30fps 上限
+    var dt = Math.min(0.06, (now - RIG.rt) / 1000);
+    RIG.rt = now;
+    if (dt <= 0) return;
+
+    RIG.t += dt;
+    var t = RIG.t;
+
+    // 弹簧：小动作的能量，起手过冲、自己回摆
+    rigSpring(RS, 'tail', 95, 13, dt);
+    rigSpring(RS, 'head', 70, 12, dt);
+    rigSpring(RS, 'sq', 120, 14, dt);
+
+    if (RB.on) { RB.t += dt / 0.20; if (RB.t >= 1) { RB.on = false; RB.t = 0; } }
+
+    // 调度：不等间隔，下一个动作永远猜不到
+    RIG.actT += dt * 1000;
+    if (RIG.actT >= RIG.actNext) {
+      RIG.actT = 0;
+      RIG.actNext = 900 + Math.random() * 2600;
+      rigFire(rigPick());
+    }
+
+    var b = Math.sin(t * (Math.PI * 2) / 4.2);      // 呼吸 4.2s
+    var sway = Math.sin(t * 0.62);                  // 极慢的重心摆动
+    var hb = Math.sin(t * 1.13 + 1.7);              // 头部自由微动（和呼吸不同相）
+    var ang = RS.head * 0.030 + hb * 0.010;         // 头的倾角（弧度）
+    var sq = RS.sq;                                 // 挤压能量
+    var lag = Math.sin(t * 1.35 - 0.9);             // 发/裙的滞后
+
+    /* 游动状态：走动时整只往前压、尾巴摆得更凶、身上过一道纵向波。
+       这三样一起出现，才读得出"在游"；少一样就退化成"平移的贴图" */
+    var leanT = P.walking ? (P.faceL ? -1 : 1) * 4.2 : 0;
+    RIG.lean += (leanT - RIG.lean) * Math.min(1, dt * 6);
+    RIG.swim += ((P.walking ? 1 : 0) - RIG.swim) * Math.min(1, dt * 4);
+    var lean = RIG.lean * Math.PI / 180;
+    var lca = Math.cos(lean), lsa = Math.sin(lean);
+
+    var bk = 1;
+    if (RB.on) {
+      var e2 = RB.t;
+      bk = 1 - 0.92 * (e2 < 0.28 ? e2 / 0.28 : e2 < 0.5 ? 1 : (1 - e2) / 0.5);
+    }
+
+    var S = FIG_H, ox = 0.5 * S, oy = 0.45 * S;
+    var g = RIG.grid, k, v, nx, ny, X, Y, dx, dy;
+    var wH, wC, wT, wR, wS, wE, wN, hx, hy, dT, wv;
+
+    for (k = 0; k < g.length; k++) {
+      v = g[k]; nx = v.nx; ny = v.ny;
+      X = nx * S; Y = ny * S;
+      dx = 0; dy = 0;
+
+      // 区域权重场：高斯之间自然融合，不会出现硬边
+      wH = rigReg(nx, ny, 0.50, 0.26, 0.30, 0.18);   // 头
+      wC = rigReg(nx, ny, 0.50, 0.56, 0.22, 0.13);   // 胸
+      wT = rigReg(nx, ny, 0.82, 0.66, 0.20, 0.11);   // 尾
+      wR = Math.max(rigReg(nx, ny, 0.23, 0.58, 0.12, 0.20),
+                    rigReg(nx, ny, 0.77, 0.56, 0.12, 0.20));        // 两侧头发
+      wS = rigReg(nx, ny, 0.50, 0.80, 0.28, 0.12);   // 裙摆
+      wN = rigReg(nx, ny, 0.50, 0.52, 0.11, 0.09);   // 合起来的双手
+      wE = Math.max(rigReg(nx, ny, 0.385, 0.375, 0.075, 0.05),
+                    rigReg(nx, ny, 0.585, 0.375, 0.075, 0.05));     // 两只眼
+
+      /* 1) 呼吸：胸腔起伏、肩膀跟着抬 */
+      dy += wC * (-1.5 * b);
+      dy += wH * (-0.45 * b);
+      dx += wC * (nx - 0.5) * 0.9 * b;
+
+      /* 2) 头：绕脖子转一点，再轻微点头 */
+      hx = X - ox; hy = Y - oy;
+      dx += wH * (-ang * hy + hb * 0.5);
+      dy += wH * (ang * hx - Math.abs(ang) * 1.2);
+
+      /* 3) 尾：从尾根往外传播的波，越靠尖摆得越大（相位延迟 = 布料感） */
+      dT = Math.sqrt((nx - 0.66) * (nx - 0.66) + (ny - 0.58) * (ny - 0.58));
+      wv = Math.sin(t * 3.4 - dT * 7.5);
+      dx += wT * (wv * 2.6 + RS.tail * 15 * dT) * (1 + RIG.swim * 0.9);
+      dy += wT * (wv * 0.9 - Math.abs(RS.tail) * 1.4);
+
+      /* 4) 头发与裙摆：比身体慢半拍，永远追不上 */
+      dx += (wR * 1.5 + wS * 1.1) * lag;
+      dy += (wR * 0.4 + wS * 0.5) * Math.abs(lag);
+
+      /* 5) 视线：眼睛那块整体平移一两个像素 */
+      dx += wE * look.x * 1.5;
+      dy += wE * look.y * 1.1;
+
+      /* 5b) 合着的双手：浮着的时候跟着一起轻轻沉浮，不是焊在胸口的 */
+      dy += wN * (Math.sin(t * 0.9 + 0.6) * 1.3 - b * 0.5) * (1 + RIG.swim * 0.6);
+
+      /* 6) 眨眼：把眼睛区域的点朝眼睛中心压扁 */
+      dy += wE * (0.375 - ny) * S * (1 - bk) * 0.92;
+      dx += wE * ((nx < 0.5 ? 0.385 : 0.585) - nx) * S * (1 - bk) * 0.10;
+
+      /* 7) 重心：脚不动，越往上摆得越多 */
+      dx += sway * 0.85 * (1 - ny);
+
+      /* 8) 下蹲式挤压：脚底为支点，压扁 + 变宽 */
+      dx += -sq * (nx - 0.5) * S * 0.030;
+      dy += sq * (ny - 1.0) * S * 0.030;
+
+      /* 9) 游动波：一道纵向的波从下往上走。鱼游起来就是这样的 */
+      if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 2.2;
+
+      /* 10) 入弯倾斜：绕脚底整只压过去。停下来会自己回正 */
+      if (RIG.lean > 0.05 || RIG.lean < -0.05) {
+        var rx = X - 0.5 * S + dx, ry = Y - S + dy;
+        v.tx = 0.5 * S + rx * lca - ry * lsa;
+        v.ty = S + rx * lsa + ry * lca;
+      } else {
+        v.tx = X + dx; v.ty = Y + dy;
+      }
+    }
+
+    // 渲染（纹理可能有两层在交叉淡入）
+    var cx2 = RIG.cx, C = RIG.cols, R = RIG.rows;
+    var i, j, ti, e3, a0, b0, c0, d0, P1, P2, P3, P4;
+    cx2.clearRect(0, 0, S, S);
+    for (ti = 0; ti < RIG.tex.length; ti++) {
+      e3 = RIG.tex[ti];
+      if (!e3.ok || e3.a <= 0.004) continue;
+      cx2.globalAlpha = e3.a;
+      for (j = 0; j < R; j++) {
+        for (i = 0; i < C; i++) {
+          a0 = j * (C + 1) + i; b0 = a0 + 1; c0 = a0 + C + 1; d0 = c0 + 1;
+          P1 = g[a0]; P2 = g[b0]; P3 = g[c0]; P4 = g[d0];
+          rigTri(cx2, e3.img, P2.sx, P2.sy, P1.sx, P1.sy, P3.sx, P3.sy,
+                 P2.tx, P2.ty, P1.tx, P1.ty, P3.tx, P3.ty);
+          rigTri(cx2, e3.img, P4.sx, P4.sy, P2.sx, P2.sy, P3.sx, P3.sy,
+                 P4.tx, P4.ty, P2.tx, P2.ty, P3.tx, P3.ty);
+        }
+      }
+    }
+    cx2.globalAlpha = 1;
+
+    // 淡入淡出
+    for (i = 0; i < RIG.tex.length; i++) {
+      e3 = RIG.tex[i];
+      e3.a += (e3.dir > 0 ? 1 : -1) * dt / 0.26;
+      if (e3.a > 1) e3.a = 1;
+      if (e3.a < 0) e3.a = 0;
+    }
+    for (i = RIG.tex.length - 1; i >= 0; i--) {
+      if (RIG.tex[i].dir < 0 && RIG.tex[i].a <= 0) RIG.tex.splice(i, 1);
+    }
+  }
+
   function build(host) {
     host.innerHTML =
       /* 气泡分成两块：.pet-text 只负责文字（内容多时自己滚），.pet-acts 固定在底部。
@@ -733,6 +1063,13 @@
     artEl = document.getElementById('petArt');
     artEl.style.opacity = '0';
 
+    // 网格绑骨：能用就上；减少动效、或 ?rig=0 时保持原来的 <img>（退役路径永远留着）
+    var rigWant = true;
+    try {
+      if (new URLSearchParams(location.search).get('rig') === '0') rigWant = false;
+    } catch (e) {}
+    if (rigWant && !reduceMo) RIG.on = rigInit();
+
     host.style.setProperty('--art-trim', ART_TRIM + 'px');
     host.style.setProperty('--ground', GROUND_FROM_BOTTOM + 'px');
 
@@ -758,7 +1095,7 @@
 
     // 初始位置：右下角，直接站在地面上
     P.x = Math.max(8, window.innerWidth - NW - 26);
-    P.y = feetTop();
+    P.y = restY();
     apply();
     if (wide()) {
       host.classList.add('on');
@@ -773,7 +1110,7 @@
       if (!P.dragging && P.x < safeLeft() - 2) glideHome();     // 窗口变窄把她挤进正文区时归位
       // 不在空中就重新站回地面：窗口变大变小都不会把她留在半空或视口外
       if (P.dragging) return;
-      P.y = P.air ? Math.min(P.y, floorY()) : floorY();
+      P.y = P.air ? Math.min(P.y, restY()) : restY();
       apply();
     });
 
@@ -845,6 +1182,7 @@
   A.petInfo = function () {
     return {
       sprite: artState.name || '', form: document.documentElement.getAttribute('data-pet') || '',
+      rig: RIG.on, tex: RIG.tex.length,
       x: Math.round(P.x), y: Math.round(P.y), air: P.air, dragging: P.dragging,
       loop: !!rafId, walking: P.walking, floor: floorY(), ground: groundLine(),
       tiltX: +V.tx.toFixed(1), tiltY: +V.ty.toFixed(1),
