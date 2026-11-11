@@ -691,8 +691,11 @@
 
       // 绑骨在跑：只换纹理，形变不断；不跑：走原来的 img 交叉淡入
       if (RIG.on) {
+        /* 注意：这里**不能**立刻把 <img> 藏掉。
+           曾经这么干过，结果用户的机器上画布一帧都没画出来（原因至今未定位，
+           但 reduce-motion / DPR / 未捕获异常都可能），于是桌宠整个变成透明的——
+           投影和气泡还在，人没了。现在改成：画布画出第一帧之后才接管。 */
         rigSetArt(url);
-        if (artEl) artEl.style.opacity = '0';
         if (done) done(true);
         return;
       }
@@ -762,7 +765,7 @@
        · 减少动效 / ?rig=0 / canvas 不可用时，整个退回原来的 <img>
        · 微动靠**离散小动作 + 弹簧**，不是正弦循环——正弦是可以被眼睛数出来的 */
   var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 12, rows: 14,
-              grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0 };
+              grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, shown: false };
   var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
   var RB = { on: false, t: 0 };                                       // 眨眼进度
 
@@ -1041,6 +1044,14 @@
     }
     cx2.globalAlpha = 1;
 
+    /* 第一次真正画出东西了，才让 canvas 接管显示 */
+    var ready = 0;
+    for (i = 0; i < RIG.tex.length; i++) if (RIG.tex[i].ok && RIG.tex[i].a > 0.5) ready = 1;
+    if (ready && !RIG.shown) {
+      RIG.shown = true;
+      if (artEl) artEl.style.opacity = '0';
+    }
+
     // 淡入淡出
     for (i = 0; i < RIG.tex.length; i++) {
       e3 = RIG.tex[i];
@@ -1089,6 +1100,18 @@
       if (new URLSearchParams(location.search).get('rig') === '0') rigWant = false;
     } catch (e) {}
     if (rigWant && !reduceMo) RIG.on = rigInit();
+
+    /* 兜底：2.5 秒还没画出第一帧，就当网格绑骨在这台机器上不可用，整只退回 <img>。
+       宁可少一点形变，也不能让人凭空消失——这是上一版踩过的坑。 */
+    if (RIG.on) {
+      setTimeout(function () {
+        if (RIG.on && !RIG.shown) {
+          RIG.on = false;
+          artState.name = '';
+          showArtWithFallback('idle-cute', 0);
+        }
+      }, 2500);
+    }
 
     host.style.setProperty('--art-trim', ART_TRIM + 'px');
     host.style.setProperty('--ground', GROUND_FROM_BOTTOM + 'px');
@@ -1215,6 +1238,13 @@
     };
   };
   A.petReset = function () { resetPos(); apply(); return A.petInfo(); };
+  /* 排查用：绑骨到底有没有在画 */
+  A.rigDiag = function () {
+    return { on: RIG.on, ok: RIG.ok, shown: RIG.shown, tex: RIG.tex.length,
+             loaded: RIG.tex.filter(function (t) { return t.ok; }).length,
+             alpha: RIG.tex.map(function (t) { return +t.a.toFixed(2); }),
+             dpr: RIG.dpr, canvas: RIG.cv ? (RIG.cv.width + 'x' + RIG.cv.height) : '' };
+  };
   /* 排查用：把"坐标系"的原始值都摊开。卡住时先看这里——
        px/py 是容器位置，hx/hy 是悬空层的额外位移，tx/ty 是透视角度。
      任何一个是非有限数（NaN/Infinity），就说明有东西写坏了坐标系。 */
