@@ -36,3 +36,6 @@ private/
 
 # 本地备份（不提交）
 _backup/
+
+# 截图临时文件
+.shot-*.png

@@ -220,7 +220,12 @@ check('给出等级评价', /卓越|优秀|良好|中等|偏弱|基础薄弱/.te
     A.save(); A.go('home');
     check('摸底入口清晰可见', qa('[data-act="start"][data-kind="probe"]').length >= 2,
       qa('[data-act="start"][data-kind="probe"]').length + ' 个');
-    check('首页模式卡不超过 2 张', qa('.mode').length <= 2, qa('.mode').length + ' 张卡片');
+    /* 模式卡就是产品的"功能目录"：三张，每张必须带编号和一句说明。
+       听音辨词和语境练习以前只是 hero 下面一行灰色小字，用户自己都找不到。 */
+    check('首页三张模式卡都带编号', qa('.mode').length === 3 &&
+      qa('.mode .badge').length === 3, qa('.mode').length + ' 张 / ' + qa('.mode .badge').length + ' 个编号');
+    check('听音辨词在首页有独立入口', !!q('[data-act="listen-start"]') &&
+      /听音辨词/.test(doc.getElementById('view').textContent));
 
     click('[data-act="start"][data-kind="probe"][data-target="400"]');
     const sess = A.S.session;

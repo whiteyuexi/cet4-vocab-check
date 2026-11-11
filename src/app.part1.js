@@ -1689,8 +1689,7 @@
       h += '<div class="hero-cta">' +
         '<button class="btn primary lg fx-shine fx-magnet" data-act="start" data-kind="probe" data-target="400">快速摸底 · 约 ' + nFast + ' 题 · ' + minsText(nFast) + '</button>' +
         '</div>';
-      h += '<p class="hero-note">想更准？<button class="btn sm ghost" style="vertical-align:middle;margin:0 4px" data-act="start" data-kind="probe" data-target="250">约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>' +
-        '　或者 <button class="btn sm ghost" style="vertical-align:middle;margin:0 4px" data-act="listen-start">测听力词汇量</button><button class="btn sm ghost" style="vertical-align:middle" data-act="drill-start">进语境里练</button></p>';
+      h += '<p class="hero-note">想更准？<button class="btn sm ghost" style="vertical-align:middle;margin:0 4px" data-act="start" data-kind="probe" data-target="250">约 ' + nStd + ' 题 · ' + minsText(nStd) + '</button>——题量更多，区间更窄。</p>';
       h += '</div>';
     } else {
       h += '<div class="hero">';
@@ -1702,7 +1701,9 @@
       h += '<div class="grow">';
       h += '<div class="hero-stat" style="margin-top:0;border-top:none;padding-top:0">';
       h += '<div>认识<b>' + t.k + '</b></div><div>模糊<b>' + t.f + '</b></div><div>不认识<b>' + t.u + '</b></div><div>未检测<b>' + t.rest + '</b></div>';
-      h += '</div></div></div></div>';
+      h += '</div></div>';
+
+      h += '</div>';
     }
 
     // 回访卡：不遮挡，放在 hero 之后；有未完成的检测时它自己会隐藏
@@ -1728,6 +1729,13 @@
     }
     h += '<button class="mode" data-act="start" data-kind="all"><b><em class="badge">02</em>完整检测 · ' + pool.length + ' 词</b>' +
       '<span>从头到尾过一遍' + A.bankName() + '，拿到实测值；随时中断、可分多次；也能在「分组」里按 100 词一组推进</span></button>';
+    /* 听音辨词与语境练习提成同级模式卡。
+       之前它们只是 hero 下面一行灰色小字——用户自己都找不到，评委更不会点。
+       功能要跟"完整检测"站在同一层，才有人知道它存在。 */
+    h += '<button class="mode" data-act="listen-start"><b><em class="badge">03</em>听音辨词 · 20 词</b>' +
+      '<span>只放声音、不给字。测出听力词汇量，和阅读并排对照——差的那几百个词就是「认得但听不出」</span></button>';
+    h += '<button class="mode" data-act="drill-start"><b><em class="badge">04</em>语境里练 · 10 题</b>' +
+      '<span>从缺口词出题：例句挖空、四选一。判分不联网，错了再让 AI 看你的错法</span></button>';
     h += '</div>';
 
     h += '<div class="sec-title">分组进度<span class="line"></span><span class="tiny">点任意一组开始</span></div>';
