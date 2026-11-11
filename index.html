@@ -607,7 +607,7 @@ html[data-theme="dark"] .pet-canvas{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5)
 .pet-shadow.soft{bottom:calc(var(--ground) - 21px);width:226px;height:44px;margin-left:-113px;
   background:radial-gradient(closest-side,rgba(16,19,25,.2),rgba(16,19,25,0) 76%);filter:blur(5px)}
 html[data-theme="dark"] .pet-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
-html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,0) 76%)}
+/* 深色下投影是黑的、画在黑底上等于没画，所以外圈改用一圈"脚底光"：`r`n   读成"她站在一小片光里"，而不是浮在半空。内圈仍然是暗的，保住接触感。 */`r`nhtml[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(120,160,255,.20),rgba(0,0,0,.30) 46%,rgba(0,0,0,0) 78%)}
 
 .pet-credit{position:absolute;left:0;right:0;bottom:252px;font-size:11px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 /* 只有 token 计量一行；没投喂过就整块隐藏，别在那儿留一条会挡点击的空盒子 */
@@ -6576,7 +6576,7 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
      这个数不能太大（像漂在半空中断开），也不能太小（还是"贴在地上"）。
      地面线 floorY() 仍然是真实地面：投影、离地高度、守卫都按它算，
      只有"她自己的静止高度"抬起来 —— 于是投影自然变小变淡，浮起来这件事就被读出来了。 */
-  var HOVER = 42;
+  var HOVER = 0;
   // 对照用：?hover=0 让她回到"踩在地上"的旧样子，方便 A/B
   try { if (new URLSearchParams(location.search).get('hover') === '0') HOVER = 0; } catch (e) {}
 
@@ -6865,7 +6865,8 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
       bobY = 0;
     } else {
       bobT += dt / 1000;
-      bobY = Math.sin(bobT * 1.15) * 3.4 + Math.sin(bobT * 0.37 + 1.1) * 1.7;
+      /* 只向上浮，不向下沉：脚底必须一直贴着地面线，否则会陷进底部导航里 */
+      bobY = -(Math.abs(Math.sin(bobT * 1.15)) * 3.2 + Math.abs(Math.sin(bobT * 0.37 + 1.1)) * 1.4);
       if (hostEl) hostEl.style.setProperty('--py', Math.round(P.y + bobY) + 'px');
     }
 

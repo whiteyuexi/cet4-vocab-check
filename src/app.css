@@ -598,7 +598,7 @@ html[data-theme="dark"] .pet-canvas{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5)
 .pet-shadow.soft{bottom:calc(var(--ground) - 21px);width:226px;height:44px;margin-left:-113px;
   background:radial-gradient(closest-side,rgba(16,19,25,.2),rgba(16,19,25,0) 76%);filter:blur(5px)}
 html[data-theme="dark"] .pet-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
-html[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,0) 76%)}
+/* 深色下投影是黑的、画在黑底上等于没画，所以外圈改用一圈"脚底光"：`r`n   读成"她站在一小片光里"，而不是浮在半空。内圈仍然是暗的，保住接触感。 */`r`nhtml[data-theme="dark"] .pet-shadow.soft{background:radial-gradient(closest-side,rgba(120,160,255,.20),rgba(0,0,0,.30) 46%,rgba(0,0,0,0) 78%)}
 
 .pet-credit{position:absolute;left:0;right:0;bottom:252px;font-size:11px;line-height:1.4;color:var(--ink3);text-align:center;pointer-events:auto}
 /* 只有 token 计量一行；没投喂过就整块隐藏，别在那儿留一条会挡点击的空盒子 */

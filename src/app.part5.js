@@ -46,7 +46,7 @@
      这个数不能太大（像漂在半空中断开），也不能太小（还是"贴在地上"）。
      地面线 floorY() 仍然是真实地面：投影、离地高度、守卫都按它算，
      只有"她自己的静止高度"抬起来 —— 于是投影自然变小变淡，浮起来这件事就被读出来了。 */
-  var HOVER = 42;
+  var HOVER = 0;
   // 对照用：?hover=0 让她回到"踩在地上"的旧样子，方便 A/B
   try { if (new URLSearchParams(location.search).get('hover') === '0') HOVER = 0; } catch (e) {}
 
@@ -335,7 +335,8 @@
       bobY = 0;
     } else {
       bobT += dt / 1000;
-      bobY = Math.sin(bobT * 1.15) * 3.4 + Math.sin(bobT * 0.37 + 1.1) * 1.7;
+      /* 只向上浮，不向下沉：脚底必须一直贴着地面线，否则会陷进底部导航里 */
+      bobY = -(Math.abs(Math.sin(bobT * 1.15)) * 3.2 + Math.abs(Math.sin(bobT * 0.37 + 1.1)) * 1.4);
       if (hostEl) hostEl.style.setProperty('--py', Math.round(P.y + bobY) + 'px');
     }
 
