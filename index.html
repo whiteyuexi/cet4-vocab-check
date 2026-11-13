@@ -7153,13 +7153,13 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     var k = Math.min(1, lift() / 200);
     // 被拎着的时候不要再跟着鼠标转头：摆动交给 .pet.held 的动画，两套一起转会打架
     /* 绑骨在跑时关掉 CSS 的透视旋转：转向由网格的圆柱映射负责，两边一起转会叠加成过曝的歪斜 */
-    var ttx = (P.dragging || RIG.on) ? 0 : -look.y * 9;
-    var tty = (P.dragging || RIG.on) ? 0 : look.x * 15;
+    var ttx = 0;                     // 不再跟随光标：她只按自己的节奏动
+    var tty = 0;
 
     V.tx += (ttx - V.tx) * 0.10;
     V.ty += (tty - V.ty) * 0.10;
-    V.cs += ((1 - k * 0.55) * (1 + Math.abs(look.y) * 0.06) - V.cs) * 0.12;
-    V.as += ((1 - k * 0.42) * (1 + Math.abs(look.y) * 0.05) - V.as) * 0.12;
+    V.cs += ((1 - k * 0.55) - V.cs) * 0.12;
+    V.as += ((1 - k * 0.42) - V.as) * 0.12;
     V.ang += ((118 + V.ty * 2.2 - V.tx * 1.4) - V.ang) * 0.12;
 
     if (figEl) {
@@ -7181,7 +7181,7 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
       shadowSoftEl.style.setProperty('--shx', (-V.ty * 2.4).toFixed(1) + 'px');
       shadowSoftEl.style.opacity = (0.85 - k * 0.5).toFixed(2);
     }
-    if (sayEl) sayEl.style.setProperty('--bx', (look.x * -7).toFixed(1) + 'px');
+    if (sayEl) sayEl.style.setProperty('--bx', '0px');
   }
 
   // 让她跟着鼠标看：平面立绘转不了头，就用整体倾斜 + 气泡反向视差来暗示朝向
@@ -7481,7 +7481,7 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
        视差只是让部件错位，画面本身还是平的；转向是把画面当成包在圆柱面上转，
        转过去的那一侧会被真正压窄（透视压缩），大脑才判定"它有厚度"。
        幅度压在 ±19 度以内——再大就会把立绘扯成鱼眼。 */
-    RIG.turn += (look.x * 0.34 - RIG.turn) * Math.min(0.5, dt * 7);
+    RIG.turn += (0 - RIG.turn) * Math.min(0.5, dt * 7);   // 目标恒为 0：只保留自发动作的冲量
     var turn = RIG.turn + RQ.turn;
     var strScale = RQ.str;
     var lean = (RIG.lean + RQ.tilt) * Math.PI / 180;
@@ -7534,16 +7534,14 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
       dy += (wR * 0.4 + wS * 0.5) * Math.abs(lag);
 
       /* 5) 视线：眼睛那块整体平移一两个像素 */
-      dx += wE * look.x * 1.5;
-      dy += wE * look.y * 1.1;
+      /* 视线跟随已取消：眼睛不再跟着鼠标动 */
 
       /* 5c) 分层视差：越靠前的部件跟鼠标动得越多。
          纸片感的根源不是"动得少"，是"全都在同步动"——头、身体、尾巴、头发位移一样，
          大脑立刻判定这是一张平面图。把深度拆开（头/发/手在前、身体在中、尾巴在后），
          位移量差出三倍，同样的鼠标移动就读成了"有厚度"。 */
       dep = Math.min(1.15, wH * 1.05 + wR * 0.95 + wN * 0.90 + wT * 0.50);
-      dx += dep * look.x * 4.2;
-      dy += dep * look.y * 2.8;
+      /* 分层视差已取消：整只不再随光标位移，`dep` 只留给自发的转身动作 */
 
       /* 5b) 合着的双手：浮着的时候跟着一起轻轻沉浮，不是焊在胸口的 */
       dy += wN * (Math.sin(t * 0.9 + 0.6) * 1.3 - b * 0.5) * (1 + RIG.swim * 0.6);
