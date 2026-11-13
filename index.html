@@ -7607,12 +7607,13 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
 
     // 渲染（纹理可能有两层在交叉淡入）
     var cx2 = RIG.cx, C = RIG.cols, R = RIG.rows;
-    var i, j, ti, e3, a0, b0, c0, d0, P1, P2, P3, P4;
+    var i, j, ti, e3, a0, b0, c0, d0, P1, P2, P3, P4, drewA = 0;
     cx2.clearRect(0, 0, S, S);
     for (ti = 0; ti < RIG.tex.length; ti++) {
       e3 = RIG.tex[ti];
       if (!e3.ok || e3.a <= 0.004) continue;
       cx2.globalAlpha = e3.a;
+      if (e3.a > drewA) drewA = e3.a;
       for (j = 0; j < R; j++) {
         for (i = 0; i < C; i++) {
           a0 = j * (C + 1) + i; b0 = a0 + 1; c0 = a0 + C + 1; d0 = c0 + 1;
@@ -7643,10 +7644,10 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
       cx2.restore();
     }
 
-    /* 第一次真正画出东西了，才让 canvas 接管显示 */
-    var ready = 0;
-    for (i = 0; i < RIG.tex.length; i++) if (RIG.tex[i].ok && RIG.tex[i].a > 0.5) ready = 1;
-    if (ready && !RIG.shown) {
+    /* 真正画过一帧之后，才让 canvas 接管显示。
+       之前这里用 alpha>0.5 做判定，结果永远不成立——img 一直盖在画布上，
+       用户看到的是静态图，所有形变等于没做。现在直接记「画到过的最大 alpha」。 */
+    if (drewA > 0.5 && !RIG.shown) {
       RIG.shown = true;
       if (artEl) artEl.style.opacity = '0';
     }
@@ -7700,18 +7701,29 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     } catch (e) {}
     if (rigWant && !reduceMo) RIG.on = rigInit();
 
-    /* 兜底：2.5 秒还没画出第一帧，就当网格绑骨在这台机器上不可用，整只退回 <img>。
-       宁可少一点形变，也不能让人凭空消失——这是上一版踩过的坑。 */
-    if (RIG.on) {
-      setTimeout(function () {
-        if (RIG.on && !RIG.shown) {
-          RIG.on = false;
-          artState.name = '';
-          showArtWithFallback('idle-cute', 0);
-        }
-      }, 2500);
-    }
+    /* 这里原来有个「2.5 秒没画出第一帧就永久关掉绑骨」的兜底，是个坑：
+       标签页在后台时 requestAnimationFrame 根本不会跑，2.5 秒一到就被判死刑，
+       于是一整轮形变全部失效——用户看到的就是「没改」。
+       现在不判死了：<img> 一直留在上面兜底，画布什么时候画出第一帧就什么时候接管。
+       标签页切回来、rAF 恢复，它自己会活。 */
 
+    /* ?diag=1：把绑骨的真实状态打在屏幕上。这台机器上"看起来没动"到底是
+       纹理没加载、画布没画、还是 rAF 没跑，看这四个数就知道。 */
+    try {
+      if (new URLSearchParams(location.search).get('diag') === '1' || window.__PET_DIAG) {
+        var dg = document.createElement('div');
+        dg.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;font:11px/1.5 ui-monospace,monospace;' +
+          'background:rgba(0,0,0,.75);color:#8fe;padding:8px 10px;border-radius:8px;white-space:pre;pointer-events:none';
+        document.body.appendChild(dg);
+        setInterval(function () {
+          var d = A.rigDiag ? A.rigDiag() : {};
+          d.walk = P.walking; d.vis = document.hidden ? 0 : 1;
+          dg.textContent = 'rig=' + d.on + ' ok=' + d.ok + ' shown=' + d.shown +
+            '\ntex=' + d.loaded + '/' + d.tex + ' a=' + (d.alpha || []).join(',') +
+            '\ndpr=' + d.dpr + ' cv=' + d.canvas + ' walk=' + (d.walk ? 1 : 0) + ' vis=' + d.vis;
+        }, 500);
+      }
+    } catch (e) {}
     host.style.setProperty('--art-trim', ART_TRIM + 'px');
     host.style.setProperty('--ground', GROUND_FROM_BOTTOM + 'px');
 
