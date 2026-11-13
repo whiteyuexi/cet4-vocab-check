@@ -567,8 +567,8 @@ html[data-theme="dark"] .pet-canvas{filter:drop-shadow(0 7px 15px rgba(0,0,0,.5)
 
 /* 游动：不再是"迈步子"的左右摇滚。这张立绘没有腿，摇滚只会暴露它是贴图。
    换成缓慢的上下浮动 + 极轻的侧倾；真正的摆动交给网格绑骨（尾巴 / 发丝 / 游动波） */
-.pet.walk .pet-anim{animation:petSwim 1.15s ease-in-out infinite}
-@keyframes petSwim{0%,100%{transform:translateY(0) rotate(-.7deg)}50%{transform:translateY(-3.5px) rotate(.7deg)}}
+.pet.walk .pet-anim{animation:none}
+@keyframes petSwim{0%,100%{transform:none}50%{transform:none}}
 .pet.face-l .pet-art{transform:scaleX(-1)}
 .pet.poked .pet-anim{animation:petPoke .5s cubic-bezier(.2,.7,.3,1)}
 @keyframes petPoke{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-9px) scale(1.05)}}

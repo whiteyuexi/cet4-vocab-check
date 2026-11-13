@@ -330,15 +330,10 @@
     rafId = requestAnimationFrame(tick);
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
 
-    /* 悬浮起伏。被拎着的时候归零：她应该老老实实跟手，不能自己上下飘 */
-    if (P.dragging || reduceMo) {
-      bobY = 0;
-    } else {
-      bobT += dt / 1000;
-      /* 只向上浮，不向下沉：脚底必须一直贴着地面线，否则会陷进底部导航里 */
-      bobY = -(Math.abs(Math.sin(bobT * 1.15)) * 3.2 + Math.abs(Math.sin(bobT * 0.37 + 1.1)) * 1.4);
-      if (hostEl) hostEl.style.setProperty('--py', Math.round(P.y + bobY) + 'px');
-    }
+    /* 整只上下起伏已移除：周期性升降和摇摆是一回事，都会读成「卡片在飘」。
+       呼吸交给胸腔形变，起伏交给自发动作（转身 / 伸懒腰）。
+       被拎着时同样不动——她应该老老实实跟手。 */
+    bobY = 0;
 
     // 兜底：拖拽状态卡住时自己解开，否则重力会被永久挡住
     if (P.dragging && now - drag.lastMove > DRAG_STALE_MS) endDrag();
@@ -1021,14 +1016,14 @@
       dx += wE * ((nx < 0.5 ? 0.385 : 0.585) - nx) * S * (1 - bk) * 0.10;
 
       /* 7) 重心：脚不动，越往上摆得越多 */
-      dx += sway * 1.7 * (1 - ny);
+      /* 整只横向摇摆已移除 —— 那是纸板在晃最强的信号。重心交给呼吸与自发动作的局部形变 */
 
       /* 8) 下蹲式挤压：脚底为支点，压扁 + 变宽 */
       dx += -sq * (nx - 0.5) * S * 0.030;
       dy += sq * (ny - 1.0) * S * 0.030;
 
       /* 9) 游动波：一道纵向的波从下往上走。鱼游起来就是这样的 */
-      if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 2.2;
+      if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 1.1;
 
       /* 10) 圆柱转向：把画面包在"半径 = 半宽"的圆柱上，按 turn 转过去。
              远端同时按 cos 比例竖向压窄——只压横不压竖，看起来是"挤扁"；
