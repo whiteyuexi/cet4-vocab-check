@@ -39,3 +39,6 @@ _backup/
 
 # 截图临时文件
 .shot-*.png
+
+# Live2D 内联产物（生成物，跑 node scripts/make-live2d-inline.mjs 重建）
+assets/whale-girl/_l2d-inline.js

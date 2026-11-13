@@ -97,6 +97,24 @@ html = html.replace('/*__AUTHORKEY__*/', function () { return authorKey ? JSON.s
 html = html.replace('/*__WORDS__*/', function () { return wordsJson; });
 html = html.replace('/*__SENTENCES__*/', function () { return sentencesJson; });
 html = html.replace('/*__CORPUS__*/', function () { return JSON.stringify(corpusStats); });
+// Live2D：运行时与模型一并内联，让"活的小窗"在 file:// 下也能跑（双击即用）
+/* 默认不内联：Live2D 的运行时 + 模型约 5.8 MB，会把单文件从 2.2 MB 拉到 8 MB，
+   jsdom 解析变慢十倍、浏览器首屏也变慢。需要"活的小窗"时用
+     node build.js --with-l2d
+   单独产出一份演示版，仓库里的 index.html 保持精简。 */
+const withL2D = process.argv.indexOf('--with-l2d') >= 0;
+let l2d = '';
+try {
+  if (!withL2D) throw new Error('skip');
+  const core = fs.readFileSync(path.join(ROOT, 'vendor', 'live2dcubismcore.min.js'), 'utf8');
+  const vend = fs.readFileSync(path.join(ROOT, 'vendor', 'live2d-vendor.js'), 'utf8');
+  const inline = fs.readFileSync(path.join(ROOT, 'assets', 'whale-girl', '_l2d-inline.js'), 'utf8');
+  l2d = '<script>' + core + '<\/script>\n<script>' + vend + '<\/script>\n<script>' + inline + '<\/script>';
+  console.log('Live2D: 运行时 + 模型已内联（' + (l2d.length / 1024 / 1024).toFixed(2) + ' MB）');
+} catch (e) {
+  if (withL2D) console.log('提示：Live2D 资源不完整（先运行 node scripts/make-live2d-inline.mjs）');
+}
+html = html.replace('<!--__L2D__-->', function () { return l2d; });
 html = html.replace('/*__JS__*/', function () { return js; });
 // 刻意不写入生成时间：产物必须可复现，否则每次构建都会让 index.html 产生假改动
 html = html.replace('</head>', '<!-- 四六级词汇量检测 · 词库 ' + words.length + ' 词 · 内联例句 ' + sentCount + ' 条 -->\n</head>');

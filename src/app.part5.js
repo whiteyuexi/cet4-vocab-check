@@ -688,11 +688,15 @@
 
       // 绑骨在跑：只换纹理，形变不断；不跑：走原来的 img 交叉淡入
       if (RIG.on) {
-        /* 注意：这里**不能**立刻把 <img> 藏掉。
-           曾经这么干过，结果用户的机器上画布一帧都没画出来（原因至今未定位，
-           但 reduce-motion / DPR / 未捕获异常都可能），于是桌宠整个变成透明的——
-           投影和气泡还在，人没了。现在改成：画布画出第一帧之后才接管。 */
         rigSetArt(url);
+        /* 真正的兜底：先把这张静态图**显示出来**，再让画布去争取接管权。
+           之前 build() 一开始就把 #petArt 设成 opacity:0，而这条分支又从不放可见的图，
+           所以"画布空"的最坏情况不是"看到静态图"，而是"什么都没有"——红框里那个空位就是这么来的。
+           现在：img 先亮着，画布被探测确认真的画出了像素（rigFrame 里读画面），才把它藏掉。 */
+        if (artEl && !RIG.shown) {
+          if (artEl.getAttribute('src') !== url) artEl.src = url;
+          artEl.style.opacity = '1';
+        }
         if (done) done(true);
         return;
       }
@@ -1127,12 +1131,23 @@
       cx2.restore();
     }
 
-    /* 真正画过一帧之后，才让 canvas 接管显示。
-       之前这里用 alpha>0.5 做判定，结果永远不成立——img 一直盖在画布上，
-       用户看到的是静态图，所有形变等于没做。现在直接记「画到过的最大 alpha」。 */
-    if (drewA > 0.5 && !RIG.shown) {
-      RIG.shown = true;
-      if (artEl) artEl.style.opacity = '0';
+    /* 接管判定：**真的去读画布像素**，确认她出现在屏幕上，才把 <img> 藏掉。
+       "画过一帧"不算数——坐标一旦变成 NaN，三角形会被整片跳过，
+       画布是空的，但 alpha 依然被记录过。上次就是这么空的。 */
+    RIG.frameN = (RIG.frameN || 0) + 1;
+    if (!RIG.shown && RIG.frameN % 20 === 0) {
+      var opaque = 0;
+      try {
+        var px = cx2.getImageData(0, 0, S, S).data;
+        for (var z = 3; z < px.length; z += 4 * 97) { if (px[z] > 40) opaque++; }
+      } catch (e) { opaque = 0; }
+      if (opaque > 30) {
+        RIG.shown = true;
+        if (artEl) artEl.style.opacity = '0';
+      } else {
+        RIG.blankChecks = (RIG.blankChecks || 0) + 1;
+        if (RIG.blankChecks > 6) RIG.err = (RIG.err || '') + '[canvas blank: 画布读不到不透明像素]';
+      }
     }
 
     // 淡入淡出
@@ -1145,6 +1160,52 @@
     for (i = RIG.tex.length - 1; i >= 0; i--) {
       if (RIG.tex[i].dir < 0 && RIG.tex[i].a <= 0) RIG.tex.splice(i, 1);
     }
+  }
+
+  /* ---------- Live2D：右下角一个"活的小窗" ----------
+     她是坐在书桌前的（画板、笔、一杯芭菲都在素材里），所以不做"站在页面上"，
+     做成一个圆角小窗：她在里面写写画画、眨眼、抬头看你。
+     这是唯一能真正摆脱"纸片感"的形态——因为它是骨骼动画，不是一张图在变形。 */
+  var L2D = { ok: false, app: null, model: null };
+  var L2D_FACE = { x: 2019, y: 1871 };
+
+  function mountL2D(fig) {
+    var v = window.__dshLive2dPetVendor;
+    if (!v || !window.L2D_INLINE || !v.Live2DModel) return Promise.reject(new Error('无运行时'));
+    v.extensions.add(v.Live2DPlugin);
+    if (v.configureCubismSDK) v.configureCubismSDK({ memorySizeMB: 64 });
+    var W = FIG_H, H = FIG_H;
+    var app = new v.Application();
+    return app.init({
+      width: W, height: H, backgroundAlpha: 0, antialias: true,
+      autoDensity: false, resolution: Math.max(2, window.devicePixelRatio || 1),
+      preference: 'webgl', preserveDrawingBuffer: true
+    }).then(function () {
+      return v.Live2DModel.from(window.L2D_INLINE.model3, {
+        autoUpdate: false, autoHitTest: false, autoFocus: false
+      });
+    }).then(function (m) {
+      app.canvas.style.width = W + 'px';
+      app.canvas.style.height = H + 'px';
+      fig.appendChild(app.canvas);
+      app.stage.addChild(m);
+      var sc = W * 0.00044 * 0.72;
+      m.anchor.set(0, 0);
+      m.scale.set(sc);
+      m.x = W / 2 - L2D_FACE.x * sc;
+      m.y = H * 0.34 - L2D_FACE.y * sc;
+      m.automator.autoUpdate = true;
+      try { m.motion('Idle'); } catch (e) {}
+      L2D.ok = true; L2D.app = app; L2D.model = m;
+      fig.classList.add('pet-l2d');
+      RIG.on = false;                                  // 关掉网格循环，省 CPU
+      if (animEl) animEl.style.display = 'none';
+      if (shadowEl) shadowEl.style.display = 'none';
+      if (shadowSoftEl) shadowSoftEl.style.display = 'none';
+      if (sheenEl) sheenEl.style.display = 'none';
+      document.documentElement.setAttribute('data-pet', 'live2d');
+      return true;
+    });
   }
 
   function build(host) {
@@ -1176,6 +1237,13 @@
     sheenEl = document.getElementById('petSheen');
     artEl = document.getElementById('petArt');
     artEl.style.opacity = '0';
+
+    /* 先试 Live2D 小窗；失败就一路回落到网格绑骨 / 静态立绘，绝不空着 */
+    if (window.L2D_INLINE && window.__dshLive2dPetVendor) {
+      setTimeout(function () {
+        mountL2D(figEl).catch(function () { /* 静默回落：下面的立绘已经在了 */ });
+      }, 0);
+    }
 
     // 网格绑骨：能用就上；减少动效、或 ?rig=0 时保持原来的 <img>（退役路径永远留着）
     var rigWant = true;

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live2D 桌宠原型 · 半身取景</title>
+<style>
+:root{--bg:#EDF0F6;--ink:#101319}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+body.dark{--bg:#0F1116;--ink:#F2F4F8}
+#wrap{display:flex;gap:28px;align-items:flex-end;justify-content:center;height:100%;padding:28px}
+.slot{width:240px;text-align:center}
+#pet{position:relative;width:240px;height:300px;
+  background:var(--bg);border-radius:18px;overflow:hidden;
+  box-shadow:0 10px 40px -18px rgba(16,19,25,.45)}
+body.dark #pet{box-shadow:0 10px 40px -18px rgba(0,0,0,.9)}
+#pet canvas{display:block}
+#shadow{position:absolute;left:50%;bottom:10px;width:150px;height:26px;margin-left:-75px;
+  border-radius:50%;background:radial-gradient(closest-side,rgba(16,19,25,.32),transparent 76%);
+  filter:blur(2px);pointer-events:none}
+#hint{position:absolute;left:0;right:0;bottom:6px;font-size:11px;color:#889;pointer-events:none}
+.cap{margin-top:10px;font-size:12px;color:#667;letter-spacing:.06em}
+#log{position:fixed;left:12px;top:12px;font:11px/1.6 ui-monospace,monospace;color:#889;white-space:pre}
+</style></head>
+<body>
+<div id="log">加载中…</div>
+<div id="wrap">
+  <div class="slot">
+    <div id="pet"><div id="shadow"></div><div id="hint">鼠标在页面上移动，她会看你</div></div>
+    <div class="cap">半身取景 · 240×300</div>
+  </div>
+</div>
+<script>
+(function () {
+  var log = document.getElementById('log');
+  function say(s) { log.textContent = s; }
+
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = res;
+      s.onerror = function () { rej(new Error('加载失败 ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  var BASE = location.protocol === 'file:' ? '../' : location.origin + '/';
+  var MODEL = 'assets/whale-girl/c_0120.model3.json';
+  var FACE = { x: 2019, y: 1871 };
+
+  var wantInline = new URLSearchParams(location.search).get('inline') === '1';
+  (wantInline ? loadScript(BASE + 'assets/whale-girl/_l2d-inline.js') : Promise.resolve())
+    .then(function () { return loadScript(BASE + 'vendor/live2dcubismcore.min.js'); })
+    .then(function () { return loadScript(BASE + 'vendor/live2d-vendor.js'); })
+    .then(function () {
+      var v = window.__dshLive2dPetVendor;
+      if (!v) throw new Error('运行时未挂载');
+      v.extensions.add(v.Live2DPlugin);
+      if (v.configureCubismSDK) v.configureCubismSDK({ memorySizeMB: 64 });
+
+      var host = document.getElementById('pet');
+      var W = host.clientWidth, H = host.clientHeight;
+      var app = new v.Application();
+      window.__USE_INLINE = new URLSearchParams(location.search).get('inline') === '1';
+      return app.init({
+        width: W, height: H, backgroundAlpha: 0, antialias: true,
+        autoDensity: false, resolution: Math.max(2, window.devicePixelRatio || 1),
+        preference: 'webgl', preserveDrawingBuffer: true
+      }).then(function () { return { v: v, app: app, W: W, H: H }; });
+    })
+    .then(function (o) {
+      var src = window.__USE_INLINE ? window.L2D_INLINE.model3 : (BASE + MODEL);
+      return o.v.Live2DModel.from(src, {
+        autoUpdate: false, autoHitTest: true, autoFocus: false
+      }).then(function (m) { o.model = m; return o; });
+    })
+    .then(function (o) {
+      var app = o.app, m = o.model;
+      app.canvas.style.width = '100%';
+      app.canvas.style.height = '100%';
+      document.getElementById('pet').insertBefore(app.canvas, document.getElementById('shadow'));
+      app.stage.addChild(m);
+
+      /* 取景：把模型坐标里的 FACE 点放到容器的 30% 高度处。
+         缩放 = 容器宽 × 0.00044（旧版验证过的比例），再乘一个半身系数。 */
+      var q = new URLSearchParams(location.search);
+      var Z = parseFloat(q.get('z') || '1.35');
+      var FY = parseFloat(q.get('fy') || '0.30');
+      var s = o.W * 0.00044 * Z;
+      m.anchor.set(0, 0);
+      m.scale.set(s);
+      m.x = o.W / 2 - FACE.x * s;
+      m.y = o.H * FY - FACE.y * s;
+      m.automator.autoUpdate = true;
+      try { m.motion('Idle'); } catch (e) {}
+
+      // 视线跟随：把鼠标位置换算成模型焦点
+      var focus = m.focusController || (m.internalModel && m.internalModel.focusController);
+      if (focus) {
+        document.addEventListener('pointermove', function (e) {
+          var r = document.getElementById('pet').getBoundingClientRect();
+          var x = (e.clientX - r.left) / r.width * 2 - 1;
+          var y = (e.clientY - r.top) / r.height * 2 - 1;
+          try { focus.focus(x, y); } catch (err) {}
+        });
+      }
+
+      say('OK  ' + o.W + 'x' + o.H + '  scale=' + s.toFixed(4) + '\n模型：' + (m.internalModel ? '已加载' : '?'));
+    })
+    .catch(function (e) { say('FAIL ' + (e && e.message || e)); });
+})();
+</script>
+</body></html>

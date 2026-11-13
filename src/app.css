@@ -1488,3 +1488,19 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
 .listen-compare span{display:block;font-size:11px;color:var(--ink3);letter-spacing:.08em;margin-top:2px}
 .listen-dash{color:var(--ink3);font-size:20px}
 @media (max-width:520px){.listen-opts{grid-template-columns:1fr}.listen-compare b{font-size:24px}}
+
+/* ---------- Live2D 活的小窗 ----------
+   她坐在书桌前，所以不做"站在页面上"，做成一个圆角小窗。
+   小窗不参与 3D 透视（那是给平面立绘用的），否则会被拉斜。 */
+.pet-fig.pet-l2d{
+  transform:none !important;
+  border-radius:16px;
+  overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.28));
+  box-shadow:0 1px 2px rgba(16,19,25,.06), 0 18px 44px -22px rgba(16,19,25,.45), inset 0 0 0 1px rgba(255,255,255,.6);
+}
+html[data-theme="dark"] .pet-fig.pet-l2d{
+  background:linear-gradient(180deg,rgba(38,44,58,.75),rgba(24,28,38,.7));
+  box-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -20px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.pet-fig.pet-l2d canvas{display:block;border-radius:16px}
