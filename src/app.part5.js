@@ -309,7 +309,7 @@
       var lo = safeLeft(), hi = maxX();
       var span = Math.min(170, (hi - lo) * 0.6);          // 幅度也收小，别横穿
       var tx = Math.max(lo, Math.min(hi, P.x + (Math.random() * 2 - 1) * span));
-      var dur = Math.abs(tx - P.x) / 0.075;            // 约 75 px/s
+      var dur = Math.abs(tx - P.x) / 0.16;             // 约 160 px/s：小短腿也得跑起来
       var from = P.x, t0 = performance.now();
       setWalk(true); setFace(tx < from);
       (function step(now) {
@@ -761,7 +761,7 @@
        · 30fps 上限（这些动作本来就慢，30 帧看不出差别）
        · 减少动效 / ?rig=0 / canvas 不可用时，整个退回原来的 <img>
        · 微动靠**离散小动作 + 弹簧**，不是正弦循环——正弦是可以被眼睛数出来的 */
-  var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 12, rows: 14,
+  var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 14, rows: 18,
               grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, turn: 0, shown: false };
   var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
   var RB = { on: false, t: 0 };                                       // 眨眼进度
@@ -1023,7 +1023,24 @@
       dy += sq * (ny - 1.0) * S * 0.030;
 
       /* 9) 游动波：一道纵向的波从下往上走。鱼游起来就是这样的 */
-      if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 1.1;
+      if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 1.0;
+
+      /* 12) 迈步。她的腿藏在长裙下面，画面里只有两只鞋露出来，
+             所以"走路"只能靠这两只鞋交替抬落 + 裙摆被带起 + 身体按步频起伏。
+             这是 chibi 角色走路的标准做法：观众看不到腿，但会读到"在走"。 */
+      if (RIG.swim > 0.02) {
+        var wPh = t * 9.2;
+        var wShoeL = rigReg(nx, ny, 0.405, 0.918, 0.078, 0.048);
+        var wShoeR = rigReg(nx, ny, 0.590, 0.918, 0.078, 0.048);
+        var stL = Math.sin(wPh), stR = Math.sin(wPh + Math.PI);
+        var stepAmt = (wShoeL * stL + wShoeR * stR) * RIG.swim;
+        dy += stepAmt * 3.6;
+        dx += stepAmt * 1.1 * (P.faceL ? 1 : -1);
+        /* 裙摆被脚步带起来一点，和抬脚反相 */
+        dy -= wS * 1.8 * Math.abs(Math.sin(wPh)) * RIG.swim;
+        /* 身体按步频起伏：两脚各迈一次是一个周期，所以频率翻倍 */
+        dy -= Math.abs(Math.sin(wPh)) * 1.3 * RIG.swim;
+      }
 
       /* 10) 圆柱转向：把画面包在"半径 = 半宽"的圆柱上，按 turn 转过去。
              远端同时按 cos 比例竖向压窄——只压横不压竖，看起来是"挤扁"；
