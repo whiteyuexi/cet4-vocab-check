@@ -811,7 +811,7 @@
     if (!keepLog) log.innerHTML = '';
     logHTML('<div class="ai-q">' + esc(question) + '</div>', 'me');
     var box = logHTML('<div class="ai-a"><span class="ai-dots">正在分析你的数据</span></div>', 'bot');
-    var toolBox = null;
+    var toolBox = null, planBox = null;
     var evidence = [];
 
     /* ---------- 三档通路（顺序不能反） ----------
@@ -874,7 +874,27 @@
             if (line.indexOf('data:') !== 0) return;
             var evt;
             try { evt = JSON.parse(line.slice(5).trim()); } catch (e) { return; }
-            if (evt.type === 'mode') {
+            if (evt.type === 'plan') {
+              /* Agent 的"打算"：先摊开，再动手。步骤来自服务端真正要调的工具，
+                 所以过一会儿下面会一条条变成"完成"，和实际执行对得上。 */
+              planBox = document.createElement('div');
+              planBox.className = 'ai-plan';
+              var ol = '<div class="ai-plan-h">计划</div><ol>';
+              for (var pi = 0; pi < evt.steps.length; pi++) {
+                ol += '<li data-i="' + pi + '"><span class="ai-plan-n">' + (pi + 1) + '</span>' +
+                      '<span class="ai-plan-t">' + A.esc(evt.steps[pi]) + '</span></li>';
+              }
+              ol += '</ol>';
+              planBox.innerHTML = ol;
+              box.parentNode.insertBefore(planBox, box);
+              log.scrollTop = log.scrollHeight;
+            } else if (evt.type === 'step') {
+              if (planBox) {
+                var li = planBox.querySelector('li[data-i="' + evt.i + '"]');
+                if (li) li.className = evt.status === 'done' ? 'done' : 'run';
+                log.scrollTop = log.scrollHeight;
+              }
+            } else if (evt.type === 'mode') {
               var m = el('aiMode');
               if (m) m.textContent = evt.mode === 'mock' ? '本地规则诊断' : ('模型：' + (evt.model || '') );
             } else if (evt.type === 'tool') {

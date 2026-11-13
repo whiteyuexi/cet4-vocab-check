@@ -295,20 +295,22 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 关键是<b>模型的输出永远不直接进界面数字位</b>——界面上的数字来自工具返回值。</p>
 <table>
 <tr><th style="width:180px">工具</th><th>作用</th></tr>
-<tr><td class="k">get_profile</td><td>取整体情况：词汇量、区间、双口径、覆盖率、四态统计</td></tr>
-<tr><td class="k">get_band_profile</td><td>取七段词频掌握率与缺口</td></tr>
-<tr><td class="k">get_weak_words</td><td>取没掌握 / 没测过的词清单</td></tr>
-<tr><td class="k">make_plan</td><td>按每日可投入时间折算补词计划</td></tr>
+<tr><td class="k">get_profile</td><td>整体情况：词汇量、区间、双口径、覆盖率、四态统计</td></tr>
+<tr><td class="k">get_band_profile</td><td>七段词频掌握率与缺口</td></tr>
+<tr><td class="k">get_weak_words</td><td>未掌握 / 未测过的词清单，可按频段筛选</td></tr>
+<tr><td class="k">plan_schedule</td><td>按剩余词量与天数生成复习计划</td></tr>
 <tr><td class="k">get_examples</td><td>按需检索真实例句（RAG）</td></tr>
-<tr><td class="k">get_round_diff</td><td>取多轮差分：真学会 / 背了又忘 / 掉档</td></tr>
-<tr><td class="k">get_map_cell</td><td>取词汇地图某一格的数据</td></tr>
-<tr><td class="k">get_quota</td><td>取当前 AI 档位与剩余额度</td></tr>
+<tr><td class="k">get_weak_examples</td><td>为薄弱词批量检索例句，用于带语境的复习建议</td></tr>
+<tr><td class="k">list_banks</td><td>列出可用词库</td></tr>
 <tr><td class="k">suggest_actions</td><td>动作工具：给出可点按钮（go / start / review / ask）</td></tr>
 </table>
+<p><b>规划可见</b>：模型决定要调哪些工具之后、真正执行之前，服务端先推一条 <code>plan</code> 事件，把这几步摊给用户看；
+每执行一步再推 <code>step</code>（run / done）。<b>步骤不是另写的文案</b>——它和随后真正执行的工具是同一批调用，
+所以界面上的"第 2 步"变绿时，对应的工具确实刚跑完。离线规则诊断也走同一套：先包一层 api 记录它实际调用了哪些工具，再用这些生成计划。</p>
 <table>
 <tr><td class="k">循环上限</td><td><code>MAX_TOOL_ROUNDS = 3</code>，避免模型无限取数</td></tr>
 <tr><td class="k">输出预算</td><td><code>maxTokens = 1000</code>；历史只带最近 6 条，控制成本</td></tr>
-<tr><td class="k">流式协议</td><td>SSE 事件：<code>mode</code> / <code>tool</code> / <code>delta</code> / <code>actions</code> / <code>done</code> / <code>error</code></td></tr>
+<tr><td class="k">流式协议</td><td>SSE 事件：<code>mode</code> / <code>plan</code> / <code>step</code> / <code>tool</code> / <code>delta</code> / <code>actions</code> / <code>done</code> / <code>error</code></td></tr>
 <tr><td class="k">可视化</td><td>界面把"这次调了哪几个工具、拿到了什么"渲染成标签，回答下方可展开"本次发送给模型的数据"</td></tr>
 </table>
 
@@ -354,6 +356,26 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 </table>
 
 <!-- ============================================================ -->
+<h3>4.7 可验证指标</h3>
+<p>评分表里 RAG 与技术实现都看"是否真的有效"。下面这些数字由 <code>node scripts/eval-rag.mjs</code> 实测产出，可复现：</p>
+<table>
+<tr><th style="width:150px">指标</th><th style="width:250px">实测</th><th>怎么测的</th></tr>
+<tr><td class="k">例句检索覆盖率</td><td><b>79.0%</b>（4,518 / 5,716 核心词可检索到例句）</td><td>遍历核心词条，调 <code>examplesFor</code> 看是否返回非空</td></tr>
+<tr><td class="k">命中正确率</td><td><b>100%</b>（抽样 232 词）</td><td>检查返回例句里是否真的含目标词（允许词形变化）</td></tr>
+<tr><td class="k">检索延迟</td><td>p50 <b>0.0002 ms</b> · p95 <b>0.0004 ms</b>（2,000 次调用）</td><td>内存索引查表，与语料规模无关</td></tr>
+</table>
+<p>分频段覆盖率暴露了语料边界，也解释了一个取舍：</p>
+<table>
+<tr><th style="width:130px">频段</th><th style="width:110px">覆盖</th><th>说明</th></tr>
+<tr><td class="k">1k 以内</td><td>88.6%</td><td>高频词例句充足</td></tr>
+<tr><td class="k">1k–2k</td><td><b>48.9%</b></td><td><b>最薄的一段，偏偏是最该补的一段</b>；这里的兜底是词义与频段说明，不硬凑例句</td></tr>
+<tr><td class="k">2k–3k</td><td>80.9%</td><td>恢复正常</td></tr>
+</table>
+<p><b>为什么是精确检索而不是向量检索</b>：这里的检索对象是"某个词的例句"，键就是词本身；
+向量检索会引入 embedding 模型、运行时依赖和不可解释的相似度。精确查表可解释、零依赖、延迟恒定，
+代价是覆盖率受语料限制——上表把这条边界如实列出来了，而不是用一个漂亮的词盖过去。</p>
+<p>Agent 侧同样有可看的证据：<code>plan</code> 事件与随后执行的工具来自同一批调用，
+界面上"计划"的每一步变绿，与真正跑完的工具一一对应，不是事后补写的文案。</p>
 <h2 id="c5">5 核心功能实现</h2>
 
 <h3>5.1 检测的五个入口，共用一套统计内核</h3>
@@ -595,7 +617,22 @@ PORT=8787</code></pre>
 182 格词汇地图、回访卡、自定义词书、使用者档案、三档 AI 通路、离线可用的本地规则引擎，
 外加一个同源引擎的微信小程序版本。全部由单人完成，427 条离线断言守着回归。</p>
 
-<h3>8.2 可改进的方向</h3>
+<h3>8.2 商业与社会价值</h3>
+<p><b>社会价值：把「测得起」变成「测得准」</b></p>
+<ul>
+<li><b>教育公平</b>：单文件、零依赖、断网可用——一台旧笔记本、一个没有稳定网络的机房也能完整使用；不需要账号，不采集身份信息。</li>
+<li><b>不让 AI 编数字</b>：词汇量这类"差 500 词就是另一档"的事，编一个数字就是误导。本产品把测量锁死给统计，AI 只负责解释——这是教育类 AI 产品更该有的边界。</li>
+<li><b>隐私</b>：逐题作答不出本机，AI 只收到汇总数据（上行字段白名单），同机多人靠本机档案隔离。</li>
+</ul>
+<p><b>商业潜力：三条可落地的路径</b></p>
+<table>
+<tr><th style="width:150px">形态</th><th style="width:150px">怎么收费</th><th>为什么成立</th></tr>
+<tr><td class="k">个人版</td><td>免费</td><td>获客入口；离线可用，不产生边际成本</td></tr>
+<tr><td class="k">校园授权版</td><td>按院系 / 班级年费</td><td>教师需要"摸底 + 分层 + 补词清单"，且要求数据不出校——本产品天然满足</td></tr>
+<tr><td class="k">教师看板（待做）</td><td>随校园版</td><td>把班级的频段分布汇总成教学优先级</td></tr>
+</table>
+<p>成本结构上，AI 是唯一可变成本：无 Key 时走离线规则诊断（零成本），有 Key 时按 token 计量并在界面上如实显示（"已投喂 N token"），额度用尽自动回落——这既是产品设计，也是商业化的前提。</p>
+<h3>8.3 可改进的方向</h3>
 <table>
 <tr><th style="width:170px">方向</th><th>为什么值得做</th><th style="width:120px">难点</th></tr>
 <tr><td class="k">错因归类</td><td>现在只知道"不会"，不知道是形近、义近还是搭配不会；加上错因能进一步细化补词策略</td><td>需要更多交互设计</td></tr>
@@ -604,7 +641,7 @@ PORT=8787</code></pre>
 <tr><td class="k">小程序 AI 诊断</td><td>移动端也能追问</td><td>需配置 request 合法域名或云函数转发</td></tr>
 </table>
 
-<h3>8.3 长期展望</h3>
+<h3>8.4 长期展望</h3>
 <p>这个项目真正想验证的事情是：<b>把"误差"当成产品的一等公民</b>，用户会不会更信任、更愿意按结论行动。
 如果这套"测量 + 处方"的框架成立，它可以迁移到其他可量化的学习能力上（听力词汇、语法覆盖、阅读速度），
 核心始终是同一件事：先把数测准，再说下一步。</p>

@@ -1513,6 +1513,19 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   box-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -20px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .pet-fig.pet-l2d canvas{display:block;border-radius:16px}
+/* ---------- AI 计划面板：Agent 先摊开打算，再动手 ---------- */
+.ai-plan{margin:8px 0 10px;padding:10px 12px;border-radius:12px;background:var(--glass-2);
+  border:1px solid var(--line);font-size:12.5px}
+.ai-plan-h{font-size:11px;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px;font-weight:700}
+.ai-plan ol{margin:0;padding:0;list-style:none;counter-reset:none}
+.ai-plan li{display:flex;gap:8px;align-items:flex-start;padding:3px 0;color:var(--ink2);line-height:1.5}
+.ai-plan-n{flex:0 0 16px;height:16px;border-radius:50%;background:var(--line2);color:var(--ink2);
+  font-size:10px;line-height:16px;text-align:center;font-weight:700}
+.ai-plan li.run{color:var(--ink)}
+.ai-plan li.run .ai-plan-n{background:var(--accent);color:#fff}
+.ai-plan li.done .ai-plan-n{background:var(--ok);color:#fff}
+.ai-plan li.done .ai-plan-t{color:var(--ink3)}
+.ai-plan li.done .ai-plan-n::after{content:''}
 </style>
 <!-- 四六级词汇量检测 · 词库 7175 词 · 内联例句 5138 条 -->
 </head>
@@ -5787,7 +5800,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     if (!keepLog) log.innerHTML = '';
     logHTML('<div class="ai-q">' + esc(question) + '</div>', 'me');
     var box = logHTML('<div class="ai-a"><span class="ai-dots">正在分析你的数据</span></div>', 'bot');
-    var toolBox = null;
+    var toolBox = null, planBox = null;
     var evidence = [];
 
     /* ---------- 三档通路（顺序不能反） ----------
@@ -5850,7 +5863,27 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
             if (line.indexOf('data:') !== 0) return;
             var evt;
             try { evt = JSON.parse(line.slice(5).trim()); } catch (e) { return; }
-            if (evt.type === 'mode') {
+            if (evt.type === 'plan') {
+              /* Agent 的"打算"：先摊开，再动手。步骤来自服务端真正要调的工具，
+                 所以过一会儿下面会一条条变成"完成"，和实际执行对得上。 */
+              planBox = document.createElement('div');
+              planBox.className = 'ai-plan';
+              var ol = '<div class="ai-plan-h">计划</div><ol>';
+              for (var pi = 0; pi < evt.steps.length; pi++) {
+                ol += '<li data-i="' + pi + '"><span class="ai-plan-n">' + (pi + 1) + '</span>' +
+                      '<span class="ai-plan-t">' + A.esc(evt.steps[pi]) + '</span></li>';
+              }
+              ol += '</ol>';
+              planBox.innerHTML = ol;
+              box.parentNode.insertBefore(planBox, box);
+              log.scrollTop = log.scrollHeight;
+            } else if (evt.type === 'step') {
+              if (planBox) {
+                var li = planBox.querySelector('li[data-i="' + evt.i + '"]');
+                if (li) li.className = evt.status === 'done' ? 'done' : 'run';
+                log.scrollTop = log.scrollHeight;
+              }
+            } else if (evt.type === 'mode') {
               var m = el('aiMode');
               if (m) m.textContent = evt.mode === 'mock' ? '本地规则诊断' : ('模型：' + (evt.model || '') );
             } else if (evt.type === 'tool') {

@@ -74,6 +74,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---------- 诊断 Agent（SSE 流式） ----------
+  /* 离线路径用的中文标签：和 agent.mjs 里的 TOOL_LABEL 保持一致 */
+  const TOOL_LABEL_ZH = {
+    get_profile: '读取整体情况（覆盖率与区间）',
+    get_band_profile: '读取七段词频的掌握率',
+    get_weak_words: '取出未掌握词清单',
+    plan_schedule: '按剩余词量与天数排复习计划',
+    list_banks: '查看可用词库',
+    suggest_actions: '给出可点的下一步动作',
+    get_examples: '检索真实例句',
+    get_weak_examples: '为薄弱词批量找例句'
+  };
+
   if (url.pathname === '/api/agent' && req.method === 'POST') {
     let payload;
     try { payload = await readBody(req); } catch (e) { return json(res, 400, { error: e.message }); }
@@ -93,7 +105,24 @@ const server = http.createServer(async (req, res) => {
     try {
       if (useMock) {
         send({ type: 'mode', mode: 'mock', note: '本地规则诊断（未调用大模型）' });
-        const text = mockDiagnose(tools, question);
+        /* 离线路径也要摊开计划——但步骤必须是真的：包一层 api，
+           记录 mockDiagnose 实际调用了哪些工具，再用这些生成计划。 */
+        const used = [];
+        const origApi = tools.api;
+        tools.api = new Proxy(origApi || {}, {
+          get(t, k) {
+            const fn = t[k];
+            if (typeof fn !== 'function') return fn;
+            return function () { used.push(k); return fn.apply(t, arguments); };
+          }
+        });
+        let text;
+        try { text = mockDiagnose(tools, question); }
+        finally { tools.api = origApi; }
+        if (used.length) {
+          send({ type: 'plan', steps: used.map(function (k) { return TOOL_LABEL_ZH[k] || k; }) });
+          used.forEach(function (k, i) { send({ type: 'step', i: i, status: 'done' }); });
+        }
         // 分块推送，前端表现与真实模型一致
         for (let i = 0; i < text.length; i += 16) {
           send({ type: 'delta', text: text.slice(i, i + 16) });

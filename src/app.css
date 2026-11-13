@@ -1504,3 +1504,16 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   box-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -20px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .pet-fig.pet-l2d canvas{display:block;border-radius:16px}
+/* ---------- AI 计划面板：Agent 先摊开打算，再动手 ---------- */
+.ai-plan{margin:8px 0 10px;padding:10px 12px;border-radius:12px;background:var(--glass-2);
+  border:1px solid var(--line);font-size:12.5px}
+.ai-plan-h{font-size:11px;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px;font-weight:700}
+.ai-plan ol{margin:0;padding:0;list-style:none;counter-reset:none}
+.ai-plan li{display:flex;gap:8px;align-items:flex-start;padding:3px 0;color:var(--ink2);line-height:1.5}
+.ai-plan-n{flex:0 0 16px;height:16px;border-radius:50%;background:var(--line2);color:var(--ink2);
+  font-size:10px;line-height:16px;text-align:center;font-weight:700}
+.ai-plan li.run{color:var(--ink)}
+.ai-plan li.run .ai-plan-n{background:var(--accent);color:#fff}
+.ai-plan li.done .ai-plan-n{background:var(--ok);color:#fff}
+.ai-plan li.done .ai-plan-t{color:var(--ink3)}
+.ai-plan li.done .ai-plan-n::after{content:''}

@@ -20,6 +20,19 @@ const SYSTEM_PROMPT = [
 ].join('\n');
 
 /** 执行一次工具调用 */
+/* 工具名 → 用户看得懂的一步。规划事件直接由"模型这一轮真正要调的工具"生成，
+   不是另编一份文案——所以屏幕上列的步骤和实际执行的是同一件事。 */
+const TOOL_LABEL = {
+  get_profile: '读取整体情况（覆盖率与区间）',
+  get_band_profile: '读取七段词频的掌握率',
+  get_weak_words: '取出未掌握词清单',
+  plan_schedule: '按剩余词量与天数排复习计划',
+  list_banks: '查看可用词库',
+  suggest_actions: '给出可点的下一步动作',
+  get_examples: '检索真实例句',
+  get_weak_examples: '为薄弱词批量找例句'
+};
+
 function execTool(tools, call) {
   const name = call.function && call.function.name;
   let args = {};
@@ -58,6 +71,7 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
   }
   messages.push({ role: 'user', content: question });
   const MAX_TOOL_ROUNDS = 3;
+  let planned = false;
   const usedTools = [];
   let tokens = 0;                       // 本次诊断累计消耗的 token，随 done 事件回传前端
 
@@ -67,6 +81,13 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('模型返回格式异常');
     const calls = msg.tool_calls || [];
+  /* 先摊开计划，再动手：让"她在想什么"可见 */
+  if (round === 0 && calls.length && !planned) {
+    planned = true;
+    onEvent({ type: 'plan', steps: calls.map(function (c) {
+      return TOOL_LABEL[(c.function && c.function.name) || ''] || (c.function && c.function.name) || '处理';
+    }) });
+  }
 
     if (!calls.length) {
       // 模型已直接给出答案（没有调工具），按块推给前端
@@ -78,10 +99,13 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
 
     // 执行工具并回填结果
     messages.push({ role: 'assistant', content: msg.content || null, tool_calls: calls });
-    for (const c of calls) {
+    for (let ci = 0; ci < calls.length; ci++) {
+      const c = calls[ci];
+      if (planned) onEvent({ type: 'step', i: ci, status: 'run' });
       const result = execTool(tools, c);
       usedTools.push({ name: c.function.name, args: c.function.arguments });
       onEvent({ type: 'tool', name: c.function.name, args: c.function.arguments, result });
+      if (planned) onEvent({ type: 'step', i: ci, status: 'done' });
       messages.push({ role: 'tool', tool_call_id: c.id, content: JSON.stringify(result) });
     }
   }

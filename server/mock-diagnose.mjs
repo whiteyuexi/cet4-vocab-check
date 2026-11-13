@@ -3,7 +3,10 @@
 
 export function mockDiagnose(tools, question) {
   const p = tools.api.get_profile();
-  const bands = tools.api.get_band_profile();
+  /* get_band_profile 返回的是 { bands, summary }，不是数组。
+   以前直接当数组用，离线诊断必崩——「断网可用」这条承诺其实一直是空的。 */
+  const bandRes = tools.api.get_band_profile();
+  const bands = (bandRes && bandRes.bands) || [];
   const withData = bands.filter(b => b.mastery !== null && b.sampled > 0);
   const worst = withData.slice().sort((a, b) => a.mastery - b.mastery)[0];
   const best = withData.slice().sort((a, b) => b.mastery - a.mastery)[0];
