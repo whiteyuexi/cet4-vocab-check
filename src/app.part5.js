@@ -622,8 +622,9 @@
   function applyDepth() {
     var k = Math.min(1, lift() / 200);
     // 被拎着的时候不要再跟着鼠标转头：摆动交给 .pet.held 的动画，两套一起转会打架
-    var ttx = P.dragging ? 0 : -look.y * 9;
-    var tty = P.dragging ? 0 : look.x * 15;
+    /* 绑骨在跑时关掉 CSS 的透视旋转：转向由网格的圆柱映射负责，两边一起转会叠加成过曝的歪斜 */
+    var ttx = (P.dragging || RIG.on) ? 0 : -look.y * 9;
+    var tty = (P.dragging || RIG.on) ? 0 : look.x * 15;
 
     V.tx += (ttx - V.tx) * 0.10;
     V.ty += (tty - V.ty) * 0.10;
@@ -766,7 +767,7 @@
        · 减少动效 / ?rig=0 / canvas 不可用时，整个退回原来的 <img>
        · 微动靠**离散小动作 + 弹簧**，不是正弦循环——正弦是可以被眼睛数出来的 */
   var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 12, rows: 14,
-              grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, shown: false };
+              grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, turn: 0, shown: false };
   var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
   var RB = { on: false, t: 0 };                                       // 眨眼进度
 
@@ -936,6 +937,12 @@
     var leanT = P.walking ? (P.faceL ? -1 : 1) * 4.2 : 0;
     RIG.lean += (leanT - RIG.lean) * Math.min(1, dt * 6);
     RIG.swim += ((P.walking ? 1 : 0) - RIG.swim) * Math.min(1, dt * 4);
+    /* 转向角。这是"立体"的关键，和视差不是一回事：
+       视差只是让部件错位，画面本身还是平的；转向是把画面当成包在圆柱面上转，
+       转过去的那一侧会被真正压窄（透视压缩），大脑才判定"它有厚度"。
+       幅度压在 ±19 度以内——再大就会把立绘扯成鱼眼。 */
+    RIG.turn += (look.x * 0.34 - RIG.turn) * Math.min(0.5, dt * 7);
+    var turn = RIG.turn;
     var lean = RIG.lean * Math.PI / 180;
     var lca = Math.cos(lean), lsa = Math.sin(lean);
 
@@ -1014,13 +1021,30 @@
       /* 9) 游动波：一道纵向的波从下往上走。鱼游起来就是这样的 */
       if (RIG.swim > 0.01) dy += RIG.swim * Math.sin(t * 4.0 - ny * 3.2) * 2.2;
 
-      /* 10) 入弯倾斜：绕脚底整只压过去。停下来会自己回正 */
+      /* 10) 圆柱转向：把画面包在"半径 = 半宽"的圆柱上，按 turn 转过去。
+             远端同时按 cos 比例竖向压窄——只压横不压竖，看起来是"挤扁"；
+             横竖一起按透视缩，才像"转过去"。 */
+      var px1 = X + dx, py1 = Y + dy;
+      if (turn > 0.003 || turn < -0.003) {
+        var uu = (px1 - 0.5 * S) / (0.5 * S);
+        if (uu > 0.995) uu = 0.995;
+        if (uu < -0.995) uu = -0.995;
+        var a0 = Math.asin(uu);
+        var a1 = a0 + turn;
+        if (a1 > 1.35) a1 = 1.35;
+        if (a1 < -1.35) a1 = -1.35;
+        px1 = 0.5 * S + 0.5 * S * Math.sin(a1);
+        var kk = Math.cos(a1) / Math.max(0.35, Math.cos(a0));
+        py1 = S + (py1 - S) * kk;
+      }
+
+      /* 11) 入弯倾斜：绕脚底整只压过去。停下来会自己回正 */
       if (RIG.lean > 0.05 || RIG.lean < -0.05) {
-        var rx = X - 0.5 * S + dx, ry = Y - S + dy;
+        var rx = px1 - 0.5 * S, ry = py1 - S;
         v.tx = 0.5 * S + rx * lca - ry * lsa;
         v.ty = S + rx * lsa + ry * lca;
       } else {
-        v.tx = X + dx; v.ty = Y + dy;
+        v.tx = px1; v.ty = py1;
       }
     }
 
@@ -1044,6 +1068,23 @@
       }
     }
     cx2.globalAlpha = 1;
+
+    /* 方向性阴影：转过去的那一侧压暗。
+       没有这一层，圆柱转向只像"被挤扁"；有了它，大脑才把它读成"圆柱面转过去了"。
+       用 source-atop 保证只作用在她自己的像素上，不会糊到空白区。 */
+    if (turn > 0.01 || turn < -0.01) {
+      var amt = Math.min(0.38, Math.abs(turn) * 1.15);
+      var g0 = turn > 0 ? 0 : S, g1 = turn > 0 ? S : 0;
+      var grad = cx2.createLinearGradient(g0, 0, g1, 0);
+      grad.addColorStop(0, 'rgba(10,16,32,0)');
+      grad.addColorStop(0.55, 'rgba(10,16,32,' + (amt * 0.35).toFixed(3) + ')');
+      grad.addColorStop(1, 'rgba(10,16,32,' + amt.toFixed(3) + ')');
+      cx2.save();
+      cx2.globalCompositeOperation = 'source-atop';
+      cx2.fillStyle = grad;
+      cx2.fillRect(0, 0, S, S);
+      cx2.restore();
+    }
 
     /* 第一次真正画出东西了，才让 canvas 接管显示 */
     var ready = 0;
