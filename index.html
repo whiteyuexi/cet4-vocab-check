@@ -7300,9 +7300,14 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
               grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, turn: 0, shown: false };
   var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
   var RB = { on: false, t: 0 };                                       // 眨眼进度
+  /* 动作冲量：待机小动作全部通过这些量驱动，而不是平移。
+     turn  = 转身（走圆柱透视，所以一转身就有厚度）
+     tilt  = 整只侧倾（绕脚底）
+     str   = 纵向拉伸（伸懒腰 / 被吓一跳） */
+  var RQ = { turn: 0, turnV: 0, tilt: 0, tiltV: 0, str: 0, strV: 0 };
 
   // 各小动作的出现权重。照大肥鱼那套：小动作占绝对多数，眨眼最频繁
-  var RIG_ACTS = [['blink', 46], ['tail', 22], ['head', 18], ['bend', 8], ['twice', 6]];
+  var RIG_ACTS = [['blink', 30], ['tail', 16], ['lookaway', 18], ['head', 11], ['stretch', 9], ['bend', 5], ['twice', 5]];
 
   function rigReg(nx, ny, cx, cy, rx, ry) {
     var a = (nx - cx) / rx, b = (ny - cy) / ry;
@@ -7390,6 +7395,8 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     if (name === 'blink') { RB.on = true; RB.t = 0; }
     else if (name === 'tail') { RS.tail = 0.55; RS.tailV = 2.2; }
     else if (name === 'head') { RS.head = (Math.random() < 0.5 ? -1 : 1) * 0.9; RS.headV = 0; }
+    else if (name === 'lookaway') { RQ.turn = (Math.random() < 0.5 ? -1 : 1) * (0.20 + Math.random() * 0.14); }
+    else if (name === 'stretch') { RQ.str = 0.055; RQ.tilt = (Math.random() < 0.5 ? -1 : 1) * 1.6; }
     else if (name === 'bend') { RS.sq = -0.9; RS.sqV = 0; }
     else if (name === 'twice') {
       RB.on = true; RB.t = 0;                       // 连眨两下：第二下靠 t 回绕触发
@@ -7444,6 +7451,9 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     rigSpring(RS, 'tail', 95, 13, dt);
     rigSpring(RS, 'head', 70, 12, dt);
     rigSpring(RS, 'sq', 120, 14, dt);
+    rigSpring(RQ, 'turn', 52, 9, dt);
+    rigSpring(RQ, 'tilt', 48, 9, dt);
+    rigSpring(RQ, 'str', 62, 10, dt);
 
     if (RB.on) { RB.t += dt / 0.20; if (RB.t >= 1) { RB.on = false; RB.t = 0; } }
 
@@ -7472,8 +7482,9 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
        转过去的那一侧会被真正压窄（透视压缩），大脑才判定"它有厚度"。
        幅度压在 ±19 度以内——再大就会把立绘扯成鱼眼。 */
     RIG.turn += (look.x * 0.34 - RIG.turn) * Math.min(0.5, dt * 7);
-    var turn = RIG.turn;
-    var lean = RIG.lean * Math.PI / 180;
+    var turn = RIG.turn + RQ.turn;
+    var strScale = RQ.str;
+    var lean = (RIG.lean + RQ.tilt) * Math.PI / 180;
     var lca = Math.cos(lean), lsa = Math.sin(lean);
 
     var bk = 1;
@@ -7566,6 +7577,12 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
         px1 = 0.5 * S + 0.5 * S * Math.sin(a1);
         var kk = Math.cos(a1) / Math.max(0.35, Math.cos(a0));
         py1 = S + (py1 - S) * kk;
+      }
+
+      /* 10b) 纵向拉伸：伸懒腰时变高、变瘦，脚底不动 */
+      if (strScale > 0.001 || strScale < -0.001) {
+        py1 = S + (py1 - S) * (1 + strScale);
+        px1 = 0.5 * S + (px1 - 0.5 * S) * (1 - strScale * 0.55);
       }
 
       /* 11) 入弯倾斜：绕脚底整只压过去。停下来会自己回正 */
