@@ -7432,6 +7432,14 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
   }
 
   function rigFrame(now) {
+    /* 包一层 try：任何一帧里抛异常都会让画面停在"画到一半"，
+       而 rAF 已经排好了下一帧，于是每一帧都断在同一个位置——
+       表现就是人物被截断、下半身永远不出现。把错误留下来，别再猜。 */
+    try { rigFrameInner(now); }
+    catch (e) { RIG.err = String((e && e.stack) || e).slice(0, 300); }
+  }
+
+  function rigFrameInner(now) {
     if (!RIG.on || !RIG.cx) return;
     if (!RIG.rt) RIG.rt = now;
     if (now - RIG.rt < 30) return;                  // 30fps 上限
@@ -7564,12 +7572,13 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
         var wShoeR = rigReg(nx, ny, 0.590, 0.918, 0.078, 0.048);
         var stL = Math.sin(wPh), stR = Math.sin(wPh + Math.PI);
         var stepAmt = (wShoeL * stL + wShoeR * stR) * RIG.swim;
-        dy += stepAmt * 3.6;
-        dx += stepAmt * 1.1 * (P.faceL ? 1 : -1);
+        if (Math.abs(stepAmt) > Math.abs(RIG.stepDbg || 0)) RIG.stepDbg = +(stepAmt * 7).toFixed(2);
+        dy += stepAmt * 7;
+        dx += stepAmt * 2.2 * (P.faceL ? 1 : -1);
         /* 裙摆被脚步带起来一点，和抬脚反相 */
         dy -= wS * 1.8 * Math.abs(Math.sin(wPh)) * RIG.swim;
         /* 身体按步频起伏：两脚各迈一次是一个周期，所以频率翻倍 */
-        dy -= Math.abs(Math.sin(wPh)) * 1.3 * RIG.swim;
+        dy -= Math.abs(Math.sin(wPh)) * 2.6 * RIG.swim;
       }
 
       /* 10) 圆柱转向：把画面包在"半径 = 半宽"的圆柱上，按 turn 转过去。
@@ -7612,15 +7621,19 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     for (ti = 0; ti < RIG.tex.length; ti++) {
       e3 = RIG.tex[ti];
       if (!e3.ok || e3.a <= 0.004) continue;
+      var iw = e3.img.naturalWidth || 512, ih = e3.img.naturalHeight || 512;
       cx2.globalAlpha = e3.a;
       if (e3.a > drewA) drewA = e3.a;
       for (j = 0; j < R; j++) {
         for (i = 0; i < C; i++) {
           a0 = j * (C + 1) + i; b0 = a0 + 1; c0 = a0 + C + 1; d0 = c0 + 1;
           P1 = g[a0]; P2 = g[b0]; P3 = g[c0]; P4 = g[d0];
-          rigTri(cx2, e3.img, P2.sx, P2.sy, P1.sx, P1.sy, P3.sx, P3.sy,
+          /* 源坐标必须按这张图自己的真实尺寸算。
+             构建把立绘压成了 320×320，而这里原来写死 512 ——
+             结果人物只画到画布的 62%、缩在左上角。 */
+          rigTri(cx2, e3.img, P2.nx * iw, P2.ny * ih, P1.nx * iw, P1.ny * ih, P3.nx * iw, P3.ny * ih,
                  P2.tx, P2.ty, P1.tx, P1.ty, P3.tx, P3.ty);
-          rigTri(cx2, e3.img, P4.sx, P4.sy, P2.sx, P2.sy, P3.sx, P3.sy,
+          rigTri(cx2, e3.img, P4.nx * iw, P4.ny * ih, P2.nx * iw, P2.ny * ih, P3.nx * iw, P3.ny * ih,
                  P4.tx, P4.ty, P2.tx, P2.ty, P3.tx, P3.ty);
         }
       }
@@ -7849,12 +7862,19 @@ html[data-theme="dark"] .res-num{color:var(--ink)}
     };
   };
   A.petReset = function () { resetPos(); apply(); return A.petInfo(); };
+  /* 自检钩子：强制进入"走动"状态若干毫秒，用来验证迈步循环真的在跑。
+     只给调试用，界面上没有任何入口。 */
+  A.petWalkTest = function (ms) {
+    setWalk(true);
+    setTimeout(function () { setWalk(false); }, ms || 900);
+    return true;
+  };
   /* 排查用：绑骨到底有没有在画 */
   A.rigDiag = function () {
     return { on: RIG.on, ok: RIG.ok, shown: RIG.shown, tex: RIG.tex.length,
              loaded: RIG.tex.filter(function (t) { return t.ok; }).length,
              alpha: RIG.tex.map(function (t) { return +t.a.toFixed(2); }),
-             dpr: RIG.dpr, canvas: RIG.cv ? (RIG.cv.width + 'x' + RIG.cv.height) : '' };
+             dpr: RIG.dpr, canvas: RIG.cv ? (RIG.cv.width + 'x' + RIG.cv.height) : '', err: RIG.err || '', swim: +RIG.swim.toFixed(2), step: RIG.stepDbg || 0, walking: P.walking };
   };
   /* 排查用：把"坐标系"的原始值都摊开。卡住时先看这里——
        px/py 是容器位置，hx/hy 是悬空层的额外位移，tx/ty 是透视角度。
