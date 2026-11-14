@@ -278,7 +278,14 @@
         '<button class="btn sm primary" data-act="map-review" data-band="all" data-letter="all">复测全部没测过的词</button>' +
         '<button class="btn sm ghost" data-act="modal-close">关闭</button>' +
       '</div>', true);
-    setTimeout(A.drawMap, 30);
+    /* 地图要宽：默认弹层 720px 装 26 列太挤，这里单独放宽到 1000+ */
+    var mbox = document.querySelector('.modal .box');
+    if (mbox) mbox.classList.add('mapbox');
+    if (A.__mapResize) window.removeEventListener('resize', A.__mapResize);
+    A.__mapResize = function () { if (document.getElementById('vmapCanvas')) A.drawMap(); };
+    window.addEventListener('resize', A.__mapResize);
+    /* 等两帧：弹层的入场动画/布局完成后再量，否则量到的是过渡中的宽度 */
+    requestAnimationFrame(function () { requestAnimationFrame(A.drawMap); });
   };
 
   A.drawMap = function () {
@@ -286,10 +293,15 @@
     if (!cv || !cv.getContext) return;
     var M = A.vocabMap();
     var dpr = Math.min(2, window.devicePixelRatio || 1);
-    var W = cv.parentNode.clientWidth || 900;
+    /* 先让 canvas 吃满容器宽度，再按"真实显示宽度"设分辨率。
+       之前用固定像素宽 + 30ms 后测量，弹层还没完成布局，量到的是个小值，
+       于是地图缩在左上角一小块。 */
+    cv.style.width = '100%';
+    cv.style.height = 'auto';
+    var W = Math.round(cv.getBoundingClientRect().width) || cv.parentNode.clientWidth || 880;
+    if (W < 240) W = 880;
     var H = Math.max(280, Math.round(W * 0.42));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    cv.style.width = W + 'px'; cv.style.height = H + 'px';
     var ctx = cv.getContext('2d');
     if (!ctx) return;
     if (!ctx) return;
