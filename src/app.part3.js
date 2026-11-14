@@ -65,7 +65,8 @@
         : ('本次掌握率 ' + pctScore + '% · 认识 ' + r.k + ' · 模糊 ' + r.f + ' · 不认识 ' + r.u + (r.skipped ? ' · 跳过 ' + r.skipped : '')))) + '</div>';
     h += '<button class="btn primary res-cta"' + cta.attrs + '>' + esc(cta.label) + '</button>';
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     /* ---------- 细节收进折叠：想深究时再看，不和结论抢位置 ---------- */
     h += '<details class="card tips"><summary>这次答了 ' + total + ' 题 · 掌握率 ' + pctScore + '%</summary>';
     h += '<div style="display:flex;justify-content:center;margin:16px 0">' + A.ring(pctScore, pctScore + '%', '本次掌握率') + '</div>';
@@ -113,7 +114,8 @@
       '<button class="btn sm ghost" data-act="start" data-kind="all">再测一轮</button>' +
       '</div>';
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     /* ---------- 未掌握词表：默认折叠，别让失败清单排在处方前面 ---------- */
     h += '<div class="sec-title">本次没掌握的 ' + weak.length + ' 个词<span class="line"></span></div>';
     if (!weak.length) {
@@ -219,7 +221,8 @@
         h += '<div class="bmeta">全段 ' + r.N + ' 词' + (prof.source === 'sample' ? ' · 抽到 ' + r.n + ' 词' : ' · 已测 ' + r.n + ' 词') + '</div>';
       });
       h += '</div>';
-      var worst = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';      var worst = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
         .sort(function (a, b) { return a.p - b.p; })[0];
       var best = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
         .sort(function (a, b) { return b.p - a.p; })[0];
@@ -230,7 +233,8 @@
       }
     }
     h += '</div>';
-    return h;
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
   };
 
   /* ---------- 词汇地图 ----------
@@ -257,18 +261,23 @@
     h += '<div class="vmap-row vmap-head"><span class="vmap-lbl"></span>';
     M.letters.forEach(function (L) { h += '<span class="vmap-lt">' + L + '</span>'; });
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+    /* 逐格浮现的网格序号：让整张图"刷"地铺开，而不是一次糊上来 */
+    var ci = 0;
     M.rows.forEach(function (row) {
       h += '<div class="vmap-row"><span class="vmap-lbl" title="' + esc(row.name) + '">' + esc(row.name) + '</span>';
       row.cells.forEach(function (c) {
-        if (!c.N) { h += '<span class="vmap-c empty"></span>'; return; }
+        if (!c.N) { h += '<span class="vmap-c empty" style="--i:' + (ci++) + '"></span>'; return; }
         var p = Math.round(c.ratio * 100);
         var tone = p >= 80 ? 'ok' : p >= 50 ? 'warn' : 'bad';
         // 浓度跟着"测过多少"走：没测过几乎是空的描边，测满了才是实色
         var a = 0.14 + 0.78 * (c.tested / c.N);
         h += '<button class="vmap-c ' + tone + (c.tested ? '' : ' none') + '"' +
-          ' style="--fa:' + a.toFixed(3) + '"' +
+          ' style="--fa:' + a.toFixed(3) + ';--i:' + (ci++) + '"' +
           ' data-act="map-review" data-band="' + c.band + '" data-letter="' + c.letter + '"' +
+          ' data-read="' + esc(row.name + ' · ' + c.letter + ' ｜ 共 ' + c.N + ' 词 · 已测 ' + c.tested +
+            ' · 认识 ' + c.k + ' · 掌握率 ' + p + '%') + '"' +
           ' title="' + esc(row.name + ' · ' + c.letter + '：共 ' + c.N + ' 词，已测 ' + c.tested +
             '，认识 ' + c.k + '，模糊 ' + c.f + '，不认识 ' + c.u +
             '，掌握率 ' + p + '%' + (c.untested ? '，未测 ' + c.untested + ' 词' : '') +
@@ -276,9 +285,11 @@
           '</button>';
       });
       h += '</div>';
-    });
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    });
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     h += '<div class="vmap-legend">' +
       '<span><i class="ok"></i>掌握好</span>' +
       '<span><i class="warn"></i>一般</span>' +
@@ -304,7 +315,8 @@
       '</div>';
 
     h += '</div>';
-    return h;
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
   };
 
   /* ---------- 使用者档案 ----------
@@ -385,7 +397,8 @@
       '<div class="stat"><b>' + A.pct(t.k + t.f, t.tested) + '%</b><span>已测词掌握率</span></div>' +
       '<div class="stat"><b>' + t.rest + '</b><span>待检测</span></div></div>';
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     h += A.bandProfileHTML();
     h += A.vocabMapHTML();
 
@@ -407,9 +420,11 @@
         });
       });
       h += '</div>';
-    }
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    }
     h += '</div>';
-    return h;
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
   };
 
   /* ---------- 设置 ---------- */
@@ -445,7 +460,8 @@
     h += sw('includeExt', '包含拓展派生词', '除大纲核心词外，再加入 ' + A.WORDS.filter(function (w) { return w.x; }).length + ' 个常见派生词（当前词库 ' + A.activePool().length + ' 词）');
     h += sw('strict', '严格的估算口径', '只把「认识」算作掌握；关闭时「模糊」按一半折算。两种口径的数值都会列在总览页');
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     h += '<div class="sec-title">外观<span class="line"></span></div>';
     h += '<div class="card"><div class="switch"><div class="st"><b>深色模式</b><small>夜间刷词更护眼</small></div>' +
       '<button class="toggle' + (S.theme === 'dark' ? ' on' : '') + '" role="switch" aria-checked="' + (S.theme === 'dark') + '"' +
@@ -467,7 +483,8 @@
       ' 条检测记录。数据保存在本机浏览器中，<b>按使用者分开存放</b>；同一台电脑上换人用请新建使用者。' +
       '换浏览器或清理缓存会丢失，建议定期导出备份。</div>';
     h += '</div>';
-
+    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
+    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     h += '<div class="sec-title">使用说明<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.95">' +
       '<b>1. 先摸底：</b>点「快速摸底」随机抽 100 词，3 分钟就能得到词汇量估算。<br>' +
@@ -940,12 +957,12 @@
           break;
         case 'export-csv': A.exportCSV(); break;
         case 'new-round':
-          var cur = A.roundNo(), nx = cur + 1;
+          var curRound = A.roundNo(), nx = curRound + 1;
           var R0 = A.levelReport();
           A.modal('<b>开始第 ' + nx + ' 轮检测？</b>' +
             '<div class="tiny" style="margin:8px 0 16px;line-height:1.9">' +
             '<b>会清空：</b>本轮的每词作答、检测记录、随机抽样样本。<br>' +
-            '<b>会保留：</b>第 ' + cur + ' 轮的等级报告（' + R0.rank.k + ' ' + R0.rank.name + ' · ' +
+            '<b>会保留：</b>第 ' + curRound + ' 轮的等级报告（' + R0.rank.k + ' ' + R0.rank.name + ' · ' +
             R0.loose.toLocaleString('en-US') + ' 词）会存进「历轮报告」，随时可查、可和新一轮对比。<br>' +
             '清空后无法恢复本轮的逐题作答。' +
             '</div>' +
@@ -1052,4 +1069,12 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', A.init);
   else A.init();
 
+  /* 地图读数：指针扫过哪一格，下面就显示哪一格的坐标与数字。
+     用委托而不是给 182 个格子各绑一个监听。 */
+  document.addEventListener('pointerover', function (e) {
+    var c = e.target.closest ? e.target.closest('.vmap-c[data-read]') : null;
+    if (!c) return;
+    var out = document.getElementById('vmapRead');
+    if (out) out.textContent = c.getAttribute('data-read');
+  }, { passive: true });
 })(window.__APP__ || (window.__APP__ = {}));

@@ -814,7 +814,11 @@ html[data-theme="dark"] .who-nm em{background:rgba(255,255,255,.12)}
 .vmap-c.bad{background:rgba(176,46,34,var(--fa,.5));border-color:rgba(176,46,34,.34)}
 .vmap-c.none{background:transparent;border-style:dashed;border-color:var(--line2)}
 .vmap-c.empty{background:transparent;border-color:transparent;cursor:default}
-.vmap-c:hover{transform:scale(1.4);box-shadow:0 8px 16px -8px rgba(16,19,25,.55);z-index:3}
+.vmap-c{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);transition:transform .12s ease,box-shadow .12s ease;
+  animation:mapIn .34s cubic-bezier(.2,.7,.3,1) backwards;animation-delay:calc(var(--i,0) * 1.4ms)}
+.vmap-c.empty{animation:none;box-shadow:none}
+@keyframes mapIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+.vmap-c:hover{transform:scale(1.55);box-shadow:0 10px 20px -8px rgba(16,19,25,.6),inset 0 1px 0 rgba(255,255,255,.6);z-index:3}
 .vmap-c:focus-visible{transform:scale(1.4);z-index:3;outline:2px solid var(--accent);outline-offset:1px}
 html[data-theme="dark"] .vmap-c.ok{background:rgba(95,207,155,var(--fa,.5));border-color:rgba(95,207,155,.3)}
 html[data-theme="dark"] .vmap-c.warn{background:rgba(224,177,92,var(--fa,.5));border-color:rgba(224,177,92,.3)}
@@ -1521,3 +1525,6 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .ai-mic{padding:0 10px;font-size:15px;line-height:1}
 .ai-mic.rec{border-color:var(--bad);color:var(--bad);animation:micPulse 1s ease-in-out infinite}
 @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(176,46,34,.35)}50%{box-shadow:0 0 0 6px rgba(176,46,34,0)}}
+/* 地图读数条：像地图上的坐标读数，不是提示框 */
+.vmap-read{margin-top:8px;padding:7px 11px;border-radius:9px;background:var(--glass-2);
+  border:1px solid var(--line);font:11.5px/1.5 var(--mono);color:var(--ink2);min-height:30px}

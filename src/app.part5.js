@@ -115,7 +115,7 @@
       var R = A.levelReport ? A.levelReport() : null;
       if (!R) return { mood: 'idle', text: '报告还没准备好。' };
       if (!R.ready) {
-        var need = Math.max(0, Math.ceil(R.total * 0.95) - R.tested);
+        var needMore = Math.max(0, Math.ceil(R.total * 0.95) - R.tested);
         return { mood: 'idle',
           text: '等级要靠整库实测才站得住。现在已测 ' + R.tested + ' / ' + R.total + ' 词，再测 ' + need + ' 词就能出评级了。',
           acts: [{ label: '继续完整检测', act: 'start', kind: 'all' }] };
@@ -1072,12 +1072,12 @@
         var uu = (px1 - 0.5 * S) / (0.5 * S);
         if (uu > 0.995) uu = 0.995;
         if (uu < -0.995) uu = -0.995;
-        var a0 = Math.asin(uu);
-        var a1 = a0 + turn;
+        var as0 = Math.asin(uu);
+        var a1 = as0 + turn;
         if (a1 > 1.35) a1 = 1.35;
         if (a1 < -1.35) a1 = -1.35;
         px1 = 0.5 * S + 0.5 * S * Math.sin(a1);
-        var kk = Math.cos(a1) / Math.max(0.35, Math.cos(a0));
+        var kk = Math.cos(a1) / Math.max(0.35, Math.cos(as0));
         py1 = S + (py1 - S) * kk;
       }
 
