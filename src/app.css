@@ -1517,3 +1517,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .ai-plan li.done .ai-plan-n{background:var(--ok);color:#fff}
 .ai-plan li.done .ai-plan-t{color:var(--ink3)}
 .ai-plan li.done .ai-plan-n::after{content:''}
+/* 语音输入按钮：录音时脉冲，明确"在听" */
+.ai-mic{padding:0 10px;font-size:15px;line-height:1}
+.ai-mic.rec{border-color:var(--bad);color:var(--bad);animation:micPulse 1s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(176,46,34,.35)}50%{box-shadow:0 0 0 6px rgba(176,46,34,0)}}

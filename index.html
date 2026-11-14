@@ -1526,6 +1526,10 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .ai-plan li.done .ai-plan-n{background:var(--ok);color:#fff}
 .ai-plan li.done .ai-plan-t{color:var(--ink3)}
 .ai-plan li.done .ai-plan-n::after{content:''}
+/* 语音输入按钮：录音时脉冲，明确"在听" */
+.ai-mic{padding:0 10px;font-size:15px;line-height:1}
+.ai-mic.rec{border-color:var(--bad);color:var(--bad);animation:micPulse 1s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(176,46,34,.35)}50%{box-shadow:0 0 0 6px rgba(176,46,34,0)}}
 </style>
 <!-- 四六级词汇量检测 · 词库 7175 词 · 内联例句 5138 条 -->
 </head>
@@ -4592,6 +4596,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
           break;
         }
         case 'resume': A.go('test'); break;
+        case 'ai-voice': if (A.startVoiceInput) A.startVoiceInput(); break;
         /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
         case 'drill-start': {
           var dn = A.buildDrill(10);
@@ -5370,9 +5375,50 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       '<div class="ai-log" id="aiLog"></div>' +
       '<div class="row" style="margin-top:12px;gap:8px">' +
       '<input class="search" id="aiInput2" placeholder="继续追问，例如：那 2k-3k 段要管吗？">' +
+      '<button class="btn ghost ai-mic" id="aiVoice" data-act="ai-voice" title="语音输入" style="display:none">🎤</button>' +
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
-    A.resetAIHistory();
+    /* 语音输入：多模态的"输入侧"。
+     用浏览器自带的 SpeechRecognition，不引入任何依赖；不支持的浏览器直接不显示按钮。 */
+  A.startVoiceInput = function () {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var box = el('aiInput2');
+    if (!SR || !box) { A.toast('这个浏览器不支持语音输入，直接打字就行'); return; }
+    if (A.__rec && A.__rec.on) return;
+    var rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    var base = box.value || '';
+    A.__rec = { on: true };
+    rec.onresult = function (e) {
+      var t = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      box.value = (base ? base + ' ' : '') + t;
+    };
+    rec.onerror = function () { A.toast('没听清，再说一次或直接打字'); };
+    rec.onend = function () {
+      A.__rec = null;
+      var b = el('aiVoice');
+      if (b) b.classList.remove('rec');
+    };
+    try {
+      rec.start();
+      A.__rec.on = true;
+      var btn = el('aiVoice');
+      if (btn) btn.classList.add('rec');
+      A.toast('在听…说完停一下');
+    } catch (e) { A.__rec = null; }
+  };
+
+  A.resetAIHistory();
+  /* 浏览器支持语音识别才显示麦克风；不支持就完全不存在，不占位也不误导 */
+  try {
+    if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+      var vb = el('aiVoice');
+      if (vb) vb.style.display = '';
+    }
+  } catch (e) {}
     AI_FOCUS = focus || null;
     AI_ACTIONS = [];
     PENDING_ACTIONS = null;
@@ -6835,7 +6881,11 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     var byContent = w - NW - 340;        // 离右边缘 340px 以内
     var base = Math.max(byRatio, byContent);
     if (edge > 0) base = Math.max(base, edge + 12);
-    return Math.max(NW + 8, Math.min(maxX(), base));
+    var out = Math.max(NW + 8, Math.min(maxX(), base));
+    /* 任何一处算出 NaN 都会顺着 P.x 污染整个坐标系（位置、投影、守卫全崩）。
+       安全线是坐标的源头之一，必须保证它永远是有限数。 */
+    if (!isFinite(out)) out = NW + 8;
+    return out;
   }
   function inSafeZone() { return P.x >= safeLeft() - 2; }
   function busy() {
@@ -6853,7 +6903,8 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
      用一个自增 token 作废上一次归位动画。 */
   var glideSeq = 0;
   function glideHome(done) {
-    var tx = Math.max(8, window.innerWidth - NW - 26);
+    /* 回家点必须满足安全线：改过 safeLeft 之后，写死的 -26 会落在安全线左边 */
+    var tx = Math.max(safeLeft(), window.innerWidth - NW - 26);
     if (Math.abs(tx - P.x) < 4) { if (done) done(); return; }
     var my = ++glideSeq;
     var from = P.x, t0 = performance.now();
@@ -7043,7 +7094,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     V.tx = V.ty = 0;
     glideSeq++;
     var fx = restY();
-    P.x = Math.max(minX(), window.innerWidth - NW - 26);
+    P.x = Math.max(safeLeft(), window.innerWidth - NW - 26);
     P.y = isFinite(fx) ? fx : 313;
     apply();
     scheduleWalk();
@@ -7878,7 +7929,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     });
 
     // 初始位置：右下角，直接站在地面上
-    P.x = Math.max(8, window.innerWidth - NW - 26);
+    P.x = Math.max(safeLeft(), window.innerWidth - NW - 26);
     P.y = restY();
     apply();
     if (wide()) {

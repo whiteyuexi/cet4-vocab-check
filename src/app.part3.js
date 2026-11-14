@@ -658,6 +658,7 @@
           break;
         }
         case 'resume': A.go('test'); break;
+        case 'ai-voice': if (A.startVoiceInput) A.startVoiceInput(); break;
         /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
         case 'drill-start': {
           var dn = A.buildDrill(10);

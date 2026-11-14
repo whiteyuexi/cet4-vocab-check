@@ -256,7 +256,11 @@
     var byContent = w - NW - 340;        // 离右边缘 340px 以内
     var base = Math.max(byRatio, byContent);
     if (edge > 0) base = Math.max(base, edge + 12);
-    return Math.max(NW + 8, Math.min(maxX(), base));
+    var out = Math.max(NW + 8, Math.min(maxX(), base));
+    /* 任何一处算出 NaN 都会顺着 P.x 污染整个坐标系（位置、投影、守卫全崩）。
+       安全线是坐标的源头之一，必须保证它永远是有限数。 */
+    if (!isFinite(out)) out = NW + 8;
+    return out;
   }
   function inSafeZone() { return P.x >= safeLeft() - 2; }
   function busy() {
@@ -274,7 +278,8 @@
      用一个自增 token 作废上一次归位动画。 */
   var glideSeq = 0;
   function glideHome(done) {
-    var tx = Math.max(8, window.innerWidth - NW - 26);
+    /* 回家点必须满足安全线：改过 safeLeft 之后，写死的 -26 会落在安全线左边 */
+    var tx = Math.max(safeLeft(), window.innerWidth - NW - 26);
     if (Math.abs(tx - P.x) < 4) { if (done) done(); return; }
     var my = ++glideSeq;
     var from = P.x, t0 = performance.now();
@@ -464,7 +469,7 @@
     V.tx = V.ty = 0;
     glideSeq++;
     var fx = restY();
-    P.x = Math.max(minX(), window.innerWidth - NW - 26);
+    P.x = Math.max(safeLeft(), window.innerWidth - NW - 26);
     P.y = isFinite(fx) ? fx : 313;
     apply();
     scheduleWalk();
@@ -1299,7 +1304,7 @@
     });
 
     // 初始位置：右下角，直接站在地面上
-    P.x = Math.max(8, window.innerWidth - NW - 26);
+    P.x = Math.max(safeLeft(), window.innerWidth - NW - 26);
     P.y = restY();
     apply();
     if (wide()) {

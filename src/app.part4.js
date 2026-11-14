@@ -381,9 +381,50 @@
       '<div class="ai-log" id="aiLog"></div>' +
       '<div class="row" style="margin-top:12px;gap:8px">' +
       '<input class="search" id="aiInput2" placeholder="继续追问，例如：那 2k-3k 段要管吗？">' +
+      '<button class="btn ghost ai-mic" id="aiVoice" data-act="ai-voice" title="语音输入" style="display:none">🎤</button>' +
       '<button class="btn primary" data-act="ai-send2">发送</button>' +
       '<button class="btn ghost" data-act="modal-close">关闭</button></div>', true);
-    A.resetAIHistory();
+    /* 语音输入：多模态的"输入侧"。
+     用浏览器自带的 SpeechRecognition，不引入任何依赖；不支持的浏览器直接不显示按钮。 */
+  A.startVoiceInput = function () {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var box = el('aiInput2');
+    if (!SR || !box) { A.toast('这个浏览器不支持语音输入，直接打字就行'); return; }
+    if (A.__rec && A.__rec.on) return;
+    var rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    var base = box.value || '';
+    A.__rec = { on: true };
+    rec.onresult = function (e) {
+      var t = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      box.value = (base ? base + ' ' : '') + t;
+    };
+    rec.onerror = function () { A.toast('没听清，再说一次或直接打字'); };
+    rec.onend = function () {
+      A.__rec = null;
+      var b = el('aiVoice');
+      if (b) b.classList.remove('rec');
+    };
+    try {
+      rec.start();
+      A.__rec.on = true;
+      var btn = el('aiVoice');
+      if (btn) btn.classList.add('rec');
+      A.toast('在听…说完停一下');
+    } catch (e) { A.__rec = null; }
+  };
+
+  A.resetAIHistory();
+  /* 浏览器支持语音识别才显示麦克风；不支持就完全不存在，不占位也不误导 */
+  try {
+    if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+      var vb = el('aiVoice');
+      if (vb) vb.style.display = '';
+    }
+  } catch (e) {}
     AI_FOCUS = focus || null;
     AI_ACTIONS = [];
     PENDING_ACTIONS = null;
