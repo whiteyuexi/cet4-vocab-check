@@ -4290,77 +4290,88 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     var f = off.getContext('2d');
     f.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // 底纹：网格
-    f.strokeStyle = C.line; f.lineWidth = 1;
-    for (var gx = 0; gx <= cols; gx++) {
-      f.beginPath(); f.moveTo(padL + gx * cw, padT); f.lineTo(padL + gx * cw, H - padB); f.stroke();
-    }
-    for (var gy = 0; gy <= rows; gy++) {
-      f.beginPath(); f.moveTo(padL, padT + gy * ch); f.lineTo(W - padR, padT + gy * ch); f.stroke();
-    }
-
-    /* 连续色阶：红 → 琥珀 → 绿。
-       只有三档颜色时，整张图会变成"红一片 + 几个绿点"，读不出梯度；
-       按掌握率插值之后，深浅本身就是信息。 */
-    function hex2rgb(h) {
-      h = String(h).trim().replace('#', '');
-      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-      var n = parseInt(h, 16);
-      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-    }
-    function mix(c1, c2, t) {
-      var a = hex2rgb(c1), b = hex2rgb(c2);
-      return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' +
-        Math.round(a[1] + (b[1] - a[1]) * t) + ',' +
-        Math.round(a[2] + (b[2] - a[2]) * t) + ')';
-    }
-    function ramp(p) {
-      var t = Math.max(0, Math.min(100, p)) / 100;
-      return t < 0.5 ? mix(C.bad, C.warn, t * 2) : mix(C.warn, C.ok, (t - 0.5) * 2);
-    }
-
-    function roundRect(g, x, y, w, h, r) {
-      g.beginPath();
-      g.moveTo(x + r, y);
-      g.arcTo(x + w, y, x + w, y + h, r);
-      g.arcTo(x + w, y + h, x, y + h, r);
-      g.arcTo(x, y + h, x, y, r);
-      g.arcTo(x, y, x + w, y, r);
-      g.closePath();
-    }
-
-    // 绘图区底：一层极淡的底 + 圆角，把地图和页面分开
-    f.fillStyle = 'rgba(127,127,127,0.06)';
-    roundRect(f, padL, padT, cols * cw, rows * ch, 10);
-    f.fill();
-
-    /* 一格一块，边框留缝：色块之间靠"缝"和"格子的高光"区分，
-       而不是靠网格线——26 条竖线压上去就成了方格纸，那是上一版最丑的地方。 */
+    /* ---------- 地形图渲染 ----------
+       三件套，缺一件就不像地图：
+         ① 高程色带（hypsometric）：低掌握=红褐、中=沙黄、高=青绿
+         ② 山体阴影（hillshade）：按高度梯度打光，画面才有起伏
+         ③ 等高线：每隔 20% 一条，把"梯度"画成可读的线
+       数据是 7×26 的格点，按双线性插值铺满整张画布。 */
+    var V = [], CV = [];                       // 掌握率(0..1) 与 覆盖(0..1)
     M.rows.forEach(function (row, ri) {
+      V[ri] = []; CV[ri] = [];
       row.cells.forEach(function (c, ci) {
-        if (!c.N) return;
-        var x = padL + ci * cw + 2, y = padT + ri * ch + 2, w = cw - 4, h = ch - 4;
-        var p0 = Math.round(c.ratio * 100);
-        var base = ramp(p0);
-        f.save();
-        f.globalAlpha = 0.20 + 0.80 * (c.tested / c.N);
-        f.fillStyle = base;
-        roundRect(f, x, y, w, h, 3); f.fill();
-        // 顶部一道很淡的高光：让每块看起来是"凸起的一片"，不是平涂
-        f.globalAlpha = 0.16;
-        f.fillStyle = '#ffffff';
-        roundRect(f, x, y, w, Math.max(2, h * 0.30), 3); f.fill();
-        f.restore();
-        if (!c.tested) {
-          f.save();
-          f.globalAlpha = 0.8; f.strokeStyle = C.ink3; f.lineWidth = 1;
-          f.setLineDash([2, 2]);
-          roundRect(f, x, y, w, h, 3); f.stroke();
-          f.restore();
-        }
+        V[ri][ci] = (!c.N || c.ratio === null) ? 0 : c.ratio;
+        CV[ri][ci] = c.N ? c.tested / c.N : 0;
       });
     });
+    var NR = V.length, NC = V[0].length;
 
+    function sample(G, fx, fy) {               // fx,fy 为格点坐标（可为小数）
+      var x0 = Math.floor(fx), y0 = Math.floor(fy);
+      var tx = fx - x0, ty = fy - y0;
+      var x1 = Math.min(NC - 1, x0 + 1), y1 = Math.min(NR - 1, y0 + 1);
+      x0 = Math.max(0, Math.min(NC - 1, x0)); y0 = Math.max(0, Math.min(NR - 1, y0));
+      var a = G[y0][x0] * (1 - tx) + G[y0][x1] * tx;
+      var b = G[y1][x0] * (1 - tx) + G[y1][x1] * tx;
+      return a * (1 - ty) + b * ty;
+    }
+
+    var PW = Math.round(cols * cw), PH = Math.round(rows * ch);
+    var fld = document.createElement('canvas');
+    fld.width = PW; fld.height = PH;
+    var fx = fld.getContext('2d');
+
+    /* 第一遍：把高程（掌握率）和覆盖度按双线性插值铺满整张图 */
+    var fv = new Float32Array(PW * PH), fc2 = new Float32Array(PW * PH);
+    for (var qy = 0; qy < PH; qy++) {
+      var gy2 = (qy / (PH - 1)) * (NR - 1);
+      for (var qx = 0; qx < PW; qx++) {
+        var gx2 = (qx / (PW - 1)) * (NC - 1);
+        var k2 = qy * PW + qx;
+        fv[k2] = sample(V, gx2, gy2);
+        fc2[k2] = sample(CV, gx2, gy2);
+      }
+    }
+
+    /* 第二遍：上色。色带 + 山体阴影 + 1px 等高线 */
+    var img = fx.createImageData(PW, PH);
+    var d = img.data;
+    var lo = [122, 32, 26], mid = [206, 148, 66], hi = [38, 156, 116];
+    function ramp3(t) {
+      if (t < 0.5) {
+        var k = t * 2;
+        return [lo[0] + (mid[0] - lo[0]) * k, lo[1] + (mid[1] - lo[1]) * k, lo[2] + (mid[2] - lo[2]) * k];
+      }
+      var m = (t - 0.5) * 2;
+      return [mid[0] + (hi[0] - mid[0]) * m, mid[1] + (hi[1] - mid[1]) * m, mid[2] + (hi[2] - mid[2]) * m];
+    }
+    function band(v) { return Math.floor(v * 5.0001); }
+    for (var py = 0; py < PH; py++) {
+      for (var px2 = 0; px2 < PW; px2++) {
+        var idx = py * PW + px2, o = idx * 4;
+        var cov = fc2[idx];
+        if (cov <= 0.02) { d[o + 3] = 0; continue; }
+        var v = fv[idx];
+        var c3 = ramp3(v);
+        // 山体阴影：左上方来光，坡面朝光则亮、背光则暗
+        var dvx = (px2 < PW - 1 ? fv[idx + 1] : v) - (px2 > 0 ? fv[idx - 1] : v);
+        var dvy = (py < PH - 1 ? fv[idx + PW] : v) - (py > 0 ? fv[idx - PW] : v);
+        var sh = 1 + (dvx + dvy) * 6;
+        sh = Math.max(0.74, Math.min(1.26, sh));
+        var r3 = c3[0] * sh, g3 = c3[1] * sh, b3 = c3[2] * sh;
+        // 等高线：和左边/上边落在不同高程带，就画一条 1px 线
+        var b0 = band(v);
+        var onEdge = (px2 > 0 && band(fv[idx - 1]) !== b0) || (py > 0 && band(fv[idx - PW]) !== b0);
+        if (onEdge) { r3 *= 0.55; g3 *= 0.55; b3 *= 0.55; }
+        d[o] = r3; d[o + 1] = g3; d[o + 2] = b3;
+        d[o + 3] = Math.round(255 * (0.20 + 0.80 * cov));
+      }
+    }
+    fx.putImageData(img, 0, 0);
+    f.drawImage(fld, 0, 0, cols * cw, rows * ch);
+    // 外框：把地形"装"进一张图纸里
+    f.strokeStyle = C.line; f.lineWidth = 1;
+    f.strokeRect(padL + 0.5, padT + 0.5, cols * cw - 1, rows * ch - 1);
     // 坐标轴：字母居中在列上，频段名右对齐在行外
     f.fillStyle = C.ink3;
     f.font = '10px ui-monospace, monospace';
