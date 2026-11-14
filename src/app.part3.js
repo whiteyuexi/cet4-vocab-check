@@ -254,10 +254,10 @@
     var line = untested
       ? ('还有 <b>' + untested + '</b> 块一个词都没测过——地图上那几片浅色就是它们。')
       : ('七段词频 × 26 个字母，共 <b>' + blocks + '</b> 块，' + withData + ' 块已有数据。');
-    return '<div class="sec-title">词汇地图<span class="line"></span><span class="tiny">纵轴=词频段 · 横轴=首字母</span></div>' +
+    return '<div class="sec-title">词汇地图<span class="line"></span><span class="tiny">七个词频段 · 七座城</span></div>' +
       '<div class="card map-entry">' +
         '<div class="map-entry-t">' + line + '</div>' +
-        '<div class="tiny" style="margin-top:6px">颜色 = 掌握率，浓淡 = 这一块测得多少。点格子能直接复测那一块。</div>' +
+        '<div class="tiny" style="margin-top:6px">城墙越高 = 掌握越好，底座越大 = 词越多，空城 = 这一段还没人测过。点城池能直接复测那一段。</div>' +
         '<button class="btn primary" data-act="open-map" style="margin-top:14px">打开词汇地图</button>' +
       '</div>';
   };
@@ -268,10 +268,10 @@
     A.modal(
       '<div class="map-wrap"><canvas id="vmapCanvas"></canvas></div>' +
       '<div class="map-legend">' +
-        '<span><i style="background:rgb(176,46,34)"></i>低掌握</span>' +
-        '<span><i style="background:rgb(138,90,16)"></i>中等</span>' +
-        '<span><i style="background:rgb(10,107,74)"></i>掌握好</span>' +
-        '<span class="tiny">颜色 = 掌握率 · 浓淡 = 测得多少 · 虚线格 = 完全没测过</span>' +
+        '<span><i style="background:rgb(176,46,34)"></i>弱</span>' +
+        '<span><i style="background:rgb(138,90,16)"></i>中</span>' +
+        '<span><i style="background:rgb(10,107,74)"></i>强</span>' +
+        '<span class="tiny">城池高度 = 掌握率 · 底座大小 = 词量 · 虚线空城 = 还没测过</span>' +
       '</div>' +
       '<div class="map-read" id="mapRead">移动指针到地图上，这里给出那一块的坐标与数字</div>' +
       '<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">' +
@@ -288,179 +288,212 @@
     requestAnimationFrame(function () { requestAnimationFrame(A.drawMap); });
   };
 
+  /* ---------- 词汇沙盘 ----------
+     七个词频段各是一座城：底座大小 = 词量，城墙高度 = 掌握率，灰的 = 还没攻下。
+     不是热力矩阵，不是等高线——是一张能一眼看出"哪座城还虚、先打哪座"的沙盘。 */
   A.drawMap = function () {
     var cv = el('vmapCanvas');
     if (!cv || !cv.getContext) return;
     var M = A.vocabMap();
     var dpr = Math.min(2, window.devicePixelRatio || 1);
-    /* 先让 canvas 吃满容器宽度，再按"真实显示宽度"设分辨率。
-       之前用固定像素宽 + 30ms 后测量，弹层还没完成布局，量到的是个小值，
-       于是地图缩在左上角一小块。 */
-    cv.style.width = '100%';
-    cv.style.height = 'auto';
-    var W = Math.round(cv.getBoundingClientRect().width) || cv.parentNode.clientWidth || 880;
-    if (W < 240) W = 880;
-    var H = Math.max(280, Math.round(W * 0.42));
+    cv.style.width = '100%'; cv.style.height = 'auto';
+    var W = Math.round(cv.getBoundingClientRect().width) || 960;
+    if (W < 240) W = 960;
+    var H = Math.round(Math.min(520, Math.max(360, W * 0.44)));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     var ctx = cv.getContext('2d');
-    if (!ctx) return;
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     var cs = getComputedStyle(document.documentElement);
-    var col = function (n, fb) { var v = cs.getPropertyValue(n).trim(); return v || fb; };
-    var C = { ok: col('--ok', '#0A6B4A'), warn: col('--warn', '#8A5A10'), bad: col('--bad', '#B02E22'),
-              line: col('--line2', 'rgba(16,19,25,.13)'), ink3: col('--ink3', '#5C6371'), ink: col('--ink', '#101319') };
+    var C = {
+      ink: cs.getPropertyValue('--ink').trim() || '#101319',
+      ink2: cs.getPropertyValue('--ink2').trim() || '#3D434F',
+      ink3: cs.getPropertyValue('--ink3').trim() || '#5C6371',
+      line: cs.getPropertyValue('--line2').trim() || 'rgba(16,19,25,.13)',
+      ok: cs.getPropertyValue('--ok').trim() || '#0A6B4A',
+      warn: cs.getPropertyValue('--warn').trim() || '#8A5A10',
+      bad: cs.getPropertyValue('--bad').trim() || '#B02E22'
+    };
+    function hex2rgb(h) {
+      h = String(h).trim().replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      var n = parseInt(h, 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function rgbs(c, a) { var p = hex2rgb(c); return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + a + ')'; }
+    function mix(c1, c2, t) {
+      var a = hex2rgb(c1), b = hex2rgb(c2);
+      return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+    }
+    function strength(p) {
+      var t = Math.max(0, Math.min(100, p)) / 100;
+      return t < 0.5 ? mix(C.bad, C.warn, t * 2) : mix(C.warn, C.ok, (t - 0.5) * 2);
+    }
 
-    /* 正方形格子：26 列 × 7 行，格边长由可用宽度反推，画布高度跟着走。
-       之前把高度写死成 W*0.42，格子被拉成扁条，怎么画都难看。 */
-    var padL = 72, padT = 24, padR = 12, padB = 12;
-    var cols = 26, rows = M.rows.length;
-    var cell = (W - padL - padR) / cols;
-    var H2 = padT + padB + cell * rows;
-    cv.height = Math.round(H2 * dpr);
-    cv.style.height = H2 + 'px';
-    H = H2;
-    var cw = cell, ch = cell;
-    var off = document.createElement('canvas');
-    off.width = cv.width; off.height = cv.height;
-    var f = off.getContext('2d');
-    f.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 七个据点：之字形排布，从高频走到低频
+    var SPOT = [[0.10, 0.62], [0.235, 0.34], [0.37, 0.60], [0.505, 0.34], [0.64, 0.60], [0.775, 0.34], [0.91, 0.62]];
 
-    /* ---------- 地形图渲染 ----------
-       三件套，缺一件就不像地图：
-         ① 高程色带（hypsometric）：低掌握=红褐、中=沙黄、高=青绿
-         ② 山体阴影（hillshade）：按高度梯度打光，画面才有起伏
-         ③ 等高线：每隔 20% 一条，把"梯度"画成可读的线
-       数据是 7×26 的格点，按双线性插值铺满整张画布。 */
-    var V = [], CV = [];                       // 掌握率(0..1) 与 覆盖(0..1)
-    M.rows.forEach(function (row, ri) {
-      V[ri] = []; CV[ri] = [];
-      row.cells.forEach(function (c, ci) {
-        V[ri][ci] = (!c.N || c.ratio === null) ? 0 : c.ratio;
-        CV[ri][ci] = c.N ? c.tested / c.N : 0;
-      });
+    var maxN = 1;
+    M.rows.forEach(function (r) { r.cells.forEach(function (c) { if (c.N > maxN) maxN = c.N; }); });
+    var cities = M.rows.map(function (row, i) {
+      var N = 0, tested = 0, k = 0;
+      row.cells.forEach(function (c) { N += c.N; tested += c.tested; k += c.k; });
+      var mastery = tested ? Math.round(k / tested * 100) : null;
+      var sp = SPOT[i] || [0.1 + i * 0.13, 0.5];
+      return {
+        row: row, i: i, N: N, tested: tested, k: k, mastery: mastery,
+        x: sp[0] * W, y: sp[1] * H,
+        r: 26 + 30 * Math.sqrt(N / maxN)
+      };
     });
-    var NR = V.length, NC = V[0].length;
 
-    function sample(G, fx, fy) {               // fx,fy 为格点坐标（可为小数）
-      var x0 = Math.floor(fx), y0 = Math.floor(fy);
-      var tx = fx - x0, ty = fy - y0;
-      var x1 = Math.min(NC - 1, x0 + 1), y1 = Math.min(NR - 1, y0 + 1);
-      x0 = Math.max(0, Math.min(NC - 1, x0)); y0 = Math.max(0, Math.min(NR - 1, y0));
-      var a = G[y0][x0] * (1 - tx) + G[y0][x1] * tx;
-      var b = G[y1][x0] * (1 - tx) + G[y1][x1] * tx;
-      return a * (1 - ty) + b * ty;
-    }
+    var hit = [];
 
-    var PW = Math.round(cols * cw), PH = Math.round(rows * ch);
-    var fld = document.createElement('canvas');
-    fld.width = PW; fld.height = PH;
-    var fx = fld.getContext('2d');
-
-    /* 第一遍：把高程（掌握率）和覆盖度按双线性插值铺满整张图 */
-    var fv = new Float32Array(PW * PH), fc2 = new Float32Array(PW * PH);
-    for (var qy = 0; qy < PH; qy++) {
-      var gy2 = (qy / (PH - 1)) * (NR - 1);
-      for (var qx = 0; qx < PW; qx++) {
-        var gx2 = (qx / (PW - 1)) * (NC - 1);
-        var k2 = qy * PW + qx;
-        fv[k2] = sample(V, gx2, gy2);
-        fc2[k2] = sample(CV, gx2, gy2);
-      }
-    }
-
-    /* 第二遍：上色。色带 + 山体阴影 + 1px 等高线 */
-    var img = fx.createImageData(PW, PH);
-    var d = img.data;
-    var lo = [122, 32, 26], mid = [206, 148, 66], hi = [38, 156, 116];
-    function ramp3(t) {
-      if (t < 0.5) {
-        var k = t * 2;
-        return [lo[0] + (mid[0] - lo[0]) * k, lo[1] + (mid[1] - lo[1]) * k, lo[2] + (mid[2] - lo[2]) * k];
-      }
-      var m = (t - 0.5) * 2;
-      return [mid[0] + (hi[0] - mid[0]) * m, mid[1] + (hi[1] - mid[1]) * m, mid[2] + (hi[2] - mid[2]) * m];
-    }
-    function band(v) { return Math.floor(v * 5.0001); }
-    for (var py = 0; py < PH; py++) {
-      for (var px2 = 0; px2 < PW; px2++) {
-        var idx = py * PW + px2, o = idx * 4;
-        var cov = fc2[idx];
-        if (cov <= 0.02) { d[o + 3] = 0; continue; }
-        var v = fv[idx];
-        var c3 = ramp3(v);
-        // 山体阴影：左上方来光，坡面朝光则亮、背光则暗
-        var dvx = (px2 < PW - 1 ? fv[idx + 1] : v) - (px2 > 0 ? fv[idx - 1] : v);
-        var dvy = (py < PH - 1 ? fv[idx + PW] : v) - (py > 0 ? fv[idx - PW] : v);
-        var sh = 1 + (dvx + dvy) * 6;
-        sh = Math.max(0.74, Math.min(1.26, sh));
-        var r3 = c3[0] * sh, g3 = c3[1] * sh, b3 = c3[2] * sh;
-        // 等高线：和左边/上边落在不同高程带，就画一条 1px 线
-        var b0 = band(v);
-        var onEdge = (px2 > 0 && band(fv[idx - 1]) !== b0) || (py > 0 && band(fv[idx - PW]) !== b0);
-        if (onEdge) { r3 *= 0.55; g3 *= 0.55; b3 *= 0.55; }
-        d[o] = r3; d[o + 1] = g3; d[o + 2] = b3;
-        d[o + 3] = Math.round(255 * (0.20 + 0.80 * cov));
-      }
-    }
-    fx.putImageData(img, 0, 0);
-    f.drawImage(fld, 0, 0, cols * cw, rows * ch);
-    // 外框：把地形"装"进一张图纸里
-    f.strokeStyle = C.line; f.lineWidth = 1;
-    f.strokeRect(padL + 0.5, padT + 0.5, cols * cw - 1, rows * ch - 1);
-    // 坐标轴：字母居中在列上，频段名右对齐在行外
-    f.fillStyle = C.ink3;
-    f.font = '10px ui-monospace, monospace';
-    f.textAlign = 'center';
-    M.letters.forEach(function (L, i) { f.fillText(L, padL + (i + 0.5) * cw, padT - 8); });
-    f.textAlign = 'right';
-    M.rows.forEach(function (row, ri) { f.fillText(row.name, padL - 8, padT + (ri + 0.5) * ch + 3); });
-    f.textAlign = 'left';
-    MAPC.field = off; MAPC.rows = M.rows; MAPC.dpr = dpr;
-    MAPC.layout = { padL: padL, padT: padT, cw: cw, ch: ch, W: W, H: H, cols: cols, rows: rows };
-    MAPC.ok = C; MAPC.W = W; MAPC.H = H;
-
-    function paint() {
+    function paint(hover) {
       ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(off, 0, 0, W, H);
-      if (MAPC.hover >= 0) {
-        var hi = MAPC.hover;
-        var r2 = Math.floor(hi / cols), c2 = hi % cols;
-        ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6;
-        ctx.strokeRect(padL + c2 * cw - 1, padT + r2 * ch - 1, cw + 2, ch + 2);
-      }
-    }
-    paint();
 
-    function cellAt(ev) {
+      // 底：一张沙盘的台面（径向渐晕 + 点阵）
+      var bg = ctx.createRadialGradient(W / 2, H * 0.45, 10, W / 2, H * 0.45, W * 0.62);
+      bg.addColorStop(0, 'rgba(127,127,127,0.10)');
+      bg.addColorStop(1, 'rgba(127,127,127,0.02)');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = rgbs(C.ink3, 0.14);
+      for (var dx = 0; dx < W; dx += 26) {
+        for (var dy = 0; dy < H; dy += 26) { ctx.fillRect(dx, dy, 1, 1); }
+      }
+
+      // 行军路线：一条虚线，把七座城按词频顺序串起来
+      ctx.save();
+      ctx.strokeStyle = rgbs(C.ink3, 0.34);
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 6]);
+      ctx.beginPath();
+      for (var ci = 0; ci < cities.length; ci++) {
+        var c0 = cities[ci];
+        if (ci === 0) ctx.moveTo(c0.x, c0.y + 6);
+        else {
+          var prev = cities[ci - 1];
+          var mx = (prev.x + c0.x) / 2, my = (prev.y + c0.y) / 2 - 26;
+          ctx.quadraticCurveTo(mx, my, c0.x, c0.y + 6);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      hit = [];
+      cities.forEach(function (c, idx) {
+        var p = c.mastery;
+        var tone = p === null ? C.ink3 : strength(p);
+        var isHover = hover === idx;
+        var r = c.r * (isHover ? 1.06 : 1);
+
+        // 地面投影
+        ctx.save();
+        ctx.fillStyle = rgbs(C.ink, 0.10);
+        ctx.beginPath(); ctx.ellipse(c.x, c.y + 8, r * 0.95, r * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+
+        // 底座：菱形台
+        ctx.fillStyle = p === null ? rgbs(C.ink3, 0.12) : rgbs(C.ink, 0.16);
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y - r * 0.26);
+        ctx.lineTo(c.x + r * 0.9, c.y + 6);
+        ctx.lineTo(c.x, c.y + r * 0.36 + 6);
+        ctx.lineTo(c.x - r * 0.9, c.y + 6);
+        ctx.closePath(); ctx.fill();
+
+        if (p === null) {
+          // 没测过：空城，虚线轮廓
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = rgbs(C.ink3, 0.55); ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = rgbs(C.ink3, 0.85);
+          ctx.font = '600 13px ui-monospace, monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('未测', c.x, c.y + 2);
+        } else {
+          // 城墙：三座塔，中间最高；高度 = 掌握率
+          var hMax = 14 + 96 * (p / 100);
+          var towers = [
+            { ox: -r * 0.34, w: r * 0.30, h: hMax * 0.62 },
+            { ox: 0, w: r * 0.36, h: hMax },
+            { ox: r * 0.34, w: r * 0.30, h: hMax * 0.74 }
+          ];
+          towers.forEach(function (t) {
+            var bx = c.x + t.ox - t.w / 2, by = c.y + 2 - t.h;
+            var g = ctx.createLinearGradient(bx, by, bx + t.w, by + t.h);
+            g.addColorStop(0, tone);
+            g.addColorStop(1, rgbs(C.ink, 0.16));
+            ctx.fillStyle = g;
+            ctx.fillRect(bx, by, t.w, t.h);
+            // 塔顶亮面
+            ctx.fillStyle = rgbs('#ffffff', 0.22);
+            ctx.fillRect(bx, by, t.w, Math.max(2, t.h * 0.16));
+            // 垛口
+            ctx.fillStyle = rgbs(C.ink, 0.22);
+            ctx.fillRect(bx, by + t.h * 0.16, t.w, 1);
+          });
+          // 旗
+          var topY = c.y + 2 - hMax;
+          ctx.strokeStyle = rgbs(C.ink, 0.55); ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(c.x, topY); ctx.lineTo(c.x, topY - 14); ctx.stroke();
+          ctx.fillStyle = tone;
+          ctx.beginPath();
+          ctx.moveTo(c.x, topY - 14); ctx.lineTo(c.x + 12, topY - 10); ctx.lineTo(c.x, topY - 6);
+          ctx.closePath(); ctx.fill();
+        }
+
+        if (isHover) {
+          ctx.strokeStyle = rgbs(C.ink, 0.65); ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.ellipse(c.x, c.y + 8, r * 1.02, r * 0.38, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+
+        // 标签
+        ctx.textAlign = 'center';
+        ctx.fillStyle = C.ink2;
+        ctx.font = '600 12px -apple-system, "Segoe UI", sans-serif';
+        ctx.fillText(c.row.name, c.x, c.y + r * 0.36 + 30);
+        ctx.fillStyle = C.ink3;
+        ctx.font = '11px ui-monospace, monospace';
+        ctx.fillText(c.N + ' 词 · ' + (p === null ? '未测' : '掌握 ' + p + '%'), c.x, c.y + r * 0.36 + 46);
+
+        hit.push({ x: c.x, y: c.y, r: r * 1.15, city: c });
+      });
+    }
+
+    var hovered = -1;
+    paint(hovered);
+
+    function pick(ev) {
       var rect = cv.getBoundingClientRect();
-      var x = (ev.clientX - rect.left) - padL, y = (ev.clientY - rect.top) - padT;
-      if (x < 0 || y < 0) return null;
-      var ci = Math.floor(x / cw), ri = Math.floor(y / ch);
-      if (ci < 0 || ci >= cols || ri < 0 || ri >= rows) return null;
-      var row = M.rows[ri], c = row.cells[ci];
-      if (!c || !c.N) return null;
-      return { ri: ri, ci: ci, row: row, c: c };
+      var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+      var best = null, bd = 1e9;
+      hit.forEach(function (h, i) {
+        var d = Math.sqrt((h.x - x) * (h.x - x) + (h.y - y) * (h.y - y));
+        if (d < h.r + 22 && d < bd) { bd = d; best = i; }
+      });
+      return best;
     }
     cv.onpointermove = function (ev) {
-      var hit = cellAt(ev);
+      var i = pick(ev);
+      if (i !== hovered) { hovered = i; paint(hovered); }
       var out = el('mapRead');
-      if (!hit) { MAPC.hover = -1; paint(); if (out) out.textContent = '移动指针到地图上，这里给出那一块的坐标与数字'; return; }
-      MAPC.hover = hit.ri * cols + hit.ci;
-      paint();
-      if (out) {
-        var p = Math.round(hit.c.ratio * 100);
-        out.textContent = hit.row.name + ' · ' + hit.c.letter + ' ｜ 共 ' + hit.c.N + ' 词 · 已测 ' + hit.c.tested +
-          ' · 认识 ' + hit.c.k + ' · 模糊 ' + hit.c.f + ' · 不认识 ' + hit.c.u + ' · 掌握率 ' + p + '%' +
-          (hit.c.untested ? ' · 未测 ' + hit.c.untested : '') + '　（点击复测这一块）';
-      }
+      if (!out) return;
+      if (i < 0) { out.textContent = '指针移到城池上，这里给出这一段的数字'; return; }
+      var c = hit[i].city;
+      out.textContent = c.row.name + ' ｜ 共 ' + c.N + ' 词 · 已测 ' + c.tested +
+        (c.mastery === null ? ' · 还没测过（点一下就能开测这一段）' :
+          ' · 认识 ' + c.k + ' · 掌握率 ' + c.mastery + '%　（点击复测这一段）');
     };
     cv.onclick = function (ev) {
-      var hit = cellAt(ev);
-      if (!hit) return;
-      if (ev.shiftKey && A.openAIDialog && A.focusForCell) { A.openAIDialog(null, A.focusForCell(hit.c.band, hit.c.letter)); return; }
-      if (A.reviewCell) A.reviewCell(hit.c.band, hit.c.letter);
+      var i = pick(ev);
+      if (i < 0) return;
+      var c = hit[i].city;
+      var band = (c.row.cells[0] && c.row.cells[0].band) || (c.i + 1);
+      if (ev.shiftKey && A.openAIDialog) { A.openAIDialog(null, '帮我看 ' + c.row.name + ' 这一段'); return; }
+      if (A.reviewCell) A.reviewCell(band, 'all');
     };
   };
   A.vocabMapHTML = function () {
