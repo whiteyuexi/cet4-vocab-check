@@ -31,6 +31,7 @@
     "shot": "node scripts/cdp-shot.mjs",
     "all": "npm run build && npm test && npm run audit",
     "lint": "eslint src",
+    "mcp:demo": "node scripts/mcp-demo.mjs",
     "typecheck": "tsc -p jsconfig.json",
     "check": "npm run typecheck && npm run lint && npm test",
     "ppt": "node scripts/make-deck.mjs roadshow",

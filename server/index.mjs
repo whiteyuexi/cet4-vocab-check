@@ -7,6 +7,7 @@ import { loadEnv } from './env.mjs';
 import { createLLM, describeLLM } from './llm/index.mjs';
 import { buildTools } from './tools.mjs';
 import { runAgent } from './agent.mjs';
+import { McpClient } from './mcp-client.mjs';
 import { mockDiagnose } from './mock-diagnose.mjs';
 import { corpusStats, examplesFor, searchByText } from './corpus.mjs';
 
@@ -131,7 +132,31 @@ const server = http.createServer(async (req, res) => {
         send({ type: 'done', tools: [] });
       } else {
         send({ type: 'mode', mode: 'llm', model: info.model });
-        await runAgent({ llm, tools, question, history, onEvent: send });
+        /* USE_MCP=1 时，工具调用改走 MCP 协议：服务器自描述工具，客户端按声明调用 */
+        let runner = null, mcp = null;
+        if (process.env.USE_MCP === '1') {
+          mcp = new McpClient(payload.context || {});
+          try {
+            await mcp.start();
+            const info2 = await mcp.initialize();
+            const list = await mcp.listTools();
+            send({ type: 'mode', mode: 'llm', model: info2.serverInfo.name + ' · MCP（' + list.length + ' 个工具）' });
+            runner = async function (call) {
+              var name = call.function.name;
+              var args = {};
+              try { args = call.function.arguments ? JSON.parse(call.function.arguments) : {}; } catch (e) { args = {}; }
+              return await mcp.callTool(name, args);
+            };
+          } catch (e) {
+            send({ type: 'delta', text: '（MCP 未启动，已回退到本地工具：' + e.message + '）\n' });
+            mcp = null;
+          }
+        }
+        try {
+          await runAgent({ llm, tools, question, history, onEvent: send, runner: runner });
+        } finally {
+          if (mcp) mcp.close();
+        }
       }
     } catch (e) {
       // 模型调用失败时自动降级到本地规则，保证功能不中断

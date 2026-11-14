@@ -59,7 +59,7 @@ function execTool(tools, call) {
  * @param question 用户提出的问题
  * @param onEvent 回调：{type:'tool'|'delta'|'done', ...}
  */
-export async function runAgent({ llm, tools, question, history, onEvent }) {
+export async function runAgent({ llm, tools, question, history, onEvent, runner }) {
   // 多轮对话：把之前几轮带上，但每轮重新调用工具拿最新数据（数据可能已经变了）
   const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
   const hist = Array.isArray(history) ? history.slice(-6) : [];
@@ -102,7 +102,8 @@ export async function runAgent({ llm, tools, question, history, onEvent }) {
     for (let ci = 0; ci < calls.length; ci++) {
       const c = calls[ci];
       if (planned) onEvent({ type: 'step', i: ci, status: 'run' });
-      const result = execTool(tools, c);
+      /* runner 存在时走 MCP 客户端；否则直接调用本地函数 */
+      const result = runner ? await runner(c) : execTool(tools, c);
       usedTools.push({ name: c.function.name, args: c.function.arguments });
       onEvent({ type: 'tool', name: c.function.name, args: c.function.arguments, result });
       if (planned) onEvent({ type: 'step', i: ci, status: 'done' });

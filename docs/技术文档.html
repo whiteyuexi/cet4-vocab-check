@@ -356,7 +356,36 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 </table>
 
 <!-- ============================================================ -->
-<h3>4.7 可验证指标</h3>
+<h3>4.9 MCP 集成：工具不写死在应用里</h3>
+<p>Function Calling 是「模型能输出一个调用」，MCP（Model Context Protocol）是「工具能被任何宿主发现和复用」。
+两者不是替代关系：本项目在需要跨应用复用、或想接第三方能力时走 MCP，日常对话仍走 Function Calling。</p>
+<h4>做法</h4>
+<ul>
+<li><code>server/mcp-server.mjs</code>：stdio + 换行分隔的 JSON-RPC 2.0，把 8 个诊断工具按 <code>tools/list</code> 自描述暴露；
+    上下文（当前用户的真实数据）通过 <code>DSH_CTX</code> 环境变量传入，服务器本身不持有状态。</li>
+<li><code>server/mcp-client.mjs</code>：启动子进程，完成 <code>initialize</code> → <code>tools/list</code> → <code>tools/call</code>；
+    工具名与参数全部来自服务器的声明，客户端里没有硬编码的工具清单。</li>
+<li>接入开关：<code>USE_MCP=1</code> 时 Agent 的取数改走 MCP；MCP 启动失败会自动回退到本地工具，不中断对话。</li>
+</ul>
+<h4>实测报文（可复现：<code>node scripts/mcp-demo.mjs --frames</code>）</h4>
+<pre>→ {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05",...}}
+← {"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"cet-vocab-diagnosis","version":"1.0.0"}}
+→ {"jsonrpc":"2.0","method":"notifications/initialized"}
+→ {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+← {"tools":[{"name":"get_profile","description":"获取当前词库的整体情况…","inputSchema":{...}},…8 个]}
+→ {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_profile","arguments":{}}}
+← {"content":[{"type":"text","text":"{\"coverage\":17.9,\"estimate\":{...}}"}],"isError":false}</pre>
+<h4>为什么这么设计</h4>
+<table>
+<tr><th style="width:170px">决策</th><th>理由</th></tr>
+<tr><td class="k">stdio 而不是 HTTP</td><td>本地进程通信，零网络依赖，演示时不会因为端口/防火墙挂掉；远程场景再换 HTTP 传输，协议层不变</td></tr>
+<tr><td class="k">上下文走环境变量</td><td>工具依赖调用者的真实数据。服务器只做「无状态执行器」，同一份服务器代码能服务任何用户</td></tr>
+<tr><td class="k">MCP 与本地调用并存</td><td>MCP 多一层进程通信，失败模式更多。默认走本地调用，<code>USE_MCP=1</code> 显式开启，失败自动回落</td></tr>
+</table>
+<p>这一步的意义在于：那 8 个工具<b>不再隶属于这个网页</b>。把它们接到 Claude Desktop 或任何兼容 MCP 的宿主上，
+同样能对一个真实的词汇量档案做诊断——这是「工具层可复用」与「工具写死在一个应用里」的区别。</p>
+
+<h3>4.10 可验证指标</h3>
 <p>评分表里 RAG 与技术实现都看"是否真的有效"。下面这些数字由 <code>node scripts/eval-rag.mjs</code> 实测产出，可复现：</p>
 <table>
 <tr><th style="width:150px">指标</th><th style="width:250px">实测</th><th>怎么测的</th></tr>
