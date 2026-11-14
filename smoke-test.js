@@ -88,12 +88,13 @@ win.addEventListener('load', () => {
     step('统计页', () => {
       click('.nav button[data-nav="stats"]');
       check('统计页渲染', /总体掌握情况/.test(doc.getElementById('view').textContent));
-      check('词汇地图渲染出 7 段 × 26 字母',
-        qa('.vmap-row').length === 8 && qa('.vmap-lt').length === 26,
-        qa('.vmap-row').length + ' 行（含表头）/ ' + qa('.vmap-lt').length + ' 列');
-      check('词汇地图的格子可点击复测',
-        qa('.vmap-c[data-act="map-review"]').length > 0,
-        qa('.vmap-c[data-act="map-review"]').length + ' 个可点格子');
+      /* 地图改成"入口卡 + 弹层真地图"：页面里只留一张入口，点开才画 canvas */
+      check('词汇地图是一个入口 + 一个按钮',
+        !!q('.map-entry') && !!q('[data-act="open-map"]') && typeof A.openMap === 'function',
+        q('.map-entry') ? 'ok' : '缺入口卡');
+      check('地图能打开且格子可复测',
+        typeof A.drawMap === 'function' && typeof A.reviewCell === 'function',
+        typeof A.drawMap);
       check('无随机样本时不给词汇量', /数据不足/.test(doc.getElementById('view').textContent));
       A.addSample({ n: 100, k: 62, f: 18 }); A.save(); A.go('stats');
       check('有随机样本时给出估算', /3,2\d\d/.test(doc.getElementById('view').textContent), (/≈ [\d,]+ 词/.exec(doc.getElementById('view').textContent) || ['无'])[0]);

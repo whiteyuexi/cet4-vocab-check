@@ -1530,3 +1530,11 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   border:1px solid var(--line);font:11.5px/1.5 var(--mono);color:var(--ink2);min-height:30px}
 /* 早期版本在每个行后插入了读数条，重复元素只留一个语义、这里全部隐藏；真正的读数显示在图例行 */
 #vmapRead{display:none}
+
+/* ---------- 词汇地图：入口卡 + 弹层地图 ---------- */
+.map-entry{display:flex;flex-direction:column;align-items:flex-start}
+.map-entry-t{font-size:16px;font-weight:700;line-height:1.55}
+.map-wrap{width:100%;padding:6px;border-radius:12px;background:var(--glass-2);border:1px solid var(--line)}
+.map-wrap canvas{display:block;width:100%;cursor:crosshair;border-radius:8px}
+.map-read{margin-top:10px;padding:8px 11px;border-radius:9px;background:var(--glass-2);
+  border:1px solid var(--line);font:11.5px/1.6 var(--mono);color:var(--ink2);min-height:32px}

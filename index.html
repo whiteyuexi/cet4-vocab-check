@@ -1540,6 +1540,13 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 /* 早期版本在每个行后插入了读数条，重复元素只留一个语义、这里全部隐藏；真正的读数显示在图例行 */
 #vmapRead{display:none}
 
+/* ---------- 词汇地图：入口卡 + 弹层地图 ---------- */
+.map-entry{display:flex;flex-direction:column;align-items:flex-start}
+.map-entry-t{font-size:16px;font-weight:700;line-height:1.55}
+.map-wrap{width:100%;padding:6px;border-radius:12px;background:var(--glass-2);border:1px solid var(--line)}
+.map-wrap canvas{display:block;width:100%;cursor:crosshair;border-radius:8px}
+.map-read{margin-top:10px;padding:8px 11px;border-radius:9px;background:var(--glass-2);
+  border:1px solid var(--line);font:11.5px/1.6 var(--mono);color:var(--ink2);min-height:32px}
 </style>
 <!-- 四六级词汇量检测 · 词库 7175 词 · 内联例句 5138 条 -->
 </head>
@@ -4188,6 +4195,172 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   /* ---------- 词汇地图 ----------
      纵轴词频段 × 横轴首字母，颜色＝掌握率、浓淡＝测过多少。
      一眼看出「整块没测」和「整块不会」，点格子直接复测那一块。 */
+  /* ---------- 词汇地图：入口 + 真地图 ----------
+     原来那块是"塞在页面里的一张热力矩阵"，一屏塞 182 个方块，既不好读也不像地图。
+     现在：总览页只留一张入口卡（一句结论 + 一个按钮），点开才是一张真正的地图——
+     canvas 画的连续色场（不是方格）、带坐标轴、悬停给坐标读数、点格子直接复测。 */
+  A.mapEntryHTML = function () {
+    var M = A.vocabMap();
+    var blocks = 0, withData = 0;
+    M.rows.forEach(function (r) {
+      r.cells.forEach(function (c) { if (!c.N) return; blocks++; if (c.tested) withData++; });
+    });
+    var untested = M.untestedCells || 0;
+    var line = untested
+      ? ('还有 <b>' + untested + '</b> 块一个词都没测过——地图上那几片浅色就是它们。')
+      : ('七段词频 × 26 个字母，共 <b>' + blocks + '</b> 块，' + withData + ' 块已有数据。');
+    return '<div class="sec-title">词汇地图<span class="line"></span><span class="tiny">纵轴=词频段 · 横轴=首字母</span></div>' +
+      '<div class="card map-entry">' +
+        '<div class="map-entry-t">' + line + '</div>' +
+        '<div class="tiny" style="margin-top:6px">颜色 = 掌握率，浓淡 = 这一块测得多少。点格子能直接复测那一块。</div>' +
+        '<button class="btn primary" data-act="open-map" style="margin-top:14px">打开词汇地图</button>' +
+      '</div>';
+  };
+
+  var MAPC = { field: null, layout: null, rows: null, hover: -1, dpr: 1, W: 0, H: 0 };
+
+  A.openMap = function () {
+    A.modal(
+      '<div class="map-wrap"><canvas id="vmapCanvas"></canvas></div>' +
+      '<div class="map-read" id="mapRead">移动指针到地图上，这里给出那一块的坐标与数字</div>' +
+      '<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">' +
+        '<button class="btn sm primary" data-act="map-review" data-band="all" data-letter="all">复测全部没测过的词</button>' +
+        '<button class="btn sm ghost" data-act="modal-close">关闭</button>' +
+      '</div>', true);
+    setTimeout(A.drawMap, 30);
+  };
+
+  A.drawMap = function () {
+    var cv = el('vmapCanvas');
+    if (!cv || !cv.getContext) return;
+    var M = A.vocabMap();
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W = cv.parentNode.clientWidth || 900;
+    var H = Math.max(280, Math.round(W * 0.42));
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    var ctx = cv.getContext('2d');
+    if (!ctx) return;
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var cs = getComputedStyle(document.documentElement);
+    var col = function (n, fb) { var v = cs.getPropertyValue(n).trim(); return v || fb; };
+    var C = { ok: col('--ok', '#0A6B4A'), warn: col('--warn', '#8A5A10'), bad: col('--bad', '#B02E22'),
+              line: col('--line2', 'rgba(16,19,25,.13)'), ink3: col('--ink3', '#5C6371'), ink: col('--ink', '#101319') };
+
+    var padL = 74, padT = 26, padR = 10, padB = 10;
+    var cols = 26, rows = M.rows.length;
+    var cw = (W - padL - padR) / cols, ch = (H - padT - padB) / rows;
+
+    var off = document.createElement('canvas');
+    off.width = cv.width; off.height = cv.height;
+    var f = off.getContext('2d');
+    f.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // 底纹：网格
+    f.strokeStyle = C.line; f.lineWidth = 1;
+    for (var gx = 0; gx <= cols; gx++) {
+      f.beginPath(); f.moveTo(padL + gx * cw, padT); f.lineTo(padL + gx * cw, H - padB); f.stroke();
+    }
+    for (var gy = 0; gy <= rows; gy++) {
+      f.beginPath(); f.moveTo(padL, padT + gy * ch); f.lineTo(W - padR, padT + gy * ch); f.stroke();
+    }
+
+    /* 色场：先在 26×7 的小画布上各画 1 个像素（颜色=掌握率、不透明度=测得多少），
+       再整体放大绘制。浏览器做双线性插值，于是格与格之间是连续过渡——
+       这是天气图的画法，比"每格画一个光斑"干净得多（光斑会在格心露出圆圈）。 */
+    var small = document.createElement('canvas');
+    small.width = cols; small.height = rows;
+    var sx = small.getContext('2d');
+    M.rows.forEach(function (row, ri) {
+      row.cells.forEach(function (c, ci) {
+        if (!c.N) return;
+        var p0 = Math.round(c.ratio * 100);
+        sx.fillStyle = p0 >= 80 ? C.ok : p0 >= 50 ? C.warn : C.bad;
+        sx.globalAlpha = 0.16 + 0.8 * (c.tested / c.N);
+        sx.fillRect(ci, ri, 1, 1);
+      });
+    });
+    sx.globalAlpha = 1;
+    f.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in f) f.imageSmoothingQuality = 'high';
+    f.drawImage(small, 0, 0, cols, rows, padL, padT, cols * cw, rows * ch);
+    f.globalAlpha = 1;
+    // 没测过的块：留一个空心点，像"未探索"
+    M.rows.forEach(function (row, ri) {
+      row.cells.forEach(function (c, ci) {
+        if (!c.N || c.tested) return;
+        f.globalAlpha = 0.55; f.strokeStyle = C.ink3; f.lineWidth = 1;
+        f.beginPath(); f.arc(padL + (ci + 0.5) * cw, padT + (ri + 0.5) * ch, 2.2, 0, Math.PI * 2); f.stroke();
+      });
+    });
+    f.globalAlpha = 1;
+    // 格线压在色场上面：色块之间有了边界，才读得出"一块一块"
+    f.strokeStyle = C.line; f.lineWidth = 1; f.globalAlpha = 0.9;
+    for (var gx2 = 0; gx2 <= cols; gx2++) {
+      f.beginPath(); f.moveTo(padL + gx2 * cw, padT); f.lineTo(padL + gx2 * cw, H - padB); f.stroke();
+    }
+    for (var gy2 = 0; gy2 <= rows; gy2++) {
+      f.beginPath(); f.moveTo(padL, padT + gy2 * ch); f.lineTo(W - padR, padT + gy2 * ch); f.stroke();
+    }
+    f.globalAlpha = 1;
+
+    // 坐标轴
+    f.fillStyle = C.ink3; f.font = '10px ui-monospace, monospace';
+    M.letters.forEach(function (L, i) {
+      f.fillText(L, padL + (i + 0.5) * cw - 3, padT - 8);
+    });
+    M.rows.forEach(function (row, ri) {
+      f.fillText(row.name, 6, padT + (ri + 0.5) * ch + 3);
+    });
+
+    MAPC.field = off; MAPC.rows = M.rows; MAPC.dpr = dpr;
+    MAPC.layout = { padL: padL, padT: padT, cw: cw, ch: ch, W: W, H: H, cols: cols, rows: rows };
+    MAPC.ok = C; MAPC.W = W; MAPC.H = H;
+
+    function paint() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(off, 0, 0, W, H);
+      if (MAPC.hover >= 0) {
+        var hi = MAPC.hover;
+        var r2 = Math.floor(hi / cols), c2 = hi % cols;
+        ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6;
+        ctx.strokeRect(padL + c2 * cw - 1, padT + r2 * ch - 1, cw + 2, ch + 2);
+      }
+    }
+    paint();
+
+    function cellAt(ev) {
+      var rect = cv.getBoundingClientRect();
+      var x = (ev.clientX - rect.left) - padL, y = (ev.clientY - rect.top) - padT;
+      if (x < 0 || y < 0) return null;
+      var ci = Math.floor(x / cw), ri = Math.floor(y / ch);
+      if (ci < 0 || ci >= cols || ri < 0 || ri >= rows) return null;
+      var row = M.rows[ri], c = row.cells[ci];
+      if (!c || !c.N) return null;
+      return { ri: ri, ci: ci, row: row, c: c };
+    }
+    cv.onpointermove = function (ev) {
+      var hit = cellAt(ev);
+      var out = el('mapRead');
+      if (!hit) { MAPC.hover = -1; paint(); if (out) out.textContent = '移动指针到地图上，这里给出那一块的坐标与数字'; return; }
+      MAPC.hover = hit.ri * cols + hit.ci;
+      paint();
+      if (out) {
+        var p = Math.round(hit.c.ratio * 100);
+        out.textContent = hit.row.name + ' · ' + hit.c.letter + ' ｜ 共 ' + hit.c.N + ' 词 · 已测 ' + hit.c.tested +
+          ' · 认识 ' + hit.c.k + ' · 模糊 ' + hit.c.f + ' · 不认识 ' + hit.c.u + ' · 掌握率 ' + p + '%' +
+          (hit.c.untested ? ' · 未测 ' + hit.c.untested : '') + '　（点击复测这一块）';
+      }
+    };
+    cv.onclick = function (ev) {
+      var hit = cellAt(ev);
+      if (!hit) return;
+      if (ev.shiftKey && A.openAIDialog && A.focusForCell) { A.openAIDialog(null, A.focusForCell(hit.c.band, hit.c.letter)); return; }
+      if (A.reviewCell) A.reviewCell(hit.c.band, hit.c.letter);
+    };
+  };
   A.vocabMapHTML = function () {
     var M = A.vocabMap();
     var t = A.tally(A.activePool());
@@ -4348,7 +4521,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
     h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
     h += A.bandProfileHTML();
-    h += A.vocabMapHTML();
+    h += A.mapEntryHTML();
 
 
     // 历史
@@ -4625,6 +4798,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         case 'resume': A.go('test'); break;
         case 'ai-voice': if (A.startVoiceInput) A.startVoiceInput(); break;
         /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
+        case 'open-map': if (A.openMap) A.openMap(); break;
         case 'drill-start': {
           var dn = A.buildDrill(10);
           if (!dn) { A.toast('还没有能出题的缺口词——先做完一次摸底'); break; }
