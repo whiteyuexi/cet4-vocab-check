@@ -76,8 +76,8 @@ pre code{background:none;color:inherit;padding:0}
 <div class="kv">
   <div><b>7,175</b><span>词条（全部带音标）</span></div>
   <div><b>9,204</b><span>英中对照例句</span></div>
-  <div><b>439</b><span>条离线断言</span></div>
-  <div><b>2.11 MB</b><span>单文件产物</span></div>
+  <div><b>222</b><span>条断言</span></div>
+  <div><b>2.70 MB</b><span>单文件产物</span></div>
   <div><b>0</b><span>运行时外部依赖</span></div>
 </div>
 
@@ -119,12 +119,12 @@ pre code{background:none;color:inherit;padding:0}
 <h3>1.3 交付物与完成度</h3>
 <table>
 <tr><th style="width:170px">交付物</th><th>内容</th><th style="width:80px">状态</th></tr>
-<tr><td class="k">Web 单文件产物</td><td><code>index.html</code> 2.11 MB，词库/例句/立绘/样式/脚本全部内联，双击即用、断网可用</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">Web 单文件产物</td><td><code>index.html</code> 2.70 MB，词库/例句/立绘/样式/脚本全部内联，双击即用、断网可用</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">评委版产物</td><td>同一份产物＋内联作者 Key，开箱即可演示在线 AI 诊断（仓库版不含任何密钥）</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">自动化测试</td><td>12 个套件 / 439 条离线断言（另 7 条联网断言），全绿</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>3 套测试 / 222 条断言，全绿</td><td><span class="tag done">完成</span></td></tr>
 </table>
 
 <h3>1.4 三个可验证的承诺</h3>
@@ -165,7 +165,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td>F4</td><td>七段词频剖面与「缺口 × 词频权重」优先级排序</td><td><span class="tag done">完成</span></td></tr>
 <tr><td>F5</td><td>等级评估（S/A/B+/B/C/D）＋ 高频段地基封顶</td><td><span class="tag done">完成</span></td></tr>
 <tr><td>F6</td><td>多轮检测与逐词差分（真学会 / 背了又忘 / 掉档）</td><td><span class="tag done">完成</span></td></tr>
-<tr><td>F7</td><td>词汇地图：七段 × 26 字母 = 182 格，点格子直接复测</td><td><span class="tag done">完成</span></td></tr>
+<tr><td>F7</td><td>词汇地图：七个词频段各一座城，点开先看战报再决定打哪一段</td><td><span class="tag done">完成</span></td></tr>
 <tr><td>F8</td><td>AI 诊断：三档通路、工具调用、建议可点、图表可反向提问</td><td><span class="tag done">完成</span></td></tr>
 <tr><td>F9</td><td>自定义词书导入（txt / csv / 粘贴），并明确"不换算成词汇量"的边界</td><td><span class="tag done">完成</span></td></tr>
 <tr><td>F10</td><td>使用者档案：同机多人数据隔离，可切换/改名/删除</td><td><span class="tag done">完成</span></td></tr>
@@ -199,7 +199,7 @@ pre code{background:none;color:inherit;padding:0}
 <h2 id="c3">3 系统架构设计</h2>
 
 <h3>3.1 整体架构</h3>
-<pre><code>┌────────────────────────── 单个 index.html（2.11 MB） ──────────────────────────┐
+<pre><code>┌────────────────────────── 单个 index.html（2.70 MB） ──────────────────────────┐
 │                                                                              │
 │  数据层    词库 7,175 词 · 例句 9,204 句 · 桌宠立绘 10 张（全部内联）           │
 │     │                                                                        │
@@ -222,14 +222,14 @@ pre code{background:none;color:inherit;padding:0}
 <h3>3.2 模块划分</h3>
 <table>
 <tr><th style="width:150px">文件</th><th style="width:80px">规模</th><th>职责</th></tr>
-<tr><td class="k">src/app.part1.js</td><td>1,492 行</td><td>状态与存储、词库与频段、抽样与估计、等级报告、回访卡、演示档案、使用者档案</td></tr>
-<tr><td class="k">src/app.part2.js</td><td>431 行</td><td>答题引擎：题面、作答判定、撤销、跳过、收工、结算</td></tr>
-<tr><td class="k">src/app.part3.js</td><td>922 行</td><td>结果页、总览、报告、设置、事件分发</td></tr>
-<tr><td class="k">src/app.part4.js</td><td>936 行</td><td>AI 面板、三档通路、工具调用可视化、动作白名单</td></tr>
-<tr><td class="k">src/app.part5.js</td><td>816 行</td><td>2.5D 桌宠：行为、悬空物理、守卫、气泡</td></tr>
-<tr><td class="k">src/app.part6.js</td><td>542 行</td><td>等级报告页与多轮对比</td></tr>
-<tr><td class="k">src/app.part7.js</td><td>378 行</td><td>入场页与视效层</td></tr>
-<tr><td class="k">src/app.part8.js</td><td>330 行</td><td>自定义词书解析 / 预览 / 保存</td></tr>
+<tr><td class="k">src/app.part1.js</td><td>1,705 行</td><td>状态与存储、词库与频段、抽样与估计、等级报告、回访卡、演示档案、使用者档案</td></tr>
+<tr><td class="k">src/app.part2.js</td><td>429 行</td><td>答题引擎：题面、作答判定、撤销、跳过、收工、结算</td></tr>
+<tr><td class="k">src/app.part3.js</td><td>1,474 行</td><td>结果页、总览、报告、设置、事件分发</td></tr>
+<tr><td class="k">src/app.part4.js</td><td>1,010 行</td><td>AI 面板、三档通路、工具调用可视化、动作白名单</td></tr>
+<tr><td class="k">src/app.part5.js</td><td>1,346 行</td><td>2.5D 桌宠：行为、悬空物理、守卫、气泡</td></tr>
+<tr><td class="k">src/app.part6.js</td><td>514 行</td><td>等级报告页与多轮对比</td></tr>
+<tr><td class="k">src/app.part7.js</td><td>369 行</td><td>入场页与视效层</td></tr>
+<tr><td class="k">src/app.part8.js</td><td>326 行</td><td>自定义词书解析 / 预览 / 保存</td></tr>
 <tr><td class="k">build.js</td><td>—</td><td>把 CSS/JS/词库/例句/立绘按固定顺序拼进 <code>index.template.html</code></td></tr>
 <tr><td class="k">server/</td><td>约 400 行</td><td>可选后端：静态托管 + Agent 循环 + 工具层 + 语料检索</td></tr>
 </table>
@@ -449,9 +449,12 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <tr><td class="k">实现</td><td>每轮存 2 bit/词 的状态位图（约 1.8 KB）＋ 聚合快照；词表指纹不一致时只做聚合对比</td></tr>
 </table>
 
-<h3>5.9 词汇地图：182 格，图即入口</h3>
-<p>七段词频 × 26 首字母，颜色表示掌握率（绿 ≥80% / 黄 50–80% / 红 &lt;50%），浓淡表示这一格测过多少。
-点格子直接把这些缺口词组成一轮复测；Shift + 点则带着这一格的真实数字去问 AI。</p>
+<h3>5.9 词汇地图：七座城，图即入口</h3>
+<p>七个词频段各是一座城，按词频顺序串成一条行军路线：<b>底座大小 = 这一段有多少词，城墙高度 = 掌握率，
+颜色 = 强弱</b>，没测过的段画成虚线空城。地形由多倍频噪声（fBm）生成——海岸线、丘陵、山体阴影都是算出来的，
+不依赖任何贴图，所以在断网的机器上也是同一张图。</p>
+<p>点城池<b>先出一份战报</b>：覆盖率、认识 / 模糊 / 不认识、最薄的三格，再决定打哪一段；
+Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材（assets/map/），没有素材时回落到程序化绘制的等距城楼。</p>
 
 <h3>5.10 回访卡：隔几天再打开，首页接上上次的结论</h3>
 <table>
@@ -494,7 +497,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <div class="small">报告页的补词清单：每段"还差多少词 · 掌握率 · 每天 N 词约需几天"，每条都能直接开始复测。</div></div>
 
 <div class="fig"><img src="screenshots/ppt-map.jpg" alt="词汇地图">
-<div class="small">词汇地图：七段词频 × 26 首字母 = 182 格，颜色是掌握率、浓淡是测过多少，点格即复测。</div></div>
+<div class="small">词汇地图：七个词频段各一座城，底座大小是词量、城墙高度是掌握率，点开先看战报再决定打哪一段。</div></div>
 
 <div class="fig"><img src="screenshots/05-ai-diagnose.png" alt="AI 诊断面板">
 <div class="small">AI 诊断面板：回答上方标出这次调了哪些工具，下方可展开"本次发送给模型的数据"。</div></div>
@@ -505,7 +508,7 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <h2 id="c6">6 测试与部署</h2>
 
 
-<h3>6.1 测试体系（12 个套件 / 439 条离线断言）</h3>
+<h3>6.1 测试体系（3 套 / 222 条断言）</h3>
 <table>
 <tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
 <tr><td class="k">smoke-test.js（jsdom）</td><td>207</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
@@ -572,7 +575,7 @@ PORT=8787</code></pre>
 <h3>6.6 发布检查清单</h3>
 <table>
 <tr><td class="k">① 构建</td><td>两种产物都构建一遍；<code>check-no-key.mjs</code> 通过</td></tr>
-<tr><td class="k">② 测试</td><td>smoke / 浏览器 / 桌宠 / 入场 / 离线 / 收件人 六套全绿</td></tr>
+<tr><td class="k">② 测试</td><td>冒烟 222 条全绿；真浏览器桌宠 40 条（39 通过，余 1 条为测试读取时机问题）；RAG 四项指标由脚本可复现</td></tr>
 <tr><td class="k">③ 派生物</td><td>截图重拍、PPT 重出、PDF 重导、桌面副本按 SHA256 比对</td></tr>
 <tr><td class="k">④ 文档</td><td>数字口径统一（断言数、体积、词条数）——历史上三次事故都出在"派生物没同步"</td></tr>
 </table>
@@ -617,8 +620,8 @@ PORT=8787</code></pre>
 
 
 <h3>8.1 已完成</h3>
-<p>一个 2.11 MB 的单文件 Web 应用：五入口检测、带区间的词汇量估计、七段诊断、等级与地基约束、多轮差分、
-182 格词汇地图、回访卡、自定义词书、使用者档案、三档 AI 通路、离线可用的本地规则引擎，
+<p>一个 2.70 MB 的单文件 Web 应用：五入口检测、带区间的词汇量估计、七段诊断、等级与地基约束、多轮差分、
+七城词汇地图、回访卡、自定义词书、使用者档案、三档 AI 通路、离线可用的本地规则引擎，
 外加一个同源引擎的微信小程序版本。全部由单人完成，427 条离线断言守着回归。</p>
 
 <h3>8.2 商业与社会价值</h3>
@@ -694,7 +697,7 @@ PORT=8787</code></pre>
 <tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
 </table>
 
-<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.11 MB / 439 条离线断言 / 词库 7,175 词 / 例句 9,204 句）。
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.70 MB / 222 条断言 / 词库 7,175 词 / 例句 9,204 句）。
 实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
 
 </div>
