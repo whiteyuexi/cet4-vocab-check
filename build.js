@@ -69,6 +69,36 @@ ty: {
 let html = fs.readFileSync(path.join(ROOT, 'src', 'index.template.html'), 'utf8');
 html = html.replace('/*__CSS__*/', function () { return css; });
 html = html.replace('/*__PETART__*/', function () { return JSON.stringify(petArt); });
+
+/* 地图素材（可选）：assets/map/bg.png|jpg + city-weak/mid/strong/untested.png。
+   放进去就自动内联成 data URI，运行时优先用它；没有就回落到程序化地形。 */
+let mapArt = null;
+try {
+  const dir = path.join(ROOT, 'assets', 'map');
+  const pick = names => {
+    for (const n of names) {
+      const p = path.join(dir, n);
+      if (fs.existsSync(p)) {
+        const ext = n.split('.').pop().toLowerCase();
+        const mime = ext === 'jpg' ? 'jpeg' : ext;
+        return 'data:image/' + mime + ';base64,' + fs.readFileSync(p).toString('base64');
+      }
+    }
+    return null;
+  };
+  const bg = pick(['bg.jpg', 'bg.png', 'bg.webp']);
+  if (bg) {
+    mapArt = {
+      bg,
+      weak: pick(['city-weak.png']),
+      mid: pick(['city-mid.png']),
+      strong: pick(['city-strong.png']),
+      untested: pick(['city-untested.png'])
+    };
+    console.log('地图素材: 已内联（底图 ' + Math.round(bg.length / 1024) + ' KB）');
+  }
+} catch (e) { mapArt = null; }
+html = html.replace('/*__MAPART__*/', function () { return mapArt ? JSON.stringify(mapArt) : 'null'; });
 // 作者 Key：**只有显式传 --with-key 才内联**，用于生成"给评委的演示版"。
 // 默认构建（以及提交到公开仓库的产物）绝不包含任何 Key —— 由 scripts/check-no-key.mjs 把关。
 // 文件位置：private/ai-key.json（已 gitignore），内容 { key, model, base }

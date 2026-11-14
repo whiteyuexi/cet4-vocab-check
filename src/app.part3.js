@@ -503,6 +503,30 @@
 
     function drawCity(g, c, hover) {
       var r = c.r, x = c.x, y = c.y, strong = c.mastery !== null;
+      /* 有城池素材就贴图；尺寸按图片比例，锚点在底部中心 */
+      var ART = window.MAP_ART;
+      if (ART && ART.bg) {
+        var key2 = c.mastery === null ? 'untested' : (c.mastery >= 80 ? 'strong' : c.mastery >= 50 ? 'mid' : 'weak');
+        var src = ART[key2] || ART.mid || ART.strong || ART.weak;
+        if (src) {
+          MAPC.spr = MAPC.spr || {};
+          var im2 = MAPC.spr[src];
+          if (!im2) {
+            im2 = new Image();
+            im2.onload = function () { if (document.getElementById('vmapCanvas')) A.drawMap(); };
+            im2.src = src; MAPC.spr[src] = im2;
+          }
+          if (im2.complete && im2.naturalWidth) {
+            var ih2 = r * 3.0, iw2 = ih2 * (im2.naturalWidth / im2.naturalHeight);
+            g.drawImage(im2, x - iw2 / 2, y + r * 0.52 - ih2, iw2, ih2);
+            if (hover) {
+              g.strokeStyle = '#E8C069'; g.lineWidth = 2.2;
+              g.beginPath(); g.ellipse(x, y + 12, r * 1.12, r * 0.40, 0, 0, 6.2832); g.stroke();
+            }
+            return;
+          }
+        }
+      }
       g.fillStyle = 'rgba(0,0,0,.22)';
       g.beginPath(); g.ellipse(x, y + 12, r * 1.05, r * 0.36, 0, 0, 6.2832); g.fill();
       isoBox(g, x, y, r, r * 0.5, 5, ST.L, ST.M, ST.D);
@@ -570,7 +594,19 @@
     var hit = [], hovered = -1;
     function paint(hv) {
       ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(MAPC.terrain, 0, 0, W, H);
+      /* 有素材就用素材底图，没有就用程序化地形 */
+      var ART = window.MAP_ART;
+      if (ART && ART.bg) {
+        if (!MAPC.bgImg) {
+          MAPC.bgImg = new Image();
+          MAPC.bgImg.onload = function () { if (document.getElementById('vmapCanvas')) A.drawMap(); };
+          MAPC.bgImg.src = ART.bg;
+        }
+        if (MAPC.bgImg.complete && MAPC.bgImg.naturalWidth) ctx.drawImage(MAPC.bgImg, 0, 0, W, H);
+        else ctx.drawImage(MAPC.terrain, 0, 0, W, H);
+      } else {
+        ctx.drawImage(MAPC.terrain, 0, 0, W, H);
+      }
       // 道路画在城下面
       ctx.save();
       ctx.lineJoin = 'round';
