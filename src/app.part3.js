@@ -505,7 +505,7 @@
       var r = c.r, x = c.x, y = c.y, strong = c.mastery !== null;
       /* 有城池素材就贴图；尺寸按图片比例，锚点在底部中心 */
       var ART = window.MAP_ART;
-      if (ART && ART.bg) {
+      if (ART) {
         var key2 = c.mastery === null ? 'untested' : (c.mastery >= 80 ? 'strong' : c.mastery >= 50 ? 'mid' : 'weak');
         var src = ART[key2] || ART.mid || ART.strong || ART.weak;
         if (src) {
@@ -517,7 +517,7 @@
             im2.src = src; MAPC.spr[src] = im2;
           }
           if (im2.complete && im2.naturalWidth) {
-            var ih2 = r * 3.0, iw2 = ih2 * (im2.naturalWidth / im2.naturalHeight);
+            var ih2 = r * 1.95, iw2 = ih2 * (im2.naturalWidth / im2.naturalHeight);
             g.drawImage(im2, x - iw2 / 2, y + r * 0.52 - ih2, iw2, ih2);
             if (hover) {
               g.strokeStyle = '#E8C069'; g.lineWidth = 2.2;

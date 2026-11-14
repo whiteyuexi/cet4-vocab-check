@@ -87,15 +87,22 @@ try {
     return null;
   };
   const bg = pick(['bg.jpg', 'bg.png', 'bg.webp']);
-  if (bg) {
+  const sprites = {
+    weak: pick(['city-weak.png']),
+    mid: pick(['city-mid.png']),
+    strong: pick(['city-strong.png']),
+    untested: pick(['city-untested.png'])
+  };
+  const hasSprite = !!(sprites.weak || sprites.mid || sprites.strong || sprites.untested);
+  if (bg || hasSprite) {
     mapArt = {
       bg,
-      weak: pick(['city-weak.png']),
-      mid: pick(['city-mid.png']),
-      strong: pick(['city-strong.png']),
-      untested: pick(['city-untested.png'])
+      weak: sprites.weak,
+      mid: sprites.mid,
+      strong: sprites.strong,
+      untested: sprites.untested
     };
-    console.log('地图素材: 已内联（底图 ' + Math.round(bg.length / 1024) + ' KB）');
+    console.log('地图素材: 已内联' + (bg ? '（底图）' : '（仅城池图，底图用程序化地形）'));
   }
 } catch (e) { mapArt = null; }
 html = html.replace('/*__MAPART__*/', function () { return mapArt ? JSON.stringify(mapArt) : 'null'; });
