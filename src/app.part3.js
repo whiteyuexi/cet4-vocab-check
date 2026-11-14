@@ -291,188 +291,222 @@
   /* ---------- 词汇沙盘 ----------
      七个词频段各是一座城：底座大小 = 词量，城墙高度 = 掌握率，灰的 = 还没攻下。
      不是热力矩阵，不是等高线——是一张能一眼看出"哪座城还虚、先打哪座"的沙盘。 */
+  /* ---------- 词汇战略地图 ----------
+     地形底图 + 等距城池 + 名牌。方案见 docs/沙盘建模方案.md。
+     地形/河流/道路是静态的，画一次缓存；悬停只重画城池和名牌。 */
   A.drawMap = function () {
     var cv = el('vmapCanvas');
     if (!cv || !cv.getContext) return;
     var M = A.vocabMap();
     var dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.style.width = '100%'; cv.style.height = 'auto';
-    var W = Math.round(cv.getBoundingClientRect().width) || 960;
-    if (W < 240) W = 960;
-    var H = Math.round(Math.min(520, Math.max(360, W * 0.44)));
+    var W = Math.round(cv.getBoundingClientRect().width) || 980;
+    if (W < 240) W = 980;
+    var H = Math.round(Math.min(560, Math.max(400, W * 0.48)));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     var ctx = cv.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    var cs = getComputedStyle(document.documentElement);
-    var C = {
-      ink: cs.getPropertyValue('--ink').trim() || '#101319',
-      ink2: cs.getPropertyValue('--ink2').trim() || '#3D434F',
-      ink3: cs.getPropertyValue('--ink3').trim() || '#5C6371',
-      line: cs.getPropertyValue('--line2').trim() || 'rgba(16,19,25,.13)',
-      ok: cs.getPropertyValue('--ok').trim() || '#0A6B4A',
-      warn: cs.getPropertyValue('--warn').trim() || '#8A5A10',
-      bad: cs.getPropertyValue('--bad').trim() || '#B02E22'
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var P = dark ? {
+      grass0: '#22301c', grass1: '#12180f', b1: '#2e4024', b2: '#16200f',
+      rockL: '#5d5945', rockD: '#332f24',
+      water: '#2b4a55', waterL: '#4b7f8e', road: '#544d3a', roadL: '#7a7057',
+      stoneL: '#8a8471', stone: '#6f6a5a', stoneD: '#4b4738',
+      plate: 'rgba(16,18,22,.88)', ink: '#f2efe6'
+    } : {
+      grass0: '#8aa85f', grass1: '#5f7d45', b1: '#9dbb72', b2: '#6b8a4c',
+      rockL: '#a9a284', rockD: '#5f5a46',
+      water: '#7fb6c9', waterL: '#d5ecf3', road: '#d8c9a6', roadL: '#f4ecd6',
+      stoneL: '#e8e2d2', stone: '#cfc8b4', stoneD: '#948d7a',
+      plate: 'rgba(22,24,28,.86)', ink: '#f6f3ea'
     };
-    function hex2rgb(h) {
-      h = String(h).trim().replace('#', '');
-      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-      var n = parseInt(h, 16);
-      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+
+    function roundRectPath(g, x, y, w, h, r) {
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r);
+      g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r);
+      g.arcTo(x, y, x + w, y, r);
+      g.closePath();
     }
-    function rgbs(c, a) { var p = hex2rgb(c); return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + a + ')'; }
-    function mix(c1, c2, t) {
-      var a = hex2rgb(c1), b = hex2rgb(c2);
-      return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
-    }
-    function strength(p) {
+    function tone(p) {
+      if (p === null) return dark ? '#8a8471' : '#a49d8b';
       var t = Math.max(0, Math.min(100, p)) / 100;
-      return t < 0.5 ? mix(C.bad, C.warn, t * 2) : mix(C.warn, C.ok, (t - 0.5) * 2);
+      var A1 = [176, 46, 34], B1 = [138, 90, 16], C1 = [10, 107, 74];
+      var L, R, m;
+      if (t < 0.5) { L = A1; R = B1; m = t * 2; } else { L = B1; R = C1; m = (t - 0.5) * 2; }
+      return 'rgb(' + Math.round(L[0] + (R[0] - L[0]) * m) + ',' + Math.round(L[1] + (R[1] - L[1]) * m) + ',' + Math.round(L[2] + (R[2] - L[2]) * m) + ')';
     }
 
-    // 七个据点：之字形排布，从高频走到低频
-    var SPOT = [[0.10, 0.62], [0.235, 0.34], [0.37, 0.60], [0.505, 0.34], [0.64, 0.60], [0.775, 0.34], [0.91, 0.62]];
-
+    var SPOT = [[0.11, 0.60], [0.245, 0.30], [0.38, 0.58], [0.515, 0.30], [0.65, 0.58], [0.785, 0.30], [0.90, 0.58]];
     var maxN = 1;
     M.rows.forEach(function (r) { r.cells.forEach(function (c) { if (c.N > maxN) maxN = c.N; }); });
     var cities = M.rows.map(function (row, i) {
       var N = 0, tested = 0, k = 0;
       row.cells.forEach(function (c) { N += c.N; tested += c.tested; k += c.k; });
-      var mastery = tested ? Math.round(k / tested * 100) : null;
-      var sp = SPOT[i] || [0.1 + i * 0.13, 0.5];
+      var sp = SPOT[i] || [0.1 + i * 0.12, 0.5];
       return {
-        row: row, i: i, N: N, tested: tested, k: k, mastery: mastery,
+        row: row, i: i, N: N, tested: tested, k: k,
+        mastery: tested ? Math.round(k / tested * 100) : null,
         x: sp[0] * W, y: sp[1] * H,
-        r: 26 + 30 * Math.sqrt(N / maxN)
+        r: 30 + 26 * Math.sqrt(N / maxN)
       };
     });
 
-    var hit = [];
-
-    function paint(hover) {
-      ctx.clearRect(0, 0, W, H);
-
-      // 底：一张沙盘的台面（径向渐晕 + 点阵）
-      var bg = ctx.createRadialGradient(W / 2, H * 0.45, 10, W / 2, H * 0.45, W * 0.62);
-      bg.addColorStop(0, 'rgba(127,127,127,0.10)');
-      bg.addColorStop(1, 'rgba(127,127,127,0.02)');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = rgbs(C.ink3, 0.14);
-      for (var dx = 0; dx < W; dx += 26) {
-        for (var dy = 0; dy < H; dy += 26) { ctx.fillRect(dx, dy, 1, 1); }
-      }
-
-      // 行军路线：一条虚线，把七座城按词频顺序串起来
-      ctx.save();
-      ctx.strokeStyle = rgbs(C.ink3, 0.34);
-      ctx.lineWidth = 1.4;
-      ctx.setLineDash([5, 6]);
-      ctx.beginPath();
-      for (var ci = 0; ci < cities.length; ci++) {
-        var c0 = cities[ci];
-        if (ci === 0) ctx.moveTo(c0.x, c0.y + 6);
-        else {
-          var prev = cities[ci - 1];
-          var mx = (prev.x + c0.x) / 2, my = (prev.y + c0.y) / 2 - 26;
-          ctx.quadraticCurveTo(mx, my, c0.x, c0.y + 6);
-        }
-      }
-      ctx.stroke();
-      ctx.restore();
-
-      hit = [];
-      cities.forEach(function (c, idx) {
-        var p = c.mastery;
-        var tone = p === null ? C.ink3 : strength(p);
-        var isHover = hover === idx;
-        var r = c.r * (isHover ? 1.06 : 1);
-
-        // 地面投影
-        ctx.save();
-        ctx.fillStyle = rgbs(C.ink, 0.10);
-        ctx.beginPath(); ctx.ellipse(c.x, c.y + 8, r * 0.95, r * 0.34, 0, 0, Math.PI * 2); ctx.fill();
-
-        // 底座：菱形台
-        ctx.fillStyle = p === null ? rgbs(C.ink3, 0.12) : rgbs(C.ink, 0.16);
-        ctx.beginPath();
-        ctx.moveTo(c.x, c.y - r * 0.26);
-        ctx.lineTo(c.x + r * 0.9, c.y + 6);
-        ctx.lineTo(c.x, c.y + r * 0.36 + 6);
-        ctx.lineTo(c.x - r * 0.9, c.y + 6);
-        ctx.closePath(); ctx.fill();
-
-        if (p === null) {
-          // 没测过：空城，虚线轮廓
-          ctx.setLineDash([4, 4]);
-          ctx.strokeStyle = rgbs(C.ink3, 0.55); ctx.lineWidth = 1.2;
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = rgbs(C.ink3, 0.85);
-          ctx.font = '600 13px ui-monospace, monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('未测', c.x, c.y + 2);
-        } else {
-          // 城墙：三座塔，中间最高；高度 = 掌握率
-          var hMax = 14 + 96 * (p / 100);
-          var towers = [
-            { ox: -r * 0.34, w: r * 0.30, h: hMax * 0.62 },
-            { ox: 0, w: r * 0.36, h: hMax },
-            { ox: r * 0.34, w: r * 0.30, h: hMax * 0.74 }
-          ];
-          towers.forEach(function (t) {
-            var bx = c.x + t.ox - t.w / 2, by = c.y + 2 - t.h;
-            var g = ctx.createLinearGradient(bx, by, bx + t.w, by + t.h);
-            g.addColorStop(0, tone);
-            g.addColorStop(1, rgbs(C.ink, 0.16));
-            ctx.fillStyle = g;
-            ctx.fillRect(bx, by, t.w, t.h);
-            // 塔顶亮面
-            ctx.fillStyle = rgbs('#ffffff', 0.22);
-            ctx.fillRect(bx, by, t.w, Math.max(2, t.h * 0.16));
-            // 垛口
-            ctx.fillStyle = rgbs(C.ink, 0.22);
-            ctx.fillRect(bx, by + t.h * 0.16, t.w, 1);
-          });
-          // 旗
-          var topY = c.y + 2 - hMax;
-          ctx.strokeStyle = rgbs(C.ink, 0.55); ctx.lineWidth = 1.2;
-          ctx.beginPath(); ctx.moveTo(c.x, topY); ctx.lineTo(c.x, topY - 14); ctx.stroke();
-          ctx.fillStyle = tone;
-          ctx.beginPath();
-          ctx.moveTo(c.x, topY - 14); ctx.lineTo(c.x + 12, topY - 10); ctx.lineTo(c.x, topY - 6);
-          ctx.closePath(); ctx.fill();
-        }
-
-        if (isHover) {
-          ctx.strokeStyle = rgbs(C.ink, 0.65); ctx.lineWidth = 1.6;
-          ctx.beginPath(); ctx.ellipse(c.x, c.y + 8, r * 1.02, r * 0.38, 0, 0, Math.PI * 2); ctx.stroke();
-        }
-        ctx.restore();
-
-        // 标签
-        ctx.textAlign = 'center';
-        ctx.fillStyle = C.ink2;
-        ctx.font = '600 12px -apple-system, "Segoe UI", sans-serif';
-        ctx.fillText(c.row.name, c.x, c.y + r * 0.36 + 30);
-        ctx.fillStyle = C.ink3;
-        ctx.font = '11px ui-monospace, monospace';
-        ctx.fillText(c.N + ' 词 · ' + (p === null ? '未测' : '掌握 ' + p + '%'), c.x, c.y + r * 0.36 + 46);
-
-        hit.push({ x: c.x, y: c.y, r: r * 1.15, city: c });
-      });
+    var tkey = W + 'x' + H + (dark ? 'd' : 'l');
+    if (!MAPC.terrain || MAPC.tkey !== tkey) {
+      MAPC.terrain = buildTerrain(W, H, P, cities, roundRectPath);
+      MAPC.tkey = tkey;
     }
 
+    function buildTerrain(W, H, P, cities) {
+      var c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      var g = c.getContext('2d');
+      var seed = 20261114;
+      function rand() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+      var bg = g.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, P.grass0); bg.addColorStop(1, P.grass1);
+      g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      for (var i = 0; i < 520; i++) {
+        var x = rand() * W, y = rand() * H, r = 8 + rand() * 50;
+        var rg = g.createRadialGradient(x, y, 0, x, y, r);
+        rg.addColorStop(0, rand() < 0.5 ? P.b1 : P.b2);
+        rg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.globalAlpha = 0.05 + rand() * 0.07;
+        g.fillStyle = rg; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+      }
+      g.globalAlpha = 1;
+      for (var m = 0; m < 26; m++) {
+        /* 山聚在上下边缘：中间留出平原，城池才不跟山挤在一起 */
+        var mx = rand() * W, my = rand() < 0.5 ? rand() * H * 0.20 : H * 0.80 + rand() * H * 0.20;
+        var mw = 22 + rand() * 40, mh = 16 + rand() * 30;
+        g.fillStyle = P.rockD;
+        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx + mw, my); g.lineTo(mx, my); g.closePath(); g.fill();
+        g.fillStyle = P.rockL;
+        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx - mw * 0.72, my); g.lineTo(mx, my); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,.20)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx, my); g.stroke();
+      }
+      g.lineCap = 'round';
+      [[0.72, 0.40, 0.80], [0.46, 0.30, 0.52]].forEach(function (pts, k) {
+        g.strokeStyle = P.water; g.lineWidth = k ? 8 : 12;
+        g.beginPath(); g.moveTo(-20, H * pts[0]);
+        g.bezierCurveTo(W * 0.30, H * pts[1], W * 0.64, H * pts[2], W + 20, H * (pts[0] - 0.18));
+        g.stroke();
+        g.strokeStyle = P.waterL; g.lineWidth = k ? 3 : 4; g.stroke();
+      });
+      // 道路
+      g.strokeStyle = P.road; g.lineWidth = 9; g.lineJoin = 'round';
+      g.beginPath();
+      for (var ci = 0; ci < cities.length; ci++) {
+        var cc = cities[ci];
+        if (ci === 0) g.moveTo(cc.x, cc.y + 12);
+        else {
+          var pp = cities[ci - 1];
+          g.quadraticCurveTo((pp.x + cc.x) / 2, (pp.y + cc.y) / 2 + 20, cc.x, cc.y + 12);
+        }
+      }
+      g.stroke();
+      g.strokeStyle = P.roadL; g.lineWidth = 2.5; g.setLineDash([9, 8]); g.stroke();
+      g.setLineDash([]);
+      // 暗角：四周压暗，视线收到中间
+      var vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.26)');
+      g.fillStyle = vg; g.fillRect(0, 0, W, H);
+      return c;
+    }
+
+    function isoBox(g, x, y, hw, hd, h, top, left, right) {
+      g.beginPath(); g.moveTo(x, y - hd); g.lineTo(x + hw, y); g.lineTo(x, y + hd); g.lineTo(x - hw, y); g.closePath();
+      g.fillStyle = top; g.fill();
+      g.beginPath(); g.moveTo(x - hw, y); g.lineTo(x, y + hd); g.lineTo(x, y + hd + h); g.lineTo(x - hw, y + h); g.closePath();
+      g.fillStyle = left; g.fill();
+      g.beginPath(); g.moveTo(x + hw, y); g.lineTo(x, y + hd); g.lineTo(x, y + hd + h); g.lineTo(x + hw, y + h); g.closePath();
+      g.fillStyle = right; g.fill();
+    }
+
+    function drawCity(g, c, hover) {
+      var r = c.r, x = c.x, y = c.y, strong = c.mastery !== null;
+      g.fillStyle = 'rgba(0,0,0,.20)';
+      g.beginPath(); g.ellipse(x, y + 16, r * 1.02, r * 0.34, 0, 0, 6.2832); g.fill();
+      isoBox(g, x, y, r, r * 0.5, 6, P.stoneL, P.stone, P.stoneD);
+      var w = r * 0.76;
+      [[-w, 0], [w, 0], [0, -r * 0.36], [0, r * 0.36]].forEach(function (o) {
+        isoBox(g, x + o[0], y + o[1] + 6, r * 0.18, r * 0.09, 11, P.stoneL, P.stone, P.stoneD);
+      });
+      var hh = strong ? 12 + 44 * (c.mastery / 100) : 9;
+      isoBox(g, x, y + 6, r * 0.40, r * 0.20, hh, P.stoneL, P.stone, P.stoneD);
+      g.fillStyle = strong ? '#a4483a' : P.stoneD;
+      g.beginPath();
+      g.moveTo(x, y + 6 - r * 0.20 - hh - r * 0.18);
+      g.lineTo(x + r * 0.44, y + 6 - hh + 1);
+      g.lineTo(x, y + 6 + r * 0.20 - hh + 1);
+      g.lineTo(x - r * 0.44, y + 6 - hh + 1);
+      g.closePath(); g.fill();
+      if (strong) {
+        var topY = y + 6 - hh - r * 0.18 - 15;
+        g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.4;
+        g.beginPath(); g.moveTo(x, y + 6 - hh - r * 0.18); g.lineTo(x, topY); g.stroke();
+        g.fillStyle = tone(c.mastery);
+        g.beginPath(); g.moveTo(x, topY); g.lineTo(x + 13, topY + 4.5); g.lineTo(x, topY + 9); g.closePath(); g.fill();
+      }
+      if (hover) {
+        g.strokeStyle = '#E0B15C'; g.lineWidth = 2.4;
+        g.beginPath(); g.ellipse(x, y + 16, r * 1.10, r * 0.40, 0, 0, 6.2832); g.stroke();
+      }
+    }
+
+    function drawPlate(g, c, hover) {
+      var title = c.row.name;
+      var sub = c.N + ' 词 · ' + (c.mastery === null ? '未测' : '掌握 ' + c.mastery + '%');
+      g.font = '600 12px -apple-system,"Segoe UI",sans-serif';
+      var w1 = g.measureText(title).width;
+      g.font = '11px ui-monospace,monospace';
+      var w2 = g.measureText(sub).width;
+      var bw = Math.max(w1, w2) + 46, bh = 34;
+      var x0 = c.x - bw / 2, y0 = c.y + 34;
+      g.fillStyle = P.plate;
+      roundRectPath(g, x0, y0, bw, bh, 6); g.fill();
+      if (hover) { g.strokeStyle = '#E0B15C'; g.lineWidth = 1.5; g.stroke(); }
+      g.fillStyle = c.mastery === null ? 'rgba(255,255,255,.22)' : tone(c.mastery);
+      roundRectPath(g, x0 + 5, y0 + 7, 20, 20, 4); g.fill();
+      g.fillStyle = '#16181c';
+      g.font = '700 10px ui-monospace,monospace';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(('0' + (c.i + 1)).slice(-2), x0 + 15, y0 + 17.5);
+      g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+      g.fillStyle = P.ink; g.font = '600 12px -apple-system,"Segoe UI",sans-serif';
+      g.fillText(title, x0 + 31, y0 + 15);
+      g.fillStyle = 'rgba(255,255,255,.74)'; g.font = '11px ui-monospace,monospace';
+      g.fillText(sub, x0 + 31, y0 + 28);
+    }
+
+    var hit = [];
     var hovered = -1;
-    paint(hovered);
+    function paint(hv) {
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(MAPC.terrain, 0, 0, W, H);
+      hit = [];
+      cities.forEach(function (c, i) {
+        drawCity(ctx, c, hv === i);
+        drawPlate(ctx, c, hv === i);
+        hit.push({ x: c.x, y: c.y, r: c.r * 1.15, i: i });
+      });
+    }
+    paint(-1);
 
     function pick(ev) {
       var rect = cv.getBoundingClientRect();
       var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
-      var best = null, bd = 1e9;
-      hit.forEach(function (h, i) {
+      var best = -1, bd = 1e9;
+      hit.forEach(function (h) {
         var d = Math.sqrt((h.x - x) * (h.x - x) + (h.y - y) * (h.y - y));
-        if (d < h.r + 22 && d < bd) { bd = d; best = i; }
+        if (d < h.r + 26 && d < bd) { bd = d; best = h.i; }
       });
       return best;
     }
@@ -482,15 +516,15 @@
       var out = el('mapRead');
       if (!out) return;
       if (i < 0) { out.textContent = '指针移到城池上，这里给出这一段的数字'; return; }
-      var c = hit[i].city;
+      var c = cities[i];
       out.textContent = c.row.name + ' ｜ 共 ' + c.N + ' 词 · 已测 ' + c.tested +
-        (c.mastery === null ? ' · 还没测过（点一下就能开测这一段）' :
+        (c.mastery === null ? ' · 还没测过（点一下开测这一段）' :
           ' · 认识 ' + c.k + ' · 掌握率 ' + c.mastery + '%　（点击复测这一段）');
     };
     cv.onclick = function (ev) {
       var i = pick(ev);
       if (i < 0) return;
-      var c = hit[i].city;
+      var c = cities[i];
       var band = (c.row.cells[0] && c.row.cells[0].band) || (c.i + 1);
       if (ev.shiftKey && A.openAIDialog) { A.openAIDialog(null, '帮我看 ' + c.row.name + ' 这一段'); return; }
       if (A.reviewCell) A.reviewCell(band, 'all');
