@@ -274,6 +274,7 @@
         '<span class="tiny">城池高度 = 掌握率 · 底座大小 = 词量 · 虚线空城 = 还没测过</span>' +
       '</div>' +
       '<div class="map-read" id="mapRead">移动指针到地图上，这里给出那一块的坐标与数字</div>' +
+      '<div class="map-detail" id="mapDetail"><div class="tiny">点地图上的城池，这里给出这一段的详细情况</div></div>' +
       '<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">' +
         '<button class="btn sm primary" data-act="map-review" data-band="all" data-letter="all">复测全部没测过的词</button>' +
         '<button class="btn sm ghost" data-act="modal-close">关闭</button>' +
@@ -341,7 +342,7 @@
     cv.style.width = '100%'; cv.style.height = 'auto';
     var W = Math.round(cv.getBoundingClientRect().width) || 980;
     if (W < 240) W = 980;
-    var H = Math.round(Math.min(560, Math.max(400, W * 0.48)));
+    var H = Math.round(Math.min(520, Math.max(380, W * 0.42)));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     var ctx = cv.getContext('2d');
     if (!ctx) return;
@@ -586,8 +587,8 @@
       ctx.restore();
       hit = [];
       cities.forEach(function (c, i) {
-        drawCity(ctx, c, hv === i);
-        drawPlate(ctx, c, hv === i);
+        drawCity(ctx, c, hv === i || selected === i);
+        drawPlate(ctx, c, hv === i || selected === i);
         hit.push({ x: c.x, y: c.y, r: c.r * 1.2, i: i });
       });
     }
@@ -614,13 +615,57 @@
         (c.mastery === null ? ' · 还没测过（点一下开测这一段）' :
           ' · 认识 ' + c.k + ' · 掌握率 ' + c.mastery + '%　（点击复测这一段）');
     };
+    /* 点城池不立刻开测：先摊开这一段的详细情况，让用户决定打不打 */
+    var selected = -1;
+    function pctOf(a, b) { return b ? Math.round(a / b * 100) : 0; }
+    function detailHTML(c) {
+      var cells = c.row.cells.filter(function (x) { return x.N; });
+      var total = 0, tested = 0, k = 0, f = 0, u = 0;
+      cells.forEach(function (x) { total += x.N; tested += x.tested; k += x.k; f += x.f; u += x.u; });
+      var p = tested ? Math.round(k / tested * 100) : null;
+      var covered = pctOf(tested, total);
+      var weak = cells.filter(function (x) { return x.tested && x.ratio !== null; })
+        .sort(function (a, b) { return a.ratio - b.ratio; }).slice(0, 3);
+      var band = (cells[0] && cells[0].band) || (c.i + 1);
+      var h = '';
+      h += '<div class="md-head"><b>' + esc(c.row.name) + '</b>' +
+        '<span class="pill ' + (p === null ? '' : (p >= 80 ? 'ok' : p >= 50 ? 'warn' : 'bad')) + '">' +
+        (p === null ? '未测' : '掌握 ' + p + '%') + '</span></div>';
+      h += '<div class="md-stats">共 <b>' + total + '</b> 词 · 已测 <b>' + tested + '</b>（覆盖 ' + covered +
+        '%）· 还剩 <b>' + (total - tested) + '</b> 词没测</div>';
+      if (tested) {
+        h += '<div class="segbar" style="margin:10px 0 6px">' +
+          '<i style="width:' + pctOf(k, tested) + '%;background:var(--ok)"></i>' +
+          '<i style="width:' + pctOf(f, tested) + '%;background:var(--warn)"></i>' +
+          '<i style="width:' + pctOf(u, tested) + '%;background:var(--bad)"></i></div>';
+        h += '<div class="legend tiny"><span><i style="background:var(--ok)"></i>认识 <b>' + k +
+          '</b></span><span><i style="background:var(--warn)"></i>模糊 <b>' + f +
+          '</b></span><span><i style="background:var(--bad)"></i>不认识 <b>' + u + '</b></span></div>';
+      }
+      if (weak.length) {
+        h += '<div class="md-weak">最薄的三格：' + weak.map(function (x) {
+          return '<b>' + esc(x.letter) + '</b> ' + Math.round(x.ratio * 100) + '%（' + x.tested + '/' + x.N + '）';
+        }).join(' · ') + '</div>';
+      } else {
+        h += '<div class="md-weak">这一段一个词都没测过，先测一轮才知道薄在哪。</div>';
+      }
+      h += '<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">';
+      h += '<button class="btn sm primary" data-act="map-review" data-band="' + band + '" data-letter="all">复测这一段</button>';
+      if (weak.length) {
+        h += '<button class="btn sm ghost" data-act="map-review" data-band="' + weak[0].band +
+          '" data-letter="' + weak[0].letter + '">只测最薄的 ' + esc(weak[0].letter) + ' 格</button>';
+      }
+      h += '<button class="btn sm ghost" data-act="map-ask" data-band="' + band + '">问 AI</button>';
+      h += '</div>';
+      return h;
+    }
     cv.onclick = function (ev) {
       var i = pick(ev);
       if (i < 0) return;
-      var c = cities[i];
-      var band = (c.row.cells[0] && c.row.cells[0].band) || (c.i + 1);
-      if (ev.shiftKey && A.openAIDialog) { A.openAIDialog(null, '帮我看 ' + c.row.name + ' 这一段'); return; }
-      if (A.reviewCell) A.reviewCell(band, 'all');
+      selected = i;
+      paint(hovered);
+      var box = el('mapDetail');
+      if (box) box.innerHTML = detailHTML(cities[i]);
     };
   };
   A.vocabMapHTML = function () {
@@ -1061,6 +1106,7 @@
         case 'ai-voice': if (A.startVoiceInput) A.startVoiceInput(); break;
         /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
         case 'open-map': if (A.openMap) A.openMap(); break;
+        case 'map-ask': if (A.openAIDialog) { A.modalClose ? A.modalClose() : null; A.openAIDialog(null, '帮我看第 ' + t.getAttribute('data-band') + ' 个词频段这一段，先补哪些词最划算？'); } break;
         case 'drill-start': {
           var dn = A.buildDrill(10);
           if (!dn) { A.toast('还没有能出题的缺口词——先做完一次摸底'); break; }

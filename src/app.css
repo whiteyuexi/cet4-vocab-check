@@ -1544,5 +1544,13 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .map-legend i{display:block;width:11px;height:11px;border-radius:3px}
 .map-legend .tiny{color:var(--ink3);margin-left:auto}
 /* 词汇地图弹层：26 列需要更宽的画布 */
-.modal .box.mapbox{max-width:1040px;width:96vw}
+.modal .box.mapbox{max-width:1040px;width:96vw;max-height:92vh;overflow-y:auto}
 @media (max-width:860px){.modal .box.mapbox{width:96vw}}
+/* 城池详情：点开一座城，先看战报再决定打不打 */
+.map-detail{margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--glass-2);
+  border:1px solid var(--line);font-size:13px;color:var(--ink2);line-height:1.7}
+.md-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.md-head b{font-size:15px;color:var(--ink)}
+.md-stats b{color:var(--ink)}
+.md-weak{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:var(--ink2)}
+.md-weak b{color:var(--ink);font-family:var(--mono)}
