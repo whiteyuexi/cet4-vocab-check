@@ -1538,3 +1538,8 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .map-wrap canvas{display:block;width:100%;cursor:crosshair;border-radius:8px}
 .map-read{margin-top:10px;padding:8px 11px;border-radius:9px;background:var(--glass-2);
   border:1px solid var(--line);font:11.5px/1.6 var(--mono);color:var(--ink2);min-height:32px}
+/* 地图图例 */
+.map-legend{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:10px;font-size:12px;color:var(--ink2)}
+.map-legend span{display:flex;align-items:center;gap:6px}
+.map-legend i{display:block;width:11px;height:11px;border-radius:3px}
+.map-legend .tiny{color:var(--ink3);margin-left:auto}
