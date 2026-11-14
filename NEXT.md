@@ -1244,3 +1244,19 @@ AI 面板加麦克风按钮，用浏览器自带 `SpeechRecognition`，零依赖
 仍是 6 条：3 条渐变标题（品牌）、1 条零偏移光晕、1 条 runtime-src 的 img（误报）、1 条 3.3:1（入场大标题的渐变 em，44–80px 属大字号，AA 门槛 3:1 实际达标）。
 
 `npm test` 222/222 · `pet-test` 39/40。
+### 补：Live2D 小窗钉死（2026-11-14）
+
+窗口不该会走。运来她既能被拖、又会自己溜达，作为"窗"就散了。三处改：
+- `onDown()` 首行 `if (L2D.ok) return` —— 不响应拖动
+- `scheduleWalk()` 首行同样早退 —— 不溜达
+- 挂载成功后把坐标直接设到右下角（`max(safeLeft(), innerWidth - NW - 26)`），不再走"回家动画"
+
+实测（file:// 打开 8MB 版）：
+
+```
+before   [1138, 313]
+拖动后   [1138, 313]   movedByDrag=false
+走动后   [1138, 313]   movedByWalk=false
+```
+
+`npm test` 222/222。

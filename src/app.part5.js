@@ -301,6 +301,8 @@
 
   // 溜达：隔一段时间挑一个附近的落点走过去；拖拽中或页面不可见时不动
   function scheduleWalk() {
+    /* 窗口不溜达：位置钉在右下角，只在尺寸变化时重新贴边 */
+    if (L2D.ok) return;
     if (walkTimer) clearTimeout(walkTimer);
     if (!wide() || document.hidden) return;
     walkTimer = setTimeout(function () {
@@ -519,6 +521,8 @@
   }
 
   function onDown(e) {
+    /* Live2D 窗口是"窗"，不是可以被拎着走的角色：不响应拖动 */
+    if (L2D.ok) return;
     if (!hostEl) return;
     /* 两层防护，都是为了一个实际发生过的 bug：入场页退场的 0.5 秒里点击穿透，
        落在右下角的桌宠身上就变成"幽灵拖拽"，她被一路拖到左上角、看着像卡死。 */
@@ -1202,6 +1206,15 @@
       m.automator.autoUpdate = true;
       try { m.motion('Idle'); } catch (e) {}
       L2D.ok = true; L2D.app = app; L2D.model = m;
+      /* 钉在右下角：窗口一旦会动，就变成"一个到处飘的框" */
+      try {
+        stopWalk();
+        P.dragging = false;
+        P.x = Math.max(safeLeft(), window.innerWidth - NW - 26);
+        P.y = restY();
+        P.air = false;
+        apply();
+      } catch (e) {}
       fig.classList.add('pet-l2d');
       RIG.on = false;                                  // 关掉网格循环，省 CPU
       if (animEl) animEl.style.display = 'none';
