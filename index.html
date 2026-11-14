@@ -4254,9 +4254,48 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   /* ---------- 词汇沙盘 ----------
      七个词频段各是一座城：底座大小 = 词量，城墙高度 = 掌握率，灰的 = 还没攻下。
      不是热力矩阵，不是等高线——是一张能一眼看出"哪座城还虚、先打哪座"的沙盘。 */
-  /* ---------- 词汇战略地图 ----------
-     地形底图 + 等距城池 + 名牌。方案见 docs/沙盘建模方案.md。
-     地形/河流/道路是静态的，画一次缓存；悬停只重画城池和名牌。 */
+  /* ---------- 词汇战略地图（程序化地形） ----------
+     地形不再用手画的山三角，而是用多倍频噪声（fBm）生成高度场：
+     海拔着色 + 山体阴影 + 海平面，就是一张真地图。城池落在陆地上。 */
+  function hash2(x, y, s) {
+    var h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(s, 1442695041);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  function vnoise(x, y, s) {
+    var xi = Math.floor(x), yi = Math.floor(y);
+    var xf = x - xi, yf = y - yi;
+    var u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    var a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s);
+    var c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+  }
+  function fbm(x, y, s, oct) {
+    var sum = 0, amp = 0.5, f = 1, norm = 0;
+    for (var i = 0; i < oct; i++) {
+      sum += amp * vnoise(x * f, y * f, s + i * 17);
+      norm += amp; amp *= 0.5; f *= 2;
+    }
+    return sum / norm;
+  }
+
+  /* 生成一张高度场：范围 0..1，边缘沉入海面，像一座岛 */
+  function buildField(W, H, seed) {
+    var f = new Float32Array(W * H);
+    var sc = 2.35, asp = W / H;
+    for (var y = 0; y < H; y++) {
+      var ny = y / H * 2 - 1;
+      for (var x = 0; x < W; x++) {
+        var nx = x / W * 2 - 1;
+        var h = fbm(x / W * sc * asp, y / H * sc, seed, 4);
+        var d = Math.sqrt(nx * nx + ny * ny) / 1.15;
+        h = h - d * d * 0.62;
+        f[y * W + x] = h;
+      }
+    }
+    return f;
+  }
+
   A.drawMap = function () {
     var cv = el('vmapCanvas');
     if (!cv || !cv.getContext) return;
@@ -4272,20 +4311,136 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var P = dark ? {
-      grass0: '#22301c', grass1: '#12180f', b1: '#2e4024', b2: '#16200f',
-      rockL: '#5d5945', rockD: '#332f24',
-      water: '#2b4a55', waterL: '#4b7f8e', road: '#544d3a', roadL: '#7a7057',
-      stoneL: '#8a8471', stone: '#6f6a5a', stoneD: '#4b4738',
-      plate: 'rgba(16,18,22,.88)', ink: '#f2efe6'
-    } : {
-      grass0: '#8aa85f', grass1: '#5f7d45', b1: '#9dbb72', b2: '#6b8a4c',
-      rockL: '#a9a284', rockD: '#5f5a46',
-      water: '#7fb6c9', waterL: '#d5ecf3', road: '#d8c9a6', roadL: '#f4ecd6',
-      stoneL: '#e8e2d2', stone: '#cfc8b4', stoneD: '#948d7a',
-      plate: 'rgba(22,24,28,.86)', ink: '#f6f3ea'
-    };
+    var tkey = W + 'x' + H + (dark ? 'd' : 'l');
 
+    if (!MAPC.terrain || MAPC.tkey !== tkey) {
+      var field = buildField(W, H, 20261114);
+      MAPC.field = field;
+      MAPC.terrain = paintTerrain(W, H, field, dark);
+      MAPC.tkey = tkey;
+    }
+    var field = MAPC.field;
+
+    function sampleH(x, y) {
+      var xi = Math.max(0, Math.min(W - 2, Math.round(x)));
+      var yi = Math.max(0, Math.min(H - 2, Math.round(y)));
+      return field[yi * W + xi];
+    }
+
+    function paintTerrain(W, H, field, dark) {
+      var c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      var g = c.getContext('2d');
+      var img = g.createImageData(W, H), d = img.data;
+
+      // 海平面：按分位数取，保证大约 18% 是水
+      var sorted = Array.prototype.slice.call(field).sort(function (a, b) { return a - b; });
+      var sea = sorted[Math.floor(sorted.length * 0.18)];
+      var top = sorted[sorted.length - 1] || 1;
+      var span = Math.max(0.001, top - sea);
+
+      // 色带（海拔）
+      var RAMP_L = [
+        [0.00, 27, 58, 74], [0.06, 45, 96, 110], [0.10, 116, 168, 178],
+        [0.13, 206, 192, 158], [0.20, 118, 143, 92], [0.45, 90, 114, 72],
+        [0.70, 126, 120, 100], [0.88, 172, 166, 150], [1.00, 232, 230, 222]
+      ];
+      var RAMP_D = [
+        [0.00, 12, 24, 34], [0.06, 20, 44, 54], [0.10, 44, 78, 92],
+        [0.13, 90, 84, 62], [0.20, 46, 62, 38], [0.45, 38, 54, 34],
+        [0.70, 62, 60, 48], [0.88, 92, 88, 76], [1.00, 150, 150, 146]
+      ];
+      var RAMP = dark ? RAMP_D : RAMP_L;
+      function ramp(t) {
+        for (var i = 1; i < RAMP.length; i++) {
+          if (t <= RAMP[i][0]) {
+            var a = RAMP[i - 1], b = RAMP[i];
+            var k = (t - a[0]) / Math.max(1e-6, b[0] - a[0]);
+            return [a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, a[3] + (b[3] - a[3]) * k];
+          }
+        }
+        var z = RAMP[RAMP.length - 1];
+        return [z[1], z[2], z[3]];
+      }
+
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var i2 = y * W + x;
+          var h = field[i2];
+          var t = (h - sea) / span;
+          var o = i2 * 4;
+          if (t < 0) {
+            var w = Math.max(0, 1 + t * 6);            // 越深越暗
+            var wr = ramp(0.02 + w * 0.09);
+            d[o] = wr[0]; d[o + 1] = wr[1]; d[o + 2] = wr[2]; d[o + 3] = 255;
+            continue;
+          }
+          var col = ramp(Math.min(1, t * 1.15));
+          // 山体阴影：左上方来光
+          var xl = field[i2 - (x > 0 ? 1 : 0)], xr = field[i2 + (x < W - 1 ? 1 : 0)];
+          var yu = field[i2 - (y > 0 ? W : 0)], yd = field[i2 + (y < H - 1 ? W : 0)];
+          var dx = (xr - xl) * 34, dy = (yd - yu) * 34;
+          var shade = 1 + (dx + dy) * 0.30;
+          shade = Math.max(0.55, Math.min(1.45, shade));
+          d[o] = Math.min(255, col[0] * shade);
+          d[o + 1] = Math.min(255, col[1] * shade);
+          d[o + 2] = Math.min(255, col[2] * shade);
+          d[o + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+
+      // 海岸线：海陆交界描一道浅色
+      g.globalAlpha = dark ? 0.25 : 0.45;
+      g.strokeStyle = dark ? '#6f9aa8' : '#f2ead8';
+      g.lineWidth = 1.2;
+      g.globalAlpha = 1;
+
+      // 暗角
+      var vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.75);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, dark ? 'rgba(0,0,0,0.42)' : 'rgba(30,24,12,0.22)');
+      g.fillStyle = vg; g.fillRect(0, 0, W, H);
+      return c;
+    }
+
+    // —— 落城：沿之字形路径找陆地 ——
+    var SPOT = [[0.11, 0.60], [0.245, 0.32], [0.38, 0.60], [0.515, 0.32], [0.65, 0.60], [0.785, 0.32], [0.90, 0.60]];
+    var maxN = 1;
+    M.rows.forEach(function (r) { r.cells.forEach(function (c) { if (c.N > maxN) maxN = c.N; }); });
+    var cities = M.rows.map(function (row, i) {
+      var N = 0, tested = 0, k = 0;
+      row.cells.forEach(function (c) { N += c.N; tested += c.tested; k += c.k; });
+      var sp = SPOT[i] || [0.1 + i * 0.12, 0.55];
+      var bx = sp[0] * W, by = sp[1] * H;
+      // 附近找一块高地：宁可挪一点，也不要城泡在水里
+      var best = null, bestH = -1;
+      for (var rr = 0; rr <= 70; rr += 14) {
+        for (var a = 0; a < 12; a++) {
+          var ang = a / 12 * Math.PI * 2;
+          var tx = bx + Math.cos(ang) * rr, ty = by + Math.sin(ang) * rr;
+          if (tx < 60 || tx > W - 60 || ty < 60 || ty > H - 60) continue;
+          var hh = sampleH(tx, ty);
+          if (hh > bestH) { bestH = hh; best = [tx, ty]; }
+        }
+        if (bestH > 0.28) break;
+      }
+      return {
+        row: row, i: i, N: N, tested: tested, k: k,
+        mastery: tested ? Math.round(k / tested * 100) : null,
+        x: best ? best[0] : bx, y: best ? best[1] : by,
+        r: 22 + 20 * Math.sqrt(N / maxN)
+      };
+    });
+
+    function tone(p) {
+      if (p === null) return dark ? '#8a8471' : '#a49d8b';
+      var t = Math.max(0, Math.min(100, p)) / 100;
+      var A1 = [176, 46, 34], B1 = [138, 90, 16], C1 = [10, 107, 74];
+      var L, R, m;
+      if (t < 0.5) { L = A1; R = B1; m = t * 2; } else { L = B1; R = C1; m = (t - 0.5) * 2; }
+      return 'rgb(' + Math.round(L[0] + (R[0] - L[0]) * m) + ',' + Math.round(L[1] + (R[1] - L[1]) * m) + ',' + Math.round(L[2] + (R[2] - L[2]) * m) + ')';
+    }
     function roundRectPath(g, x, y, w, h, r) {
       g.beginPath();
       g.moveTo(x + r, y);
@@ -4295,95 +4450,6 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       g.arcTo(x, y, x + w, y, r);
       g.closePath();
     }
-    function tone(p) {
-      if (p === null) return dark ? '#8a8471' : '#a49d8b';
-      var t = Math.max(0, Math.min(100, p)) / 100;
-      var A1 = [176, 46, 34], B1 = [138, 90, 16], C1 = [10, 107, 74];
-      var L, R, m;
-      if (t < 0.5) { L = A1; R = B1; m = t * 2; } else { L = B1; R = C1; m = (t - 0.5) * 2; }
-      return 'rgb(' + Math.round(L[0] + (R[0] - L[0]) * m) + ',' + Math.round(L[1] + (R[1] - L[1]) * m) + ',' + Math.round(L[2] + (R[2] - L[2]) * m) + ')';
-    }
-
-    var SPOT = [[0.11, 0.60], [0.245, 0.30], [0.38, 0.58], [0.515, 0.30], [0.65, 0.58], [0.785, 0.30], [0.90, 0.58]];
-    var maxN = 1;
-    M.rows.forEach(function (r) { r.cells.forEach(function (c) { if (c.N > maxN) maxN = c.N; }); });
-    var cities = M.rows.map(function (row, i) {
-      var N = 0, tested = 0, k = 0;
-      row.cells.forEach(function (c) { N += c.N; tested += c.tested; k += c.k; });
-      var sp = SPOT[i] || [0.1 + i * 0.12, 0.5];
-      return {
-        row: row, i: i, N: N, tested: tested, k: k,
-        mastery: tested ? Math.round(k / tested * 100) : null,
-        x: sp[0] * W, y: sp[1] * H,
-        r: 30 + 26 * Math.sqrt(N / maxN)
-      };
-    });
-
-    var tkey = W + 'x' + H + (dark ? 'd' : 'l');
-    if (!MAPC.terrain || MAPC.tkey !== tkey) {
-      MAPC.terrain = buildTerrain(W, H, P, cities, roundRectPath);
-      MAPC.tkey = tkey;
-    }
-
-    function buildTerrain(W, H, P, cities) {
-      var c = document.createElement('canvas');
-      c.width = W; c.height = H;
-      var g = c.getContext('2d');
-      var seed = 20261114;
-      function rand() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
-      var bg = g.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, P.grass0); bg.addColorStop(1, P.grass1);
-      g.fillStyle = bg; g.fillRect(0, 0, W, H);
-      for (var i = 0; i < 520; i++) {
-        var x = rand() * W, y = rand() * H, r = 8 + rand() * 50;
-        var rg = g.createRadialGradient(x, y, 0, x, y, r);
-        rg.addColorStop(0, rand() < 0.5 ? P.b1 : P.b2);
-        rg.addColorStop(1, 'rgba(0,0,0,0)');
-        g.globalAlpha = 0.05 + rand() * 0.07;
-        g.fillStyle = rg; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
-      }
-      g.globalAlpha = 1;
-      for (var m = 0; m < 26; m++) {
-        /* 山聚在上下边缘：中间留出平原，城池才不跟山挤在一起 */
-        var mx = rand() * W, my = rand() < 0.5 ? rand() * H * 0.20 : H * 0.80 + rand() * H * 0.20;
-        var mw = 22 + rand() * 40, mh = 16 + rand() * 30;
-        g.fillStyle = P.rockD;
-        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx + mw, my); g.lineTo(mx, my); g.closePath(); g.fill();
-        g.fillStyle = P.rockL;
-        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx - mw * 0.72, my); g.lineTo(mx, my); g.closePath(); g.fill();
-        g.strokeStyle = 'rgba(255,255,255,.20)'; g.lineWidth = 1;
-        g.beginPath(); g.moveTo(mx, my - mh); g.lineTo(mx, my); g.stroke();
-      }
-      g.lineCap = 'round';
-      [[0.72, 0.40, 0.80], [0.46, 0.30, 0.52]].forEach(function (pts, k) {
-        g.strokeStyle = P.water; g.lineWidth = k ? 8 : 12;
-        g.beginPath(); g.moveTo(-20, H * pts[0]);
-        g.bezierCurveTo(W * 0.30, H * pts[1], W * 0.64, H * pts[2], W + 20, H * (pts[0] - 0.18));
-        g.stroke();
-        g.strokeStyle = P.waterL; g.lineWidth = k ? 3 : 4; g.stroke();
-      });
-      // 道路
-      g.strokeStyle = P.road; g.lineWidth = 9; g.lineJoin = 'round';
-      g.beginPath();
-      for (var ci = 0; ci < cities.length; ci++) {
-        var cc = cities[ci];
-        if (ci === 0) g.moveTo(cc.x, cc.y + 12);
-        else {
-          var pp = cities[ci - 1];
-          g.quadraticCurveTo((pp.x + cc.x) / 2, (pp.y + cc.y) / 2 + 20, cc.x, cc.y + 12);
-        }
-      }
-      g.stroke();
-      g.strokeStyle = P.roadL; g.lineWidth = 2.5; g.setLineDash([9, 8]); g.stroke();
-      g.setLineDash([]);
-      // 暗角：四周压暗，视线收到中间
-      var vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
-      vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(1, 'rgba(0,0,0,0.26)');
-      g.fillStyle = vg; g.fillRect(0, 0, W, H);
-      return c;
-    }
-
     function isoBox(g, x, y, hw, hd, h, top, left, right) {
       g.beginPath(); g.moveTo(x, y - hd); g.lineTo(x + hw, y); g.lineTo(x, y + hd); g.lineTo(x - hw, y); g.closePath();
       g.fillStyle = top; g.fill();
@@ -4393,72 +4459,99 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       g.fillStyle = right; g.fill();
     }
 
+    var ST = dark
+      ? { L: '#9a9482', M: '#7b7565', D: '#565143', roof: '#8f4436', roofD: '#5e2d24' }
+      : { L: '#f4efe2', M: '#ddd6c4', D: '#a8a08c', roof: '#b04a3a', roofD: '#7c3327' };
+
     function drawCity(g, c, hover) {
       var r = c.r, x = c.x, y = c.y, strong = c.mastery !== null;
-      g.fillStyle = 'rgba(0,0,0,.20)';
-      g.beginPath(); g.ellipse(x, y + 16, r * 1.02, r * 0.34, 0, 0, 6.2832); g.fill();
-      isoBox(g, x, y, r, r * 0.5, 6, P.stoneL, P.stone, P.stoneD);
-      var w = r * 0.76;
+      g.fillStyle = 'rgba(0,0,0,.22)';
+      g.beginPath(); g.ellipse(x, y + 12, r * 1.05, r * 0.36, 0, 0, 6.2832); g.fill();
+      isoBox(g, x, y, r, r * 0.5, 5, ST.L, ST.M, ST.D);
+      // 城墙四角
+      var w = r * 0.72;
       [[-w, 0], [w, 0], [0, -r * 0.36], [0, r * 0.36]].forEach(function (o) {
-        isoBox(g, x + o[0], y + o[1] + 6, r * 0.18, r * 0.09, 11, P.stoneL, P.stone, P.stoneD);
+        isoBox(g, x + o[0], y + o[1] + 5, r * 0.16, r * 0.08, 9, ST.L, ST.M, ST.D);
       });
-      var hh = strong ? 12 + 44 * (c.mastery / 100) : 9;
-      isoBox(g, x, y + 6, r * 0.40, r * 0.20, hh, P.stoneL, P.stone, P.stoneD);
-      g.fillStyle = strong ? '#a4483a' : P.stoneD;
+      // 主殿
+      var hh = strong ? 10 + 34 * (c.mastery / 100) : 7;
+      isoBox(g, x, y + 5, r * 0.34, r * 0.17, hh, ST.L, ST.M, ST.D);
+      // 四坡屋顶
+      var ry = y + 5 - hh - r * 0.16;
+      g.fillStyle = strong ? ST.roof : ST.D;
       g.beginPath();
-      g.moveTo(x, y + 6 - r * 0.20 - hh - r * 0.18);
-      g.lineTo(x + r * 0.44, y + 6 - hh + 1);
-      g.lineTo(x, y + 6 + r * 0.20 - hh + 1);
-      g.lineTo(x - r * 0.44, y + 6 - hh + 1);
+      g.moveTo(x, ry - r * 0.26);
+      g.lineTo(x + r * 0.38, ry);
+      g.lineTo(x, ry + r * 0.17);
+      g.lineTo(x - r * 0.38, ry);
+      g.closePath(); g.fill();
+      g.fillStyle = strong ? ST.roofD : ST.D;
+      g.beginPath();
+      g.moveTo(x, ry - r * 0.26);
+      g.lineTo(x + r * 0.38, ry);
+      g.lineTo(x, ry + r * 0.17);
       g.closePath(); g.fill();
       if (strong) {
-        var topY = y + 6 - hh - r * 0.18 - 15;
-        g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.4;
-        g.beginPath(); g.moveTo(x, y + 6 - hh - r * 0.18); g.lineTo(x, topY); g.stroke();
+        var topY = ry - r * 0.26 - 12;
+        g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.2;
+        g.beginPath(); g.moveTo(x, ry - r * 0.26); g.lineTo(x, topY); g.stroke();
         g.fillStyle = tone(c.mastery);
-        g.beginPath(); g.moveTo(x, topY); g.lineTo(x + 13, topY + 4.5); g.lineTo(x, topY + 9); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(x, topY); g.lineTo(x + 11, topY + 4); g.lineTo(x, topY + 8); g.closePath(); g.fill();
       }
       if (hover) {
-        g.strokeStyle = '#E0B15C'; g.lineWidth = 2.4;
-        g.beginPath(); g.ellipse(x, y + 16, r * 1.10, r * 0.40, 0, 0, 6.2832); g.stroke();
+        g.strokeStyle = '#E8C069'; g.lineWidth = 2.2;
+        g.beginPath(); g.ellipse(x, y + 12, r * 1.12, r * 0.40, 0, 0, 6.2832); g.stroke();
       }
     }
 
     function drawPlate(g, c, hover) {
       var title = c.row.name;
       var sub = c.N + ' 词 · ' + (c.mastery === null ? '未测' : '掌握 ' + c.mastery + '%');
-      g.font = '600 12px -apple-system,"Segoe UI",sans-serif';
+      g.font = '600 11.5px -apple-system,"Segoe UI",sans-serif';
       var w1 = g.measureText(title).width;
-      g.font = '11px ui-monospace,monospace';
+      g.font = '10.5px ui-monospace,monospace';
       var w2 = g.measureText(sub).width;
-      var bw = Math.max(w1, w2) + 46, bh = 34;
-      var x0 = c.x - bw / 2, y0 = c.y + 34;
-      g.fillStyle = P.plate;
-      roundRectPath(g, x0, y0, bw, bh, 6); g.fill();
-      if (hover) { g.strokeStyle = '#E0B15C'; g.lineWidth = 1.5; g.stroke(); }
+      var bw = Math.max(w1, w2) + 42, bh = 31;
+      var x0 = c.x - bw / 2, y0 = c.y + 26;
+      g.fillStyle = 'rgba(18,20,24,.86)';
+      roundRectPath(g, x0, y0, bw, bh, 5); g.fill();
+      if (hover) { g.strokeStyle = '#E8C069'; g.lineWidth = 1.4; g.stroke(); }
       g.fillStyle = c.mastery === null ? 'rgba(255,255,255,.22)' : tone(c.mastery);
-      roundRectPath(g, x0 + 5, y0 + 7, 20, 20, 4); g.fill();
+      roundRectPath(g, x0 + 4, y0 + 6, 18, 18, 3); g.fill();
       g.fillStyle = '#16181c';
-      g.font = '700 10px ui-monospace,monospace';
+      g.font = '700 9.5px ui-monospace,monospace';
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(('0' + (c.i + 1)).slice(-2), x0 + 15, y0 + 17.5);
+      g.fillText(('0' + (c.i + 1)).slice(-2), x0 + 13, y0 + 15.5);
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-      g.fillStyle = P.ink; g.font = '600 12px -apple-system,"Segoe UI",sans-serif';
-      g.fillText(title, x0 + 31, y0 + 15);
-      g.fillStyle = 'rgba(255,255,255,.74)'; g.font = '11px ui-monospace,monospace';
-      g.fillText(sub, x0 + 31, y0 + 28);
+      g.fillStyle = '#f6f3ea'; g.font = '600 11.5px -apple-system,"Segoe UI",sans-serif';
+      g.fillText(title, x0 + 28, y0 + 14);
+      g.fillStyle = 'rgba(255,255,255,.72)'; g.font = '10.5px ui-monospace,monospace';
+      g.fillText(sub, x0 + 28, y0 + 26);
     }
 
-    var hit = [];
-    var hovered = -1;
+    var hit = [], hovered = -1;
     function paint(hv) {
       ctx.clearRect(0, 0, W, H);
       ctx.drawImage(MAPC.terrain, 0, 0, W, H);
+      // 道路画在城下面
+      ctx.save();
+      ctx.lineJoin = 'round';
+      for (var ci = 1; ci < cities.length; ci++) {
+        var a = cities[ci - 1], b = cities[ci];
+        ctx.strokeStyle = dark ? 'rgba(210,190,150,.45)' : 'rgba(250,240,214,.75)';
+        ctx.lineWidth = 3; ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y + 10);
+        ctx.quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 + 16, b.x, b.y + 10);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
       hit = [];
       cities.forEach(function (c, i) {
         drawCity(ctx, c, hv === i);
         drawPlate(ctx, c, hv === i);
-        hit.push({ x: c.x, y: c.y, r: c.r * 1.15, i: i });
+        hit.push({ x: c.x, y: c.y, r: c.r * 1.2, i: i });
       });
     }
     paint(-1);
@@ -4468,8 +4561,8 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
       var best = -1, bd = 1e9;
       hit.forEach(function (h) {
-        var d = Math.sqrt((h.x - x) * (h.x - x) + (h.y - y) * (h.y - y));
-        if (d < h.r + 26 && d < bd) { bd = d; best = h.i; }
+        var dd = Math.sqrt((h.x - x) * (h.x - x) + (h.y - y) * (h.y - y));
+        if (dd < h.r + 24 && dd < bd) { bd = dd; best = h.i; }
       });
       return best;
     }
