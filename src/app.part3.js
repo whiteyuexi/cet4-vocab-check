@@ -1074,7 +1074,7 @@
   document.addEventListener('pointerover', function (e) {
     var c = e.target.closest ? e.target.closest('.vmap-c[data-read]') : null;
     if (!c) return;
-    var out = document.getElementById('vmapRead');
+    var out = document.querySelector('.vmap-hint');
     if (out) out.textContent = c.getAttribute('data-read');
   }, { passive: true });
 })(window.__APP__ || (window.__APP__ = {}));

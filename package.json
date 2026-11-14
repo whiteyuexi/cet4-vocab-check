@@ -42,10 +42,12 @@
     "logo:ai": "node scripts/process-ai-logo.mjs"
   },
   "devDependencies": {
+    "eslint": "^10.15.0",
     "jsdom": "^29.0.0",
     "opentype.js": "^2.0.0",
     "pngjs": "^7.0.0",
     "potrace": "^2.1.8",
-    "pptxgenjs": "^4.0.1"
+    "pptxgenjs": "^4.0.1",
+    "typescript": "^7.0.2"
   }
 }

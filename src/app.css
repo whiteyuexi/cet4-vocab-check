@@ -1528,3 +1528,5 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 /* 地图读数条：像地图上的坐标读数，不是提示框 */
 .vmap-read{margin-top:8px;padding:7px 11px;border-radius:9px;background:var(--glass-2);
   border:1px solid var(--line);font:11.5px/1.5 var(--mono);color:var(--ink2);min-height:30px}
+/* 早期版本在每个行后插入了读数条，重复元素只留一个语义、这里全部隐藏；真正的读数显示在图例行 */
+#vmapRead{display:none}
