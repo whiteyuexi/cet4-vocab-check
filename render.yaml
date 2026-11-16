@@ -1,0 +1,21 @@
+# Render 一键部署：单服务同时托管网页与 /api/agent
+# 填了 DEEPSEEK_API_KEY 后，线上 AI 面板走真实模型；不填则自动回落本地规则诊断。
+services:
+  - type: web
+    name: cet-vocab-demo
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node server/index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: DEEPSEEK_MODEL
+        value: deepseek-chat
+      - key: DEEPSEEK_API_KEY
+        sync: false          # 在 Render 面板里填，不要写进仓库
+      - key: DEMO_PER_IP_DAY
+        value: "25"
+      - key: DEMO_TOTAL_DAY
+        value: "400"

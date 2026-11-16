@@ -8,6 +8,7 @@ import { createLLM, describeLLM } from './llm/index.mjs';
 import { buildTools } from './tools.mjs';
 import { runAgent } from './agent.mjs';
 import { McpClient } from './mcp-client.mjs';
+import { createQuota } from './quota.mjs';
 import { mockDiagnose } from './mock-diagnose.mjs';
 import { corpusStats, examplesFor, searchByText } from './corpus.mjs';
 
@@ -54,6 +55,7 @@ const server = http.createServer(async (req, res) => {
       mode: useMock ? 'mock' : 'llm',
       reason: useMock ? (llmError || '未配置 API Key，使用本地规则诊断') : '',
       corpus: corpusStats(),
+      quota: quota.stats(),
       time: new Date().toISOString(),
     });
   }
@@ -88,7 +90,16 @@ const server = http.createServer(async (req, res) => {
   get_listen_profile: '对比听力与阅读的差距'
   };
 
-  if (url.pathname === '/api/agent' && req.method === 'POST') {
+/* 演示额度：规则与测试在 server/quota.mjs（node scripts/quota-test.mjs 可验） */
+const quota = createQuota({
+  perIp: Number(process.env.DEMO_PER_IP_DAY || 25),
+  total: Number(process.env.DEMO_TOTAL_DAY || 400)
+});
+function clientIp(req) {
+  const xf = req.headers['x-forwarded-for'];
+  if (xf) return String(xf).split(',')[0].trim();
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}  if (url.pathname === '/api/agent' && req.method === 'POST') {
     let payload;
     try { payload = await readBody(req); } catch (e) { return json(res, 400, { error: e.message }); }
 
@@ -103,6 +114,17 @@ const server = http.createServer(async (req, res) => {
       'X-Accel-Buffering': 'no',
     });
     const send = obj => res.write('data: ' + JSON.stringify(obj) + '\n\n');
+
+    /* 额度检查放在真正开始之前：超了就直接给一句人话，不花钱、不调模型 */
+    /* 只有真调模型的请求才计额度：本地规则诊断不花钱，不该被限 */
+    const ip = clientIp(req);
+    const gate = quota.check(ip);
+    if (!useMock && !gate.ok) {
+      send({ type: 'error', message: gate.message + '。演示是为了让评委看到 AI 的真实效果，所以设了上限；本地运行 node server/index.mjs 可以无限次。' });
+      send({ type: 'done', tools: [] });
+      return res.end();
+    }
+    if (!useMock) quota.consume(ip);
 
     try {
       if (useMock) {

@@ -777,7 +777,8 @@
   var RIG = { on: false, ok: false, cv: null, cx: null, dpr: 1, cols: 14, rows: 18,
               grid: [], tex: [], rt: 0, t: 0, actT: 0, actNext: 1400, lean: 0, swim: 0, turn: 0, shown: false };
   var RS = { tail: 0, tailV: 0, head: 0, headV: 0, sq: 0, sqV: 0 };   // 弹簧状态
-  var RB = { on: false, t: 0 };                                       // 眨眼进度
+  /* 眨眼：dur 是总时长，queue 是「还要再眨几下」——连眨靠它，不靠 t 回绕 */
+  var RB = { on: false, t: 0, dur: 0.34, queue: 0 };
   /* 动作冲量：待机小动作全部通过这些量驱动，而不是平移。
      turn  = 转身（走圆柱透视，所以一转身就有厚度）
      tilt  = 整只侧倾（绕脚底）
@@ -870,14 +871,16 @@
   }
 
   function rigFire(name) {
-    if (name === 'blink') { RB.on = true; RB.t = 0; }
+    if (name === 'blink') {
+      if (!RB.on) { RB.on = true; RB.t = 0; RB.dur = 0.34; RB.queue = 0; }   // 眨到一半别重来
+    }
     else if (name === 'tail') { RS.tail = 0.55; RS.tailV = 2.2; }
     else if (name === 'head') { RS.head = (Math.random() < 0.5 ? -1 : 1) * 0.9; RS.headV = 0; }
     else if (name === 'lookaway') { RQ.turn = (Math.random() < 0.5 ? -1 : 1) * (0.20 + Math.random() * 0.14); }
     else if (name === 'stretch') { RQ.str = 0.055; RQ.tilt = (Math.random() < 0.5 ? -1 : 1) * 1.6; }
     else if (name === 'bend') { RS.sq = -0.9; RS.sqV = 0; }
     else if (name === 'twice') {
-      RB.on = true; RB.t = 0;                       // 连眨两下：第二下靠 t 回绕触发
+      RB.on = true; RB.t = 0; RB.dur = 0.30; RB.queue = 1;   // 第一下结束后立刻接第二下
       RS.tail = 0.35; RS.tailV = 1.4;
       RS.head = (Math.random() < 0.5 ? -1 : 1) * 0.5;
     }
@@ -941,7 +944,13 @@
     rigSpring(RQ, 'tilt', 48, 9, dt);
     rigSpring(RQ, 'str', 62, 10, dt);
 
-    if (RB.on) { RB.t += dt / 0.20; if (RB.t >= 1) { RB.on = false; RB.t = 0; } }
+    if (RB.on) {
+      RB.t += dt / RB.dur;
+      if (RB.t >= 1) {
+        if (RB.queue > 0) { RB.queue--; RB.t = 0; }   // 连眨：无缝接下一次
+        else { RB.on = false; RB.t = 0; }
+      }
+    }
 
     // 调度：不等间隔，下一个动作永远猜不到
     RIG.actT += dt * 1000;
@@ -974,9 +983,15 @@
     var lca = Math.cos(lean), lsa = Math.sin(lean);
 
     var bk = 1;
-    if (RB.on) {
+    if (RIG.forceBlink) {
+      bk = 0.06;                     // 排查用：强制闭眼，便于截图对照
+    } else if (RB.on) {
+      /* 闭合曲线：闭 30%、停 22%、睁 48%，用 smoothstep 去掉机械感 */
       var e2 = RB.t;
-      bk = 1 - 0.92 * (e2 < 0.28 ? e2 / 0.28 : e2 < 0.5 ? 1 : (1 - e2) / 0.5);
+      var kk = e2 < 0.30 ? (e2 / 0.30) : e2 < 0.52 ? 1 : (1 - (e2 - 0.52) / 0.48);
+      kk = kk * kk * (3 - 2 * kk);
+      bk = 1 - 0.94 * kk;
+      RB._bk = bk;
     }
 
     var S = FIG_H, ox = 0.5 * S, oy = 0.45 * S;
@@ -1144,7 +1159,8 @@
        "画过一帧"不算数——坐标一旦变成 NaN，三角形会被整片跳过，
        画布是空的，但 alpha 依然被记录过。上次就是这么空的。 */
     RIG.frameN = (RIG.frameN || 0) + 1;
-    if (!RIG.shown && RIG.frameN % 20 === 0) {
+    /* 每 8 帧探一次：早一点接管，用户才不会先盯着静态图好几秒 */
+    if (!RIG.shown && RIG.frameN % 8 === 0) {
       var opaque = 0;
       try {
         var px = cx2.getImageData(0, 0, S, S).data;
@@ -1420,6 +1436,27 @@
   A.petReset = function () { resetPos(); apply(); return A.petInfo(); };
   /* 自检钩子：强制进入"走动"状态若干毫秒，用来验证迈步循环真的在跑。
      只给调试用，界面上没有任何入口。 */
+  /* 测试钩子：强制眨一次，用于截图检查闭眼那一帧 */
+  A.rigForceBlink = function (on) { RIG.forceBlink = !!on; return RIG.forceBlink; };
+
+  A.petRigState = function () {
+    var fig = document.getElementById('petFig');
+    var cv = fig && fig.querySelector('canvas');
+    var im = fig && fig.querySelector('img');
+    return {
+      bk: +(+RB._bk || 0).toFixed(3), on: RB.on, t: +(+RB.t || 0).toFixed(2),
+      canvas: !!cv, img: !!im, rigOn: !!RIG.on,
+      imgOpacity: im ? im.style.opacity : null,
+      canvasSize: cv ? (cv.width + 'x' + cv.height) : null,
+      figChildren: fig ? fig.children.length : 0
+    };
+  };
+
+  A.petBlink = function (hold) {
+    RB.on = true; RB.t = 0; RB.dur = hold || 0.34; RB.queue = 0;
+    return { on: RB.on, t: RB.t, dur: RB.dur, bk: RB._bk };
+  };
+
   A.petWalkTest = function (ms) {
     setWalk(true);
     setTimeout(function () { setWalk(false); }, ms || 900);
@@ -1427,7 +1464,7 @@
   };
   /* 排查用：绑骨到底有没有在画 */
   A.rigDiag = function () {
-    return { on: RIG.on, ok: RIG.ok, shown: RIG.shown, tex: RIG.tex.length,
+    return { on: RIG.on, ok: RIG.ok, shown: RIG.shown, frameN: RIG.frameN || 0, tex: RIG.tex.length,
              loaded: RIG.tex.filter(function (t) { return t.ok; }).length,
              alpha: RIG.tex.map(function (t) { return +t.a.toFixed(2); }),
              dpr: RIG.dpr, canvas: RIG.cv ? (RIG.cv.width + 'x' + RIG.cv.height) : '', err: RIG.err || '', swim: +RIG.swim.toFixed(2), step: RIG.stepDbg || 0, walking: P.walking };

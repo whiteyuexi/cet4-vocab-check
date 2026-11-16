@@ -293,6 +293,31 @@
 - **单一数据源**：统计只算一次（在前端），后端工具直接消费，避免两套数字漂移；
 - **测试先行**：抽样与区间估计这类「看不见的正确性」全部有自动化断言，共 224 条（另有桌宠 40 条与 RAG 指标脚本，均可在本地离线复现）。
 
+## 部署（带在线 AI）
+
+静态托管（GitHub Pages）只能跑离线规则诊断——没有后端，AI 面板不会调模型。
+要**线上也能真的调大模型**，把整个 Node 服务部署出去即可：`server/index.mjs` 同时托管网页和 `/api/agent`，**不需要改前端**。
+
+**Render（仓库里已有 `render.yaml`，一键部署）**
+
+1. Render → New → Web Service → 连到本仓库
+2. 它会读到 `render.yaml`：启动命令 `node server/index.mjs`，健康检查 `/api/health`
+3. 在环境变量里填 `DEEPSEEK_API_KEY`（**不要提交进仓库**）
+4. 部署完成后访问 `https://<你的域名>/`
+
+**Railway / 自建服务器**：用仓库里的 `Procfile`（`web: node server/index.mjs`），同样只填 `DEEPSEEK_API_KEY`。
+
+### 演示额度的刹车
+
+公开链接 + 有效 Key = 可能被人刷。服务端内置了额度（`server/quota.mjs`）：
+
+| 变量 | 默认 | 作用 |
+|---|---|---|
+| `DEMO_PER_IP_DAY` | 25 | 单台设备每天次数 |
+| `DEMO_TOTAL_DAY` | 400 | 全站每天总次数（更硬的上限） |
+
+超限不会报 429，而是在面板里给一句人话（"这台设备今天已经用完 25 次演示额度…"）。
+规则有单元测试：`node scripts/quota-test.mjs`（8 条）。离线规则诊断不占额度——因为它不花钱。
 ## 在线演示
 
 产品是单文件应用，直接托管在 GitHub Pages 上：
