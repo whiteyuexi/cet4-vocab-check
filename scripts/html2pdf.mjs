@@ -68,8 +68,11 @@ try {
 
   const pdf = await send('Page.printToPDF', {
     printBackground: true,
-    preferCSSPageSize: true,
-    displayHeaderFooter: false,
+    preferCSSPageSize: false,
+    displayHeaderFooter: true,
+    marginTop: 0.62, marginBottom: 0.72, marginLeft: 0.6, marginRight: 0.6,
+    headerTemplate: '<div></div>',
+    footerTemplate: '<div style="width:100%;box-sizing:border-box;padding:0 0.6in;font:9px -apple-system,Segoe UI,sans-serif;color:#8b9099;display:flex;justify-content:space-between;"><span>四六级词汇量检测 · 技术文档</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>',
   });
   const buf = Buffer.from(pdf.data, 'base64');
   fs.writeFileSync(dst, buf);
