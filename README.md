@@ -250,9 +250,13 @@
 | --- | --- | --- |
 | ![首屏](docs/screenshots/01-home.png) | ![答题](docs/screenshots/02-testing.png) | ![报告](docs/screenshots/03-report.png) |
 
-| 词汇地图与频段剖面 | AI 诊断（工具调用可视化） | 例句与释义 |
+| 总览与频段剖面 | AI 诊断（计划 + 工具调用可视化） | 词汇战略地图 |
 | --- | --- | --- |
-| ![总览](docs/screenshots/04-overview.png) | ![AI](docs/screenshots/05-ai-diagnose.png) | ![例句](docs/screenshots/06-example.png) |
+| ![总览](docs/screenshots/04-overview.png) | ![AI](docs/screenshots/05-ai-diagnose.png) | ![地图](docs/screenshots/07-map.png) |
+
+| 听音辨词（只放音不给字） | 语境里练（例句挖空四选一） | 例句与释义 |
+| --- | --- | --- |
+| ![听音辨词](docs/screenshots/08-listen.png) | ![语境练习](docs/screenshots/09-drill.png) | ![例句](docs/screenshots/06-example.png) |
 
 **回访卡**（距上次检测满 3 天出现，不遮挡、可永久关闭）：
 
