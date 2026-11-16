@@ -1563,6 +1563,10 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .md-stats b{color:var(--ink)}
 .md-weak{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:var(--ink2)}
 .md-weak b{color:var(--ink);font-family:var(--mono)}
+/* 试用反馈卡 */
+.card.fb{margin-top:14px;background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.35))}
+html[data-theme="dark"] .card.fb{background:linear-gradient(180deg,rgba(38,44,58,.7),rgba(24,28,38,.6))}
+.fb-t{font-size:14.5px;font-weight:700;color:var(--ink)}
 </style>
 <!-- 四六级词汇量检测 · 词库 7175 词 · 内联例句 5138 条 -->
 </head>
@@ -1849,6 +1853,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       session: null,
       lastResult: null,
       samples: [],
+    feedback: [],
       round: { n: 1, startedAt: Date.now() },   // 当前轮次
       rounds: [],                               // 已完成并归档的历史轮次（报告快照）
       books: {},                                // 用户导入的自定义词书：{ id: {id,name,indices,...} }
@@ -1877,6 +1882,8 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         d.session = o.session || null;
         d.lastResult = o.lastResult || null;
         d.samples = o.samples || [];
+      /* 试用反馈：跟着档案走，换人不串 */
+      d.feedback = Array.isArray(o.feedback) ? o.feedback : [];
         d.round = o.round || d.round;
         d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
         d.books = (o.books && typeof o.books === 'object') ? o.books : {};
@@ -4037,8 +4044,16 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         : ('本次掌握率 ' + pctScore + '% · 认识 ' + r.k + ' · 模糊 ' + r.f + ' · 不认识 ' + r.u + (r.skipped ? ' · 跳过 ' + r.skipped : '')))) + '</div>';
     h += '<button class="btn primary res-cta"' + cta.attrs + '>' + esc(cta.label) + '</button>';
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+    /* 试用反馈：两个按钮 + 一句话。只存本机，设置页可导出。
+       不编造评价——让用过的人自己点，数据才算数。 */
+    if (!S.feedback) S.feedback = [];
+    h += '<div class="card fb" id="fbCard">' +
+      '<div class="fb-t">这次结果对你有帮助吗？</div>' +
+      '<div class="tiny" style="margin-top:4px">点一下就行。记录只存在这台设备上，不上传。</div>' +
+      '<div class="row" style="margin-top:12px;gap:8px">' +
+        '<button class="btn sm primary" data-act="fb-yes">有帮助</button>' +
+        '<button class="btn sm ghost" data-act="fb-no">没帮助</button>' +
+      '</div></div>';
     /* ---------- 细节收进折叠：想深究时再看，不和结论抢位置 ---------- */
     h += '<details class="card tips"><summary>这次答了 ' + total + ' 题 · 掌握率 ' + pctScore + '%</summary>';
     h += '<div style="display:flex;justify-content:center;margin:16px 0">' + A.ring(pctScore, pctScore + '%', '本次掌握率') + '</div>';
@@ -4086,8 +4101,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       '<button class="btn sm ghost" data-act="start" data-kind="all">再测一轮</button>' +
       '</div>';
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     /* ---------- 未掌握词表：默认折叠，别让失败清单排在处方前面 ---------- */
     h += '<div class="sec-title">本次没掌握的 ' + weak.length + ' 个词<span class="line"></span></div>';
     if (!weak.length) {
@@ -4193,8 +4207,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         h += '<div class="bmeta">全段 ' + r.N + ' 词' + (prof.source === 'sample' ? ' · 抽到 ' + r.n + ' 词' : ' · 已测 ' + r.n + ' 词') + '</div>';
       });
       h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';      var worst = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
+      var worst = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
         .sort(function (a, b) { return a.p - b.p; })[0];
       var best = rows.filter(function (r) { return r.p !== null && r.n >= 3; })
         .sort(function (a, b) { return b.p - a.p; })[0];
@@ -4205,8 +4218,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       }
     }
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
+    return h;
   };
 
   /* ---------- 词汇地图 ----------
@@ -4235,6 +4247,36 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
   };
 
   var MAPC = { field: null, layout: null, rows: null, hover: -1, dpr: 1, W: 0, H: 0 };
+
+  /* 一条反馈就是一票：记下当时的估算值，方便事后看"哪类用户觉得有用" */
+  A.saveFeedback = function (helpful) {
+    if (!S.feedback) S.feedback = [];
+    var est = A.estimateNow ? A.estimateNow() : null;
+    S.feedback.push({
+      t: Date.now(),
+      helpful: !!helpful,
+      estimate: est && est.looseVocab ? est.looseVocab : null,
+      bank: A.bankName ? A.bankName() : ''
+    });
+    A.save();
+    var c = document.getElementById('fbCard');
+    if (c) c.innerHTML = '<div class="fb-t">谢谢，已记下。</div>' +
+      '<div class="tiny" style="margin-top:4px">现在共 ' + S.feedback.length + ' 条反馈，设置页可导出。</div>';
+    A.toast(helpful ? '谢谢！这条会算进试用数据' : '收到。如果愿意，说说哪里不好用？');
+  };
+
+  A.exportFeedback = function () {
+    var list = S.feedback || [];
+    if (!list.length) { A.toast('还没有反馈记录'); return; }
+    var text = JSON.stringify({ exportedAt: new Date().toISOString(), count: list.length, items: list }, null, 2);
+    var blob = new Blob([text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '试用反馈-' + list.length + '条.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    A.toast('已导出 ' + list.length + ' 条反馈');
+  };
 
   A.openMap = function () {
     A.modal(
@@ -4697,8 +4739,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     h += '<div class="vmap-row vmap-head"><span class="vmap-lbl"></span>';
     M.letters.forEach(function (L) { h += '<span class="vmap-lt">' + L + '</span>'; });
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     /* 逐格浮现的网格序号：让整张图"刷"地铺开，而不是一次糊上来 */
     var ci = 0;
     M.rows.forEach(function (row) {
@@ -4721,11 +4762,9 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
           '</button>';
       });
       h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    });
+    });
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     h += '<div class="vmap-legend">' +
       '<span><i class="ok"></i>掌握好</span>' +
       '<span><i class="warn"></i>一般</span>' +
@@ -4751,8 +4790,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       '</div>';
 
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
+    return h;
   };
 
   /* ---------- 使用者档案 ----------
@@ -4833,8 +4871,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       '<div class="stat"><b>' + A.pct(t.k + t.f, t.tested) + '%</b><span>已测词掌握率</span></div>' +
       '<div class="stat"><b>' + t.rest + '</b><span>待检测</span></div></div>';
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     h += A.bandProfileHTML();
     h += A.mapEntryHTML();
 
@@ -4856,11 +4893,9 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         });
       });
       h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    }
+    }
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';    return h;
+    return h;
   };
 
   /* ---------- 设置 ---------- */
@@ -4896,8 +4931,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
     h += sw('includeExt', '包含拓展派生词', '除大纲核心词外，再加入 ' + A.WORDS.filter(function (w) { return w.x; }).length + ' 个常见派生词（当前词库 ' + A.activePool().length + ' 词）');
     h += sw('strict', '严格的估算口径', '只把「认识」算作掌握；关闭时「模糊」按一半折算。两种口径的数值都会列在总览页');
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     h += '<div class="sec-title">外观<span class="line"></span></div>';
     h += '<div class="card"><div class="switch"><div class="st"><b>深色模式</b><small>夜间刷词更护眼</small></div>' +
       '<button class="toggle' + (S.theme === 'dark' ? ' on' : '') + '" role="switch" aria-checked="' + (S.theme === 'dark') + '"' +
@@ -4910,6 +4944,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       '<button class="btn" data-act="pet-reset" title="如果桌宠跑到了奇怪的位置、或者拖不动，点这里把她叫回右下角">桌宠跑丢了？叫回右下角</button>' +
       '<button class="btn" data-act="export-json">导出作答备份（JSON）</button>' +
       '<button class="btn" data-act="export-csv">导出未掌握词表（CSV）</button>' +
+      '<button class="btn" data-act="export-feedback" title="导出试用者点的「有帮助 / 没帮助」，用于整理反馈">导出试用反馈（' + ((S.feedback || []).length) + ' 条）</button>' +
       '<button class="btn" data-act="import-json">导入备份</button>' +
       '<button class="btn" data-act="clear-answers">清空作答记录</button>' +
       '<button class="btn ghost" data-act="reset-all">恢复出厂设置</button>' +
@@ -4919,8 +4954,7 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       ' 条检测记录。数据保存在本机浏览器中，<b>按使用者分开存放</b>；同一台电脑上换人用请新建使用者。' +
       '换浏览器或清理缓存会丢失，建议定期导出备份。</div>';
     h += '</div>';
-    /* 地图式读数：悬停任意格子，下方给"坐标 + 这一块的真实数字" */
-    h += '<div class="vmap-read" id="vmapRead">悬停任意格子，这里给出这一块的数字</div>';
+
     h += '<div class="sec-title">使用说明<span class="line"></span></div>';
     h += '<div class="card tiny" style="line-height:1.95">' +
       '<b>1. 先摸底：</b>点「快速摸底」随机抽 100 词，3 分钟就能得到词汇量估算。<br>' +
@@ -5114,6 +5148,9 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         case 'ai-voice': if (A.startVoiceInput) A.startVoiceInput(); break;
         /* 语境填空：出题在本地（例句挖空），判分也本地，AI 只在结算页看错题 */
         case 'open-map': if (A.openMap) A.openMap(); break;
+        case 'fb-yes': if (A.saveFeedback) A.saveFeedback(true); break;
+        case 'fb-no': if (A.saveFeedback) A.saveFeedback(false); break;
+        case 'export-feedback': if (A.exportFeedback) A.exportFeedback(); break;
         case 'map-ask': if (A.openAIDialog) { A.modalClose ? A.modalClose() : null; A.openAIDialog(null, '帮我看第 ' + t.getAttribute('data-band') + ' 个词频段这一段，先补哪些词最划算？'); } break;
         case 'drill-start': {
           var dn = A.buildDrill(10);

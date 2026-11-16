@@ -124,6 +124,7 @@
       session: null,
       lastResult: null,
       samples: [],
+    feedback: [],
       round: { n: 1, startedAt: Date.now() },   // 当前轮次
       rounds: [],                               // 已完成并归档的历史轮次（报告快照）
       books: {},                                // 用户导入的自定义词书：{ id: {id,name,indices,...} }
@@ -152,6 +153,8 @@
         d.session = o.session || null;
         d.lastResult = o.lastResult || null;
         d.samples = o.samples || [];
+      /* 试用反馈：跟着档案走，换人不串 */
+      d.feedback = Array.isArray(o.feedback) ? o.feedback : [];
         d.round = o.round || d.round;
         d.rounds = Array.isArray(o.rounds) ? o.rounds : [];
         d.books = (o.books && typeof o.books === 'object') ? o.books : {};
