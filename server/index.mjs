@@ -84,7 +84,8 @@ const server = http.createServer(async (req, res) => {
     list_banks: '查看可用词库',
     suggest_actions: '给出可点的下一步动作',
     get_examples: '检索真实例句',
-    get_weak_examples: '为薄弱词批量找例句'
+    get_weak_examples: '为薄弱词批量找例句',
+  get_listen_profile: '对比听力与阅读的差距'
   };
 
   if (url.pathname === '/api/agent' && req.method === 'POST') {

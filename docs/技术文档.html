@@ -76,7 +76,7 @@ pre code{background:none;color:inherit;padding:0}
 <div class="kv">
   <div><b>7,175</b><span>词条（全部带音标）</span></div>
   <div><b>9,204</b><span>英中对照例句</span></div>
-  <div><b>222</b><span>条断言</span></div>
+  <div><b>224</b><span>条断言</span></div>
   <div><b>2.70 MB</b><span>单文件产物</span></div>
   <div><b>0</b><span>运行时外部依赖</span></div>
 </div>
@@ -124,7 +124,7 @@ pre code{background:none;color:inherit;padding:0}
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">自动化测试</td><td>3 套测试 / 222 条断言，全绿</td><td><span class="tag done">完成</span></td></tr>
+<tr><td class="k">自动化测试</td><td>3 套测试 / 224 条断言，全绿</td><td><span class="tag done">完成</span></td></tr>
 </table>
 
 <h3>1.4 三个可验证的承诺</h3>
@@ -301,6 +301,7 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 <tr><td class="k">plan_schedule</td><td>按剩余词量与天数生成复习计划</td></tr>
 <tr><td class="k">get_examples</td><td>按需检索真实例句（RAG）</td></tr>
 <tr><td class="k">get_weak_examples</td><td>为薄弱词批量检索例句，用于带语境的复习建议</td></tr>
+<tr><td class="k">get_listen_profile</td><td>听力侧数据：听音辨词正确率与听力词汇量，以及与阅读词汇量的差值</td></tr>
 <tr><td class="k">list_banks</td><td>列出可用词库</td></tr>
 <tr><td class="k">suggest_actions</td><td>动作工具：给出可点按钮（go / start / review / ask）</td></tr>
 </table>
@@ -361,7 +362,7 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 两者不是替代关系：本项目在需要跨应用复用、或想接第三方能力时走 MCP，日常对话仍走 Function Calling。</p>
 <h4>做法</h4>
 <ul>
-<li><code>server/mcp-server.mjs</code>：stdio + 换行分隔的 JSON-RPC 2.0，把 8 个诊断工具按 <code>tools/list</code> 自描述暴露；
+<li><code>server/mcp-server.mjs</code>：stdio + 换行分隔的 JSON-RPC 2.0，把 9 个诊断工具按 <code>tools/list</code> 自描述暴露；
     上下文（当前用户的真实数据）通过 <code>DSH_CTX</code> 环境变量传入，服务器本身不持有状态。</li>
 <li><code>server/mcp-client.mjs</code>：启动子进程，完成 <code>initialize</code> → <code>tools/list</code> → <code>tools/call</code>；
     工具名与参数全部来自服务器的声明，客户端里没有硬编码的工具清单。</li>
@@ -392,6 +393,10 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 <tr><td class="k">例句检索覆盖率</td><td><b>79.0%</b>（4,518 / 5,716 核心词可检索到例句）</td><td>遍历核心词条，调 <code>examplesFor</code> 看是否返回非空</td></tr>
 <tr><td class="k">命中正确率</td><td><b>100%</b>（抽样 232 词）</td><td>检查返回例句里是否真的含目标词（允许词形变化）</td></tr>
 <tr><td class="k">检索延迟</td><td>p50 <b>0.0002 ms</b> · p95 <b>0.0004 ms</b>（2,000 次调用）</td><td>内存索引查表，与语料规模无关</td></tr>
+<tr><td class="k">句子完整率</td><td><b>99.5%</b></td><td>首字母大写 + 结尾标点 + 4–35 词，排除碎片与超长句</td></tr>
+<tr><td class="k">中英对齐率</td><td><b>100%</b></td><td>每条注入的例句都自带中文译文，模型不需要自己翻译</td></tr>
+<tr><td class="k">例句重复率</td><td><b>0%</b></td><td>同一个词取两条例句时不重复</td></tr>
+<tr><td class="k">上下文预算</td><td><b>约 130 字符/次</b></td><td>每次注入 2 条例句，token 成本可预测</td></tr>
 </table>
 <p>分频段覆盖率暴露了语料边界，也解释了一个取舍：</p>
 <table>
@@ -403,6 +408,15 @@ node build.js --with-key   # 评委版：内联作者 Key，开箱可演示在�
 <p><b>为什么是精确检索而不是向量检索</b>：这里的检索对象是"某个词的例句"，键就是词本身；
 向量检索会引入 embedding 模型、运行时依赖和不可解释的相似度。精确查表可解释、零依赖、延迟恒定，
 代价是覆盖率受语料限制——上表把这条边界如实列出来了，而不是用一个漂亮的词盖过去。</p>
+<p><b>生成侧对比（A/B）</b>：评分表这一项问的是"生成质量是否因检索增强而显著提升"，只证明"查得到"是不够的。
+仓库里有 <code>scripts/rag-ab.mjs</code>：同一个问题跑两遍——一次只给单词，一次附带 2 条真实例句——
+自动比对「例句可溯源率」与「含中文翻译率」，用来量化检索到底有没有让输出变好。</p>
+<pre><code>node scripts/rag-ab.mjs --dry      # 只看两组 prompt 的差别
+node scripts/rag-ab.mjs --n 20     # 需要可用 Key，跑 20 个词</code></pre>
+<p><b>如实说明</b>：本机现有的两个 Key 均已失效（接口返回 401），所以这张 A/B 表<b>尚未产出真实数字</b>。
+脚本不构造假数据：Key 不可用时它会直接报错退出。上面那六项是检索侧实测，A/B 是待跑的空白——
+这两者在这份文档里分开放，不混为一谈。</p>
+
 <p>Agent 侧同样有可看的证据：<code>plan</code> 事件与随后执行的工具来自同一批调用，
 界面上"计划"的每一步变绿，与真正跑完的工具一一对应，不是事后补写的文案。</p>
 <h2 id="c5">5 核心功能实现</h2>
@@ -485,7 +499,21 @@ vocab = p' * N,  CI = [ (p'-z·se)·N , (p'+z·se)·N ]</code></pre>
 <p>点城池<b>先出一份战报</b>：覆盖率、认识 / 模糊 / 不认识、最薄的三格，再决定打哪一段；
 Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材（assets/map/），没有素材时回落到程序化绘制的等距城楼。</p>
 
-<h3>5.10 回访卡：隔几天再打开，首页接上上次的结论</h3>
+<h3>5.10 听力与阅读的对照：把两个模态接进同一次诊断</h3>
+<p>听音辨词不是孤立的小测验。它测出的正确率会折算成<b>听力词汇量</b>，与阅读侧的估算并排放进 AI 的上下文，
+<code>get_listen_profile</code> 这个工具把它取出来。于是模型能回答一个单模态产品回答不了的问题：
+「我明明认识这个词，为什么听力还是错」——因为这两个数字对不上。</p>
+<table>
+<tr><th style="width:190px">环节</th><th>做法</th><th style="width:170px">为什么这样设计</th></tr>
+<tr><td class="k">存储隔离</td><td>听音结果存 <code>S.listen</code>，与阅读的抽样 <code>S.samples</code> 完全分开</td><td>混在一起两边都脏：阅读的置信区间会被音频题的噪声污染</td></tr>
+<tr><td class="k">折算</td><td>听力词汇量 ≈ 正确率 × 词库规模，并写明"20 词样本、误差约 ±22 个百分点"</td><td>不假装配精度；样本小就直说</td></tr>
+<tr><td class="k">对照</td><td>阅读估算与听力估算同时给，算出差值</td><td>差值就是「认得但听不出」的规模——四六级听力的真实失分点</td></tr>
+<tr><td class="k">交给模型</td><td>通过工具返回，而不是写进 prompt 让模型自己算</td><td>与全站一致：数字来自工具，解释留给模型</td></tr>
+</table>
+<p>这是"多模态融合"在本项目里的具体含义：<b>不是把语音当装饰</b>，而是让听觉通道的测量结果参与诊断结论。
+语音输入（口述提问）与语音输出（单词发音）同样走浏览器原生能力，不引入第三方依赖。</p>
+
+<h3>5.11 回访卡：隔几天再打开，首页接上上次的结论</h3>
 <table>
 <tr><td class="k">触发</td><td>至少有 1 次随机抽样/整库实测，且距上次检测满 3 天；有未完成的检测时让位给「继续检测」</td></tr>
 <tr><td class="k">三行结论</td><td>① 最该先补哪一段（target 与 weak 分开：高频三段还有洞就优先它们，冷门段最弱时如实说明不先补它）② 按每日时间折算补完天数 ③ 与上一轮相比是否超出 ±抽样误差</td></tr>
@@ -493,19 +521,19 @@ Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材
 <tr><td class="k">成本</td><td>全部本地计算，不联网、不消耗 AI 额度</td></tr>
 </table>
 
-<h3>5.11 自定义词书</h3>
+<h3>5.12 自定义词书</h3>
 <p>支持 txt / csv / 粘贴导入，一行一个词，可选「词,释义」。导入前给出预览（总词数、命中内置词库、新增词条、
 有释义比例、频段分布），并复用同一套引擎检测。边界写在界面上：<b>自定义词书是有偏样本，只报"对这本书的掌握率"，
 不能换算成词汇量</b>。</p>
 
-<h3>5.12 每日可投入时间：一栏设置，四处文案</h3>
+<h3>5.13 每日可投入时间：一栏设置，四处文案</h3>
 <table>
 <tr><td class="k">换算</td><td><code>每天词数 = round(分钟 ÷ 1.5)</code>，夹在 5–200；代码里只有一处 <code>A.perDayWords()</code></td></tr>
 <tr><td class="k">四处消费</td><td>报告页顶部「还差 X 词（约 N 天 · 每天 M 词）」、报告页分段补词建议、AI 计划、回访卡「补完约 N 天」</td></tr>
 <tr><td class="k">踩过的坑</td><td>其中两处曾把「每天 50 词」写死，设置改了不生效；现在统一走一个函数，并有断言锁死（改 60 分钟后四处必须同时变成 40 词/天）</td></tr>
 </table>
 
-<h3>5.13 界面、动效与无障碍</h3>
+<h3>5.14 界面、动效与无障碍</h3>
 <table>
 <tr><td class="k">入场页</td><td>细线展台框绘制 → 标题逐字升起 → 数字滚动 → 鲸鱼绕场 → 光束扎入按钮 → 整屏对焦退场。内容早已渲染完成，退场无加载空窗</td></tr>
 <tr><td class="k">2.5D 桌宠</td><td>透视倾斜（转轴压脚底）＋ 接地投影 ＋ 受光膜；可拖动、有重力、悬空挣扎（二阶系统由指针速度驱动）</td></tr>
@@ -516,7 +544,7 @@ Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材
 </table>
 
 <!-- ============================================================ -->
-<h3>5.14 界面实拍</h3>
+<h3>5.15 界面实拍</h3>
 <p class="small">以下截图取自当前交付产物（桌面 1440×900，浏览器实拍）。</p>
 
 <div class="fig"><img src="screenshots/01-home.png" alt="首页">
@@ -537,7 +565,7 @@ Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材
 <h2 id="c6">6 测试与部署</h2>
 
 
-<h3>6.1 测试体系（3 套 / 222 条断言）</h3>
+<h3>6.1 测试体系（3 套 / 224 条断言）</h3>
 <table>
 <tr><th style="width:230px">套件</th><th style="width:66px">条数</th><th>覆盖什么</th></tr>
 <tr><td class="k">smoke-test.js（jsdom）</td><td>207</td><td>抽样、区间估计、等级、多轮、地图、档案、导出、回访卡、演示档案</td></tr>
@@ -604,7 +632,7 @@ PORT=8787</code></pre>
 <h3>6.6 发布检查清单</h3>
 <table>
 <tr><td class="k">① 构建</td><td>两种产物都构建一遍；<code>check-no-key.mjs</code> 通过</td></tr>
-<tr><td class="k">② 测试</td><td>冒烟 222 条全绿；真浏览器桌宠 40 条（39 通过，余 1 条为测试读取时机问题）；RAG 四项指标由脚本可复现</td></tr>
+<tr><td class="k">② 测试</td><td>冒烟 224 条全绿；真浏览器桌宠 40 条（39 通过，余 1 条为测试读取时机问题）；RAG 四项指标由脚本可复现</td></tr>
 <tr><td class="k">③ 派生物</td><td>截图重拍、PPT 重出、PDF 重导、桌面副本按 SHA256 比对</td></tr>
 <tr><td class="k">④ 文档</td><td>数字口径统一（断言数、体积、词条数）——历史上三次事故都出在"派生物没同步"</td></tr>
 </table>
@@ -719,14 +747,14 @@ PORT=8787</code></pre>
 <tr><th style="width:250px">可能的问题</th><th>一句话应答</th></tr>
 <tr><td class="k">你们这是背单词 App 吗？</td><td>不是。我们只做测量与诊断：测准 + 开补词清单，背单词交给你习惯的工具。</td></tr>
 <tr><td class="k">测出来的数凭什么可信？</td><td>误差写在数字旁边：分层抽样 + 有限总体修正 + 蒙对校正 + 双口径，抽样与估计有 201 条断言守着。</td></tr>
-<tr><td class="k">AI 具体做了什么？</td><td>只做解释与规划：所有数字来自 8 个工具的返回值，模型不许自己算数；数据不足时它会拒绝下结论。</td></tr>
+<tr><td class="k">AI 具体做了什么？</td><td>只做解释与规划：所有数字来自 9 个工具的返回值，模型不许自己算数；数据不足时它会拒绝下结论。</td></tr>
 <tr><td class="k">是向量 RAG 吗？</td><td>不是。本地语料倒排索引 + 工具按需检索的轻量 RAG；向量方案会拖几十 MB 权重，毁掉单文件与断网可用。</td></tr>
 <tr><td class="k">断网能用吗？</td><td>能。单文件双击即开，答题、进度、报告、本地方案全部离线可用。</td></tr>
 <tr><td class="k">为什么还要做小程序？</td><td>同一套引擎换一种交付形态：小程序主包 1.56 MB，与网页版逐字段一致（1,302 + 34,310 条一致性断言）。</td></tr>
 <tr><td class="k">商业化怎么想？</td><td>不卖课、不导流、不弹广告；AI 用你自己的 Key 或完成检测换来的额度，成本可见。</td></tr>
 </table>
 
-<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.70 MB / 222 条断言 / 词库 7,175 词 / 例句 9,204 句）。
+<p class="small" style="margin-top:26px">本文档描述的是当前交付版本（单文件 2.70 MB / 224 条断言 / 词库 7,175 词 / 例句 9,204 句）。
 实现细节、逐条设计决策与踩过的坑另见仓库内 <code>NEXT.md</code>、<code>README.md</code> 与报告系列。</p>
 
 </div>

@@ -5558,6 +5558,31 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
       };
     });
 
+    /* 听力侧：听音辨词的结果单独存在 S.listen，这里只汇总量，绝不混进阅读样本 */
+    var listen = null;
+    if (S.listen && S.listen.log && S.listen.log.length >= 5) {
+      var ll = S.listen.log, lok = 0;
+      ll.forEach(function (e) { if (e.v === 2) lok++; });
+      var lrate = lok / ll.length;
+      listen = {
+        n: ll.length,
+        correct: lok,
+        rate: Math.round(lrate * 100),
+        vocabApprox: Math.round(t.total * lrate),
+        note: '均匀抽 ' + ll.length + ' 词，样本小，误差约 ±' + Math.round(100 / Math.sqrt(ll.length)) + ' 个百分点'
+      };
+    }
+    var listenGap = null;
+    if (listen && typeof es.looseVocab === 'number' && es.looseVocab > 0) {
+      listenGap = {
+        reading: es.looseVocab,
+        listening: listen.vocabApprox,
+        diff: es.looseVocab - listen.vocabApprox,
+        readingRate: Math.round(es.looseVocab / t.total * 100),
+        listeningRate: listen.rate
+      };
+    }
+
     var interval = null;
     if (es.kind === 'sample') interval = [es.lo, es.hi];
     else if (es.kind === 'full') interval = [es.vocab, es.vocab];
@@ -5575,6 +5600,8 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
         : (es.kind === 'full' ? '词库已覆盖 95% 以上，接近实测值' : '尚无随机抽样，无法给出带误差的估算'),
       bands: bands,
       weakWords: weak,
+      listen: listen,
+      listenGap: listenGap,
       availableBanks: Object.keys(A.BANKS).map(function (k) { return A.BANKS[k].name; })
     };
   };

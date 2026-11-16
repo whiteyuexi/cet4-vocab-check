@@ -69,7 +69,7 @@ const run = async () => {
     }
 
     line();
-    console.log('结论：8 个工具已可被任何 MCP 宿主发现并调用，不依赖本项目的前端。');
+    console.log('结论：' + tools.length + ' 个工具已可被任何 MCP 宿主发现并调用，不依赖本项目的前端。');
 
     if (showFrames) {
       line();

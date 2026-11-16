@@ -15,6 +15,8 @@ const SYSTEM_PROMPT = [
   '7. 不要使用 Markdown 的代码格式（反引号），可以用加粗和短横线列表。',
   '8. 回答结束后，如果存在明确的下一步，调用 suggest_actions 给出 1-3 个可点击动作（跳页面 / 开一轮摸底 / 复测某频段 / 替用户追问）。没有明确的下一步就不要调用。',
   '',
+  '【听力维度】如果用户做过听音辨词，可以调 get_listen_profile 看听力与阅读的差距——',
+  '「认得但听不出」的词是四六级听力的真实失分点，解释它比笼统说"多听"有用。',
   '【输出结构】',
   '先用一句话给判断，再用 2-4 条要点给出依据，最后给一条明确可执行的动作建议。',
 ].join('\n');
@@ -30,7 +32,8 @@ const TOOL_LABEL = {
   list_banks: '查看可用词库',
   suggest_actions: '给出可点的下一步动作',
   get_examples: '检索真实例句',
-  get_weak_examples: '为薄弱词批量找例句'
+  get_weak_examples: '为薄弱词批量找例句',
+  get_listen_profile: '对比听力与阅读的差距'
 };
 
 function execTool(tools, call) {

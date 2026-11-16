@@ -65,6 +65,25 @@ const bandRows = Object.keys(byBand).sort().map(b => ({
   pct: +(byBand[b].covered / byBand[b].total * 100).toFixed(1)
 }));
 
+/* ---------- 上下文质量：不只是"查得到"，还要看"能不能直接喂给模型" ---------- */
+const quality = { complete: 0, aligned: 0, dup: 0, total: 0, chars: 0 };
+const qsample = vocab.filter(w => examplesFor(w.w, 1).length).slice(0, 400);
+for (const w of qsample) {
+  const ex = examplesFor(w.w, 2);
+  for (const e of ex) {
+    quality.total++;
+    const en = String(e.en || '');
+    const words = en.trim().split(/\s+/).length;
+    // 完整句：首字母大写 / 引号开头，结尾有标点，长度在 4–35 词之间
+    if (/^["'(]?[A-Z]/.test(en) && /[.?!]["')]?$/.test(en.trim()) && words >= 4 && words <= 35) quality.complete++;
+    if (e.zh && String(e.zh).trim().length > 1) quality.aligned++;
+    quality.chars += en.length + String(e.zh || '').length;
+  }
+  if (ex.length === 2 && ex[0].en === ex[1].en) quality.dup++;
+}
+const N = Math.max(1, qsample.length);
+const ctxChars = quality.total ? Math.round(quality.chars / quality.total * 2) : 0;   // 每次注入 2 条
+
 const stats = corpusStats();
 const report = {
   vocabWords: vocab.length,
@@ -78,7 +97,11 @@ const report = {
   latencyP50ms: +p(0.5).toFixed(4),
   latencyP95ms: +p(0.95).toFixed(4),
   calls: times.length,
-  byBand: bandRows
+  byBand: bandRows,
+  sentenceComplete: +(quality.complete / Math.max(1, quality.total) * 100).toFixed(1),
+  translated: +(quality.aligned / Math.max(1, quality.total) * 100).toFixed(1),
+  dupRate: +(quality.dup / N * 100).toFixed(1),
+  contextCharsPerCall: ctxChars
 };
 
 if (asJson) {
@@ -91,6 +114,10 @@ if (asJson) {
   console.log('  命中正确率        ' + report.precision + '%  （抽样 ' + report.sampleChecked + ' 词，' + report.sampleHit + ' 个例句确实含目标词）');
   console.log('  检索延迟          p50 ' + report.latencyP50ms + ' ms · p95 ' + report.latencyP95ms + ' ms（' + report.calls + ' 次调用）');
   console.log('');
+  console.log('  句子完整率        ' + report.sentenceComplete + '%  （首字母大写 + 结尾标点 + 4–35 词）');
+  console.log('  中英对齐率        ' + report.translated + '%  （每条例句都有中文译文）');
+  console.log('  重复率            ' + report.dupRate + '%  （同一词的多条例句是否重复）');
+  console.log('  注入上下文预算    约 ' + report.contextCharsPerCall + ' 字符/次（每次 2 条例句）');
   console.log('');
   for (const r of bandRows) {
     console.log('    频段 ' + r.band + '  覆盖 ' + r.pct + '%  (' + r.covered + '/' + r.total + ')');

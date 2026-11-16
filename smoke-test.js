@@ -89,6 +89,19 @@ win.addEventListener('load', () => {
       click('.nav button[data-nav="stats"]');
       check('统计页渲染', /总体掌握情况/.test(doc.getElementById('view').textContent));
       /* 地图改成"入口卡 + 弹层真地图"：页面里只留一张入口，点开才画 canvas */
+      /* 听音辨词的结果要能进 AI 上下文，且不能污染阅读样本 */
+      A.S.listen = { qs: [], pos: 20, log: [], spoken: -1, ts: Date.now() };
+      (function () {
+        var pool = A.activePool();
+        for (var q = 0; q < 20; q++) A.S.listen.log.push({ i: pool[q], v: q < 13 ? 2 : 0 });
+      })();
+      var ctxL = A.buildAIContext();
+      check('听力数据进得了 AI 上下文', !!ctxL.listen && ctxL.listen.n === 20 && ctxL.listen.rate === 65,
+        ctxL.listen ? ('n=' + ctxL.listen.n + ' 正确率=' + ctxL.listen.rate + '%') : '缺失');
+      check('听力不在阅读抽样里', !(A.S.samples || []).some(function (x) { return x.fromListen; }),
+        '阅读 samples 未被污染');
+      A.S.listen = null;
+
       check('词汇地图是一个入口 + 一个按钮',
         !!q('.map-entry') && !!q('[data-act="open-map"]') && typeof A.openMap === 'function',
         q('.map-entry') ? 'ok' : '缺入口卡');
