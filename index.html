@@ -1567,6 +1567,13 @@ html[data-theme="dark"] .pet-fig.pet-l2d{
 .card.fb{margin-top:14px;background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.35))}
 html[data-theme="dark"] .card.fb{background:linear-gradient(180deg,rgba(38,44,58,.7),rgba(24,28,38,.6))}
 .fb-t{font-size:14.5px;font-weight:700;color:var(--ink)}
+/* 首页的演示档案入口：只在新用户（未测过）时出现 */
+.demo-hint{margin:10px 0 2px;padding:11px 14px;border-radius:11px;background:var(--glass-2);
+  border:1px dashed var(--line2);font-size:13px;color:var(--ink2)}
+.demo-hint .tiny{color:var(--ink3)}
+.linkbtn{background:none;border:none;padding:0 2px;font:inherit;font-weight:700;color:var(--accent);cursor:pointer;
+  text-decoration:underline;text-underline-offset:2px}
+.linkbtn:hover{color:var(--ink)}
 </style>
 <!-- 四六级词汇量检测 · 词库 7175 词 · 内联例句 5138 条 -->
 </head>
@@ -3470,6 +3477,12 @@ html[data-theme="dark"] .card.fb{background:linear-gradient(180deg,rgba(38,44,58
       '<span>从缺口词出题：例句挖空、四选一。判分不联网，错了再让 AI 看你的错法</span></button>';
     h += '</div>';
 
+    /* 评委/新用户第一眼：没有数据时给一个"不用答题也能看效果"的入口 */
+    if (!t.tested) {
+      h += '<div class="demo-hint">想先看看效果，不答题也行：' +
+        '<button class="linkbtn" data-act="demo-levels">生成六个等级的演示档案</button>' +
+        '<span class="tiny">（S / A / B+ / B / C / D 各一份真实作答，随时可删）</span></div>';
+    }
     h += '<div class="sec-title">分组进度<span class="line"></span><span class="tiny">点任意一组开始</span></div>';
     h += A.groupGrid(12);
 

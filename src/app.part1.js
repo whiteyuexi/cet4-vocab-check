@@ -1741,6 +1741,12 @@
       '<span>从缺口词出题：例句挖空、四选一。判分不联网，错了再让 AI 看你的错法</span></button>';
     h += '</div>';
 
+    /* 评委/新用户第一眼：没有数据时给一个"不用答题也能看效果"的入口 */
+    if (!t.tested) {
+      h += '<div class="demo-hint">想先看看效果，不答题也行：' +
+        '<button class="linkbtn" data-act="demo-levels">生成六个等级的演示档案</button>' +
+        '<span class="tiny">（S / A / B+ / B / C / D 各一份真实作答，随时可删）</span></div>';
+    }
     h += '<div class="sec-title">分组进度<span class="line"></span><span class="tiny">点任意一组开始</span></div>';
     h += A.groupGrid(12);
 
