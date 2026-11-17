@@ -62,39 +62,62 @@ pre code{background:none;color:inherit;padding:0}
   a{color:inherit;text-decoration:none}
 }
 @page{margin:12mm 13mm}
-/* ---------- 封面 ---------- */
-.cover{max-width:920px;margin:34px auto 0;padding:64px 56px 56px;border-radius:20px;color:#fff;
-  background:linear-gradient(140deg,#1B3FA8 0%,#2A5BE0 46%,#3E7BE8 100%);position:relative;overflow:hidden}
-.cover::after{content:"";position:absolute;right:-90px;top:-90px;width:340px;height:340px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0) 70%)}
-.cover-kicker{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:.82}
-.cover-title{font-size:40px;font-weight:780;letter-spacing:-.035em;margin:18px 0 10px;color:#fff}
-.cover-sub{font-size:16px;opacity:.92;max-width:560px;line-height:1.7}
-.cover-meta{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;font-size:12.5px;opacity:.9}
-.cover-meta b{display:block;font:600 10.5px/1 var(--mono);letter-spacing:.1em;opacity:.72;margin-bottom:4px}
+/* ---------- 封面：白底 + 顶部色带，像一份正式报告 ---------- */
+.cover{max-width:920px;margin:34px auto 0;background:#fff;border:1px solid var(--line);
+  border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.cover-band{background:linear-gradient(120deg,#1B3FA8,#2A5BE0 62%,#3E7BE8);color:#fff;
+  padding:34px 48px 30px;position:relative}
+.cover-band::after{content:"";position:absolute;right:0;bottom:0;width:46%;height:100%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.10))}
+.cover-kicker{font:600 11px/1.6 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:.9}
+.cover-kicker2{font:600 11px/1.6 var(--mono);letter-spacing:.16em;opacity:.66;margin-top:2px}
+.cover-body{padding:46px 48px 40px;flex:1;display:flex;flex-direction:column}
+.cover-title{font-size:38px;font-weight:800;letter-spacing:-.04em;margin:0;color:#101319;line-height:1.15}
+.cover-sub{font-size:19px;font-weight:700;color:#2A5BE0;margin-top:16px;letter-spacing:-.01em}
+.cover-sub2{font-size:13.5px;color:#5C6371;margin-top:6px}
+.cover-rule{height:1px;background:#E3E7EF;margin:30px 0 22px}
+.cover-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;font-size:11.5px;margin-top:auto}
+.cover-meta b{display:block;font:600 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:#8A909C;margin-bottom:5px}
+.cover-meta span{color:#2E3440;line-height:1.5}
 /* 小节色带 + 表格斑马纹 */
 h2{border-left:4px solid var(--accent);padding-left:12px}
 tbody tr:nth-child(even),table tr:nth-child(even){background:rgba(16,19,25,.022)}
 @media print{
   html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .cover{max-width:none;margin:0;border-radius:0;padding:80mm 18mm 0;min-height:100vh;
+  /* 打印时不要用 flex：Chrome 分页会把 flex 容器压扁，底部的信息栏会整块消失。
+     改成块级流式布局 + 固定间距。 */
+  .cover{display:block;max-width:none;margin:0;border:none;border-radius:0;overflow:visible;
     break-after:page;page-break-after:always}
-  .cover-title{font-size:38pt}
-  .cover-sub{font-size:13pt}
-  .cover-meta{font-size:10pt;margin-top:24mm}
+  .cover-band{padding:13mm 16mm 11mm}
+  .cover-band::after{display:none}
+  .cover-body{display:block;padding:18mm 16mm 0}
+  .cover-title{font-size:32pt;line-height:1.12}
+  .cover-sub{font-size:14pt;margin-top:7mm}
+  .cover-sub2{font-size:10.5pt;margin-top:2mm}
+  .cover-rule{margin:11mm 0 8mm}
+  .cover-meta{display:grid;grid-template-columns:1fr 1fr;gap:6mm 12mm;font-size:9.5pt;margin-top:0}
+  .cover-meta b{font-size:7pt;margin-bottom:2mm}
 }
 </style>
 </head>
 <body>
 <section class="cover">
-  <div class="cover-kicker">第九届传智杯 · AI WEB 网页开发挑战赛</div>
-  <h1 class="cover-title">四六级词汇量检测</h1>
-  <div class="cover-sub">AI 不该替你数数 —— 把测量锁给统计，把解释留给模型</div>
-  <div class="cover-meta">
-    <div><b>作品形态</b>单文件 Web 应用 · 零运行时依赖 · 断网可用</div>
-    <div><b>作者</b>李壹铭　广东亚视演艺职业学院 · 人工智能学院</div>
-    <div><b>文档版本</b>v1.0　2026 年 11 月</div>
-    <div><b>代码仓库</b>github.com/whiteyuexi/cet4-vocab-check</div>
+  <div class="cover-band">
+    <div class="cover-kicker">第九届传智杯全国大学生数智创新与 AI 应用大赛</div>
+    <div class="cover-kicker2">AI WEB 网页开发挑战赛 · C 组</div>
+  </div>
+  <div class="cover-body">
+    <h1 class="cover-title">四六级词汇量检测</h1>
+    <div class="cover-sub">AI 不该替你数数</div>
+    <div class="cover-sub2">把测量交给统计，把解释留给模型</div>
+    <div class="cover-rule"></div>
+    <div class="cover-meta">
+      <div><b>作品形态</b><span>单文件 Web 应用 · 零运行时依赖 · 断网可用</span></div>
+      <div><b>作者</b><span>李壹铭　广东亚视演艺职业学院 · 人工智能学院</span></div>
+      <div><b>文档版本</b><span>v1.0　2026 年 11 月</span></div>
+      <div><b>代码仓库</b><span>github.com/whiteyuexi/cet4-vocab-check</span></div>
+    </div>
   </div>
 </section><div class="page">
 
@@ -589,26 +612,42 @@ Shift + 点击带着这一段的真实数字去问 AI。城池立绘可选素材
 <div class="fig"><img src="screenshots/05-ai-diagnose.png" alt="AI 诊断面板">
 <div class="small">AI 诊断面板：回答上方标出这次调了哪些工具，下方可展开"本次发送给模型的数据"。</div></div>
 
-<style>.fig{margin:14px 0;text-align:center}.fig img{max-width:100%;border:1px solid var(--line2);border-radius:12px}.fig .small{margin-top:6px}/* ---------- 封面 ---------- */
-.cover{max-width:920px;margin:34px auto 0;padding:64px 56px 56px;border-radius:20px;color:#fff;
-  background:linear-gradient(140deg,#1B3FA8 0%,#2A5BE0 46%,#3E7BE8 100%);position:relative;overflow:hidden}
-.cover::after{content:"";position:absolute;right:-90px;top:-90px;width:340px;height:340px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0) 70%)}
-.cover-kicker{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:.82}
-.cover-title{font-size:40px;font-weight:780;letter-spacing:-.035em;margin:18px 0 10px;color:#fff}
-.cover-sub{font-size:16px;opacity:.92;max-width:560px;line-height:1.7}
-.cover-meta{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;font-size:12.5px;opacity:.9}
-.cover-meta b{display:block;font:600 10.5px/1 var(--mono);letter-spacing:.1em;opacity:.72;margin-bottom:4px}
+<style>.fig{margin:14px 0;text-align:center}.fig img{max-width:100%;border:1px solid var(--line2);border-radius:12px}.fig .small{margin-top:6px}/* ---------- 封面：白底 + 顶部色带，像一份正式报告 ---------- */
+.cover{max-width:920px;margin:34px auto 0;background:#fff;border:1px solid var(--line);
+  border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.cover-band{background:linear-gradient(120deg,#1B3FA8,#2A5BE0 62%,#3E7BE8);color:#fff;
+  padding:34px 48px 30px;position:relative}
+.cover-band::after{content:"";position:absolute;right:0;bottom:0;width:46%;height:100%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.10))}
+.cover-kicker{font:600 11px/1.6 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:.9}
+.cover-kicker2{font:600 11px/1.6 var(--mono);letter-spacing:.16em;opacity:.66;margin-top:2px}
+.cover-body{padding:46px 48px 40px;flex:1;display:flex;flex-direction:column}
+.cover-title{font-size:38px;font-weight:800;letter-spacing:-.04em;margin:0;color:#101319;line-height:1.15}
+.cover-sub{font-size:19px;font-weight:700;color:#2A5BE0;margin-top:16px;letter-spacing:-.01em}
+.cover-sub2{font-size:13.5px;color:#5C6371;margin-top:6px}
+.cover-rule{height:1px;background:#E3E7EF;margin:30px 0 22px}
+.cover-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;font-size:11.5px;margin-top:auto}
+.cover-meta b{display:block;font:600 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:#8A909C;margin-bottom:5px}
+.cover-meta span{color:#2E3440;line-height:1.5}
 /* 小节色带 + 表格斑马纹 */
 h2{border-left:4px solid var(--accent);padding-left:12px}
 tbody tr:nth-child(even),table tr:nth-child(even){background:rgba(16,19,25,.022)}
 @media print{
   html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .cover{max-width:none;margin:0;border-radius:0;padding:80mm 18mm 0;min-height:100vh;
+  /* 打印时不要用 flex：Chrome 分页会把 flex 容器压扁，底部的信息栏会整块消失。
+     改成块级流式布局 + 固定间距。 */
+  .cover{display:block;max-width:none;margin:0;border:none;border-radius:0;overflow:visible;
     break-after:page;page-break-after:always}
-  .cover-title{font-size:38pt}
-  .cover-sub{font-size:13pt}
-  .cover-meta{font-size:10pt;margin-top:24mm}
+  .cover-band{padding:13mm 16mm 11mm}
+  .cover-band::after{display:none}
+  .cover-body{display:block;padding:18mm 16mm 0}
+  .cover-title{font-size:32pt;line-height:1.12}
+  .cover-sub{font-size:14pt;margin-top:7mm}
+  .cover-sub2{font-size:10.5pt;margin-top:2mm}
+  .cover-rule{margin:11mm 0 8mm}
+  .cover-meta{display:grid;grid-template-columns:1fr 1fr;gap:6mm 12mm;font-size:9.5pt;margin-top:0}
+  .cover-meta b{font-size:7pt;margin-bottom:2mm}
 }
 </style>
 
