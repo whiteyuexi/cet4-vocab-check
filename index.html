@@ -4194,8 +4194,11 @@ html[data-theme="dark"] .card.fb{background:linear-gradient(180deg,rgba(38,44,58
   A.bandProfileHTML = function () {
     var prof = A.bandProfile();
     var rows = prof.rows.filter(function (r) { return r.N > 0; });
+    /* 高频在上：BAND_W 里 1 是最高频（权重 1）、0 是 20k 以外（0.02）。
+       原来按 band 升序排，20k 以外 跑到第一行——和"先补高频"的主张正好相反。 */
+    rows.sort(function (x, y) { return (A.BAND_W[y.band] || 0) - (A.BAND_W[x.band] || 0); });
     var h = '';
-    h += '<div class="sec-title">词频分布 · 按词频段<span class="line"></span><span class="tiny">' +
+    h += '<div class="sec-title">词频分布 · 按词频段<span class="line"></span><span class="tiny">高频在上 · ' +
       (prof.source === 'sample'
         ? '来自最近一次分层抽样（' + prof.n + ' 词）'
         : '来自已测的 ' + prof.n + ' 词，非随机样本，仅供参考') + '</span></div>';
