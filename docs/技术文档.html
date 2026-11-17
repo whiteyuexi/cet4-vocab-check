@@ -151,7 +151,8 @@ tbody tr:nth-child(even),table tr:nth-child(even){background:rgba(16,19,25,.022)
 <tr><th style="width:170px">交付物</th><th>内容</th><th style="width:80px">状态</th></tr>
 <tr><td class="k">Web 单文件产物</td><td><code>index.html</code> 2.70 MB，词库/例句/立绘/样式/脚本全部内联，双击即用、断网可用</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">评委版产物</td><td>同一份产物＋内联作者 Key，开箱即可演示在线 AI 诊断（仓库版不含任何密钥）</td><td><span class="tag done">完成</span></td></tr>
-<tr><td class="k">云托管（在线演示）</td><td>把 <code>server/index.mjs</code> 部署到 Render / Railway（仓库含 <code>render.yaml</code> 与 <code>Procfile</code>），填 <code>DEEPSEEK_API_KEY</code>；该服务同时托管网页与 <code>/api/agent</code>，前端无需改动</td><td>评委点开即可用在线 AI；额度由服务端限制（默认单设备 25 次/天、全站 400 次/天）</td></tr>
+<tr><td class="k">静态托管（在线演示）</td><td>产物是单文件，直接托管在 GitHub Pages：<code>https://whiteyuexi.github.io/cet4-vocab-check/</code>，无需后端、秒开</td><td>评委零门槛体验全部功能；AI 面板自动回落确定性规则诊断（静态托管无后端）</td></tr>
+<tr><td class="k">云托管（带在线 AI）</td><td>把 <code>server/index.mjs</code> 部署到 Render / Railway（仓库含 <code>render.yaml</code> 与 <code>Procfile</code>），填 <code>DEEPSEEK_API_KEY</code>；该服务同时托管网页与 <code>/api/agent</code>，前端无需改动</td><td>评委点开即可用在线 AI；额度由服务端限制（默认单设备 25 次/天、全站 400 次/天）</td></tr>
 <tr><td class="k">微信小程序</td><td>同源引擎的移动端版本，5 个页面，主包 1.56 MB，可直接导入开发者工具</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">文档</td><td>本技术文档（PDF）、产品介绍（HTML）、功能总览、报告系列 01–18、README / NEXT / LICENSING</td><td><span class="tag done">完成</span></td></tr>
 <tr><td class="k">演示材料</td><td>路演稿、详细资料稿（含附录）、演示视频分镜脚本</td><td><span class="tag done">完成</span></td></tr>
@@ -660,7 +661,8 @@ tbody tr:nth-child(even),table tr:nth-child(even){background:rgba(16,19,25,.022)
 <tr><th style="width:150px">形态</th><th>步骤</th><th style="width:150px">适用</th></tr>
 <tr><td class="k">离线单文件</td><td>双击 <code>index.html</code>，无需安装、无需联网</td><td>学生个人 / 断网环境</td></tr>
 <tr><td class="k">本地后端（可选）</td><td><code>npm install</code> → 配 <code>.env</code> → <code>npm run server</code> → 浏览器打开 <code>http://127.0.0.1:8787</code></td><td>演示带工具调用的 Agent</td></tr>
-<tr><td class="k">云托管（在线演示）</td><td>把 <code>server/index.mjs</code> 部署到 Render / Railway（仓库含 <code>render.yaml</code> 与 <code>Procfile</code>），填 <code>DEEPSEEK_API_KEY</code>；该服务同时托管网页与 <code>/api/agent</code>，前端无需改动</td><td>评委点开即可用在线 AI；额度由服务端限制（默认单设备 25 次/天、全站 400 次/天）</td></tr>
+<tr><td class="k">静态托管（在线演示）</td><td>产物是单文件，直接托管在 GitHub Pages：<code>https://whiteyuexi.github.io/cet4-vocab-check/</code>，无需后端、秒开</td><td>评委零门槛体验全部功能；AI 面板自动回落确定性规则诊断（静态托管无后端）</td></tr>
+<tr><td class="k">云托管（带在线 AI）</td><td>把 <code>server/index.mjs</code> 部署到 Render / Railway（仓库含 <code>render.yaml</code> 与 <code>Procfile</code>），填 <code>DEEPSEEK_API_KEY</code>；该服务同时托管网页与 <code>/api/agent</code>，前端无需改动</td><td>评委点开即可用在线 AI；额度由服务端限制（默认单设备 25 次/天、全站 400 次/天）</td></tr>
 <tr><td class="k">微信小程序</td><td>开发者工具「导入项目」→ 选 <code>miniprogram/</code> 目录 → 填 AppID → 编译；预览不需要备案</td><td>移动端 / 扫码体验</td></tr>
 </table>
 

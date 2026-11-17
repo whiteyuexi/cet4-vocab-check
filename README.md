@@ -295,7 +295,7 @@
 
 ## 部署（带在线 AI）
 
-静态托管（GitHub Pages）只能跑离线规则诊断——没有后端，AI 面板不会调模型。
+静态托管（GitHub Pages）只能跑离线规则诊断——没有后端，AI 面板不会调模型。静态地址秒开、无需等待，评委看功能用这个：`https://whiteyuexi.github.io/cet4-vocab-check/`
 要**线上也能真的调大模型**，把整个 Node 服务部署出去即可：`server/index.mjs` 同时托管网页和 `/api/agent`，**不需要改前端**。
 
 **Render（仓库里已有 `render.yaml`，一键部署）**
