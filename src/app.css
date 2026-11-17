@@ -1565,3 +1565,12 @@ html[data-theme="dark"] .card.fb{background:linear-gradient(180deg,rgba(38,44,58
 .linkbtn{background:none;border:none;padding:0 2px;font:inherit;font-weight:700;color:var(--accent);cursor:pointer;
   text-decoration:underline;text-underline-offset:2px}
 .linkbtn:hover{color:var(--ink)}
+/* 窄屏：桌面宽度不足时她会压到内容列，按宽度分两档降级。
+   1200 以下缩小并从右下角缩放（视觉左边缘随之外移）；
+   980 以下直接不显示——盖住正文比没有宠物严重。 */
+@media (max-width:1200px){
+  .pet{transform:scale(.82);transform-origin:bottom right}
+}
+@media (max-width:980px){
+  .pet{display:none !important}
+}
