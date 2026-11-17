@@ -220,6 +220,15 @@
   A.petMinX = minX;
 
   function apply() {
+    /* 自愈：坐标是整条链的源头（位置、投影、安全区、拖动），
+       任何一次补间算出 NaN，宠物就会被钉在左上角压住正文，而且再也回不来。
+       这里兜住：只要不是有限数，就当场复位到安全区。 */
+    if (!isFinite(P.x)) P.x = safeLeft();
+    if (!isFinite(P.y)) P.y = restY();
+    /* 看门狗：如果启动时页面是隐藏的（后台标签、预渲染），scheduleWalk 会直接 return 且不再排期，
+       宠物从此一动不动。每 4 秒检查一次，缺排期就补上。 */
+    RIG.wdT = (RIG.wdT || 0) + 1;
+    if (RIG.wdT % 120 === 0 && !walkTimer && !P.walking && !busy()) scheduleWalk();
     if (!hostEl) return;
     hostEl.style.setProperty('--px', Math.round(P.x) + 'px');
     // 悬浮起伏只加在"画出来的位置"上，不进 P.y ——
@@ -283,6 +292,7 @@
     if (Math.abs(tx - P.x) < 4) { if (done) done(); return; }
     var my = ++glideSeq;
     var from = P.x, t0 = performance.now();
+    if (!isFinite(tx) || !isFinite(from)) { P.x = safeLeft(); if (done) done(); return; }
     var dur = Math.max(260, Math.abs(tx - from) / 0.34);     // 约 340 px/s，比溜达快
     setWalk(true); setFace(tx < from);
     (function step(now) {
@@ -304,8 +314,10 @@
     /* 窗口不溜达：位置钉在右下角，只在尺寸变化时重新贴边 */
     if (L2D.ok) return;
     if (walkTimer) clearTimeout(walkTimer);
+    walkTimer = null;                       // 不清成 null，看门狗会以为一直有排期
     if (!wide() || document.hidden) return;
     walkTimer = setTimeout(function () {
+      walkTimer = null;
       if (P.dragging || document.hidden) return scheduleWalk();
       if (busy()) return scheduleWalk();                  // 检测中不溜达
       // 先在安全区里挑落点；如果她本来就在区外，先走回来
@@ -314,7 +326,8 @@
         return;
       }
       var lo = safeLeft(), hi = maxX();
-      var span = Math.min(170, (hi - lo) * 0.6);          // 幅度也收小，别横穿
+      if (!isFinite(lo) || !isFinite(hi)) return;
+    var span = Math.min(170, (hi - lo) * 0.6);          // 幅度也收小，别横穿
       var tx = Math.max(lo, Math.min(hi, P.x + (Math.random() * 2 - 1) * span));
       var dur = Math.abs(tx - P.x) / 0.16;             // 约 160 px/s：小短腿也得跑起来
       var from = P.x, t0 = performance.now();
@@ -335,6 +348,14 @@
   // 主循环：重力 + 悬空弹簧 + 透视倾斜 + 两圈投影 + 受光角
   function tick(now) {
     rafId = requestAnimationFrame(tick);
+    /* 每帧入口兜底：坐标一旦是 NaN，宠物会被钉在左上角压住正文，而且再也回不来。
+       放在主循环最前面——不管是谁写坏的（补间、拖拽、复位），都活不过一帧。 */
+    if (!isFinite(P.x)) P.x = safeLeft();
+    if (!isFinite(P.y)) P.y = restY();
+    /* 看门狗：如果启动时页面是隐藏的（后台标签、预渲染），scheduleWalk 会直接 return 且不再排期，
+       宠物从此一动不动。每 4 秒检查一次，缺排期就补上。 */
+    RIG.wdT = (RIG.wdT || 0) + 1;
+    if (RIG.wdT % 120 === 0 && !walkTimer && !P.walking && !busy()) scheduleWalk();
     var dt = Math.min(48, now - (lastT || now)); lastT = now;
 
     /* 整只上下起伏已移除：周期性升降和摇摆是一回事，都会读成「卡片在飘」。
@@ -1455,6 +1476,15 @@
   A.petBlink = function (hold) {
     RB.on = true; RB.t = 0; RB.dur = hold || 0.34; RB.queue = 0;
     return { on: RB.on, t: RB.t, dur: RB.dur, bk: RB._bk };
+  };
+
+  /* 排查用：看溜达调度器到底有没有在跑 */
+  A.petSched = function () {
+    return {
+      walkTimer: !!walkTimer, wdT: RIG.wdT || 0, walking: !!P.walking,
+      busy: busy(), wide: wide(), hidden: document.hidden,
+      dragging: !!P.dragging, x: +(+P.x).toFixed(1), safe: safeLeft()
+    };
   };
 
   A.petWalkTest = function (ms) {
